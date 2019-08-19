@@ -1,4 +1,10 @@
+# Data Files
 *.nii.gz
+
+# Development
 .vscode
+
+## Python
 env
 main.py
+*.egg-info
