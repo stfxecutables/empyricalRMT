@@ -1,14 +1,13 @@
 import numpy as np
 
-import rmt.construct as construct
-import rmt.plot
-import rmt.unfold as unfold
+import empyricalRMT.rmt.construct as construct
+import empyricalRMT.rmt.plot
+import empyricalRMT.rmt.unfold as unfold
 
-from rmt.observables.levelvariance import sigma_squared_exhaustive
-from rmt.observables.rigidity import spectralRigidity
-from rmt.observables.spacings import computeSpacings
-
-from utils import is_symmetric
+from ..rmt.observables.levelvariance import sigma_squared_exhaustive
+from ..rmt.observables.rigidity import spectralRigidity
+from ..rmt.observables.spacings import computeSpacings
+from ..utils import is_symmetric
 
 
 def test_spline_unfold(

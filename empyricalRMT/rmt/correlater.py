@@ -4,9 +4,8 @@ from numba import jit, prange
 from pathlib import Path
 
 from tempfile import TemporaryDirectory
-from utils import setup_progressbar
+from ..utils import setup_progressbar, flatten_4D
 
-from fmri.flatten import flatten_4D
 
 OUT_DEFAULT = Path.home() / "Desktop" / "corrmat.npy"
 

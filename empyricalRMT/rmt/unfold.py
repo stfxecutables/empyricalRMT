@@ -10,17 +10,16 @@ from pyod.models.hbos import HBOS
 from PyEMD import EMD
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import minimize_scalar
-from scipy.stats import mode, linregress
+from scipy.stats import mode
 
-from rmt.construct import generateGOEMatrix
-from rmt.eigenvalues import getEigs, stepFunctionG, stepFunctionVectorized
-from rmt.observables.spacings import computeSpacings
-from rmt.observables.rigidity import slope as fullSlope
-from rmt.plot import setup_plotting
+from ..rmt.construct import generateGOEMatrix
+from ..rmt.eigenvalues import getEigs, stepFunctionG, stepFunctionVectorized
+from ..rmt.observables.spacings import computeSpacings
+from ..rmt.observables.rigidity import slope as fullSlope
+from ..rmt.plot import setup_plotting
 
 # from utils import eprint
-from utils import eprint, is_symmetric, write_block, write_in_place
-from utils import intercept
+from ..utils import eprint, is_symmetric, write_block, write_in_place
 
 RESET = Style.RESET_ALL
 

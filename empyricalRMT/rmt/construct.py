@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import eprint
+from ..utils import eprint
 
 
 def almostIdentity(size: int = 100):

@@ -1,10 +1,10 @@
 import numpy as np
 
-from rmt.construct import generateGOEMatrix, generatePoisson
-from rmt.eigenvalues import getEigs
-from test.levelvar_test import test_levelvariance
-from test.spectral_test import test_spectral_rigidity
-from test.test_nnsd import test_nnsd, test_semicircle
+from ..rmt.construct import generateGOEMatrix, generatePoisson
+from ..rmt.eigenvalues import getEigs
+from ..test.levelvar_test import test_levelvariance
+from ..test.spectral_test import test_spectral_rigidity
+from ..test.test_nnsd import test_nnsd, test_semicircle
 
 
 def generateUniform(matsize=1000, lower=0, upper=1):

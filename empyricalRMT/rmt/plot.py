@@ -7,9 +7,9 @@ import seaborn as sbn
 from colorama import Fore, Style
 from pathlib import Path
 
-from rmt.eigenvalues import stepFunctionVectorized, trim_largest
-from rmt.observables.spacings import computeSpacings
-from utils import make_parent_directories
+from ..rmt.eigenvalues import stepFunctionVectorized, trim_largest
+from ..rmt.observables.spacings import computeSpacings
+from ..utils import make_parent_directories
 
 RESET = Style.RESET_ALL
 

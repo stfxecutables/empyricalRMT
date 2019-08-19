@@ -3,7 +3,7 @@ import numpy as np
 from colorama import Fore
 from numba import jit, prange
 from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
-from utils import eprint
+from ...utils import eprint
 
 
 # number variance (sigma squared)

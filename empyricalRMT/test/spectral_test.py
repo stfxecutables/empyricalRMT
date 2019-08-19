@@ -3,14 +3,14 @@ import pandas as pd
 
 from pathlib import Path
 
-import rmt.unfold as unfold
-import rmt.plot
+import empyricalRMT.rmt.unfold as unfold
+import empyricalRMT.rmt.plot
 
-from rmt.construct import generateGOEMatrix
-from rmt.eigenvalues import getEigs, trim_iteratively
-from rmt.observables.rigidity import spectralRigidityRewrite
-from rmt.plot import spectralRigidity as plotSpectral
-from utils import eprint
+from ..rmt.construct import generateGOEMatrix
+from ..rmt.eigenvalues import getEigs, trim_iteratively
+from ..rmt.observables.rigidity import spectralRigidityRewrite
+from ..rmt.plot import spectralRigidity as plotSpectral
+from ..utils import eprint
 
 CUR_DIR = Path(__file__).parent
 

@@ -176,6 +176,11 @@ def setup_progressbar(desc: str, max_count: int, marker=False) -> ProgressBar:
     return pbar
 
 
+def flatten_4D(img4D: np.ndarray) -> np.ndarray:
+    if type(img4D) == np.ndarray:
+        return img4D.reshape((np.prod(img4D.shape[0:-1]),) + (img4D.shape[-1],))
+
+
 @jit(nopython=True, fastmath=True, cache=True)
 def slope(x: np.array, y: np.array) -> np.float64:
     x_mean = np.mean(x)

@@ -2,8 +2,8 @@ import numpy as np
 
 from numba import jit, prange
 
-from rmt.observables.spacings import computeSpacings
-from utils import eprint, nd_find
+from ..rmt.observables.spacings import computeSpacings
+from ..utils import eprint, nd_find
 
 
 def getEigs(matrix):

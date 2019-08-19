@@ -3,13 +3,13 @@ import pandas as pd
 
 from pathlib import Path
 
-import rmt.unfold as unfold
+import empyricalRMT.rmt.unfold as unfold
 
-from rmt.construct import generateGOEMatrix
-from rmt.eigenvalues import getEigs, trim_iteratively
-from rmt.observables.levelvariance import sigma_squared
-from rmt.plot import levelNumberVariance
-from utils import eprint
+from ..rmt.construct import generateGOEMatrix
+from ..rmt.eigenvalues import getEigs, trim_iteratively
+from ..rmt.observables.levelvariance import sigma_squared
+from ..rmt.plot import levelNumberVariance
+from ..utils import eprint
 
 CUR_DIR = Path(__file__).parent
 

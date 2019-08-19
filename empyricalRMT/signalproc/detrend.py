@@ -4,7 +4,7 @@ from numba import jit, prange
 from PyEMD import EMD
 from scipy.stats import linregress
 
-from utils import slope, intercept
+from ..utils import slope, intercept
 
 
 class Detrend:
