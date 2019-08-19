@@ -1,0 +1,12 @@
+Metadata-Version: 1.2
+Name: empyricalRMT
+Version: 0.1.dev0
+Summary: Eigenvalue unfolding and spectral observable computation
+Home-page: https://github.com/stfxecutables/rmt
+Author: Derek Berger
+Author-email: dmberger.dev@gmail.com
+Maintainer: Derek Berger
+License: MIT
+Description: A python library for Random Matrix Theory eigenvalue unfolding and
+        computation and plotting of spectral observables.
+Platform: UNKNOWN

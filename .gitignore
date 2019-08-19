@@ -1,0 +1,4 @@
+*.nii.gz
+.vscode
+env
+main.py
