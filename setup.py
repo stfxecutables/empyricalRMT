@@ -40,6 +40,7 @@ setup(
         "Operating System :: OS Independent",
         "Development Status :: 3 - Alpha",
     ],
+    install_requires=REQUIREMENTS,
     python_requires=">=3",
     keywords="RMT RandomMatrixTheory spectral observabales eigenvalues unfolding",
 )
