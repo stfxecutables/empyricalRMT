@@ -6,6 +6,8 @@ empyricalRMT/plots
 .vscode
 
 ## Python
+build
+dist
 env
 main.py
 *.egg-info
