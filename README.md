@@ -59,4 +59,4 @@ plot.levelNumberVariance(unfolded, df, title=f"{kind.upper()} Matrix", mode="blo
 ```
 
 # Documentation
-Be sure to read the documentation comments in the [source code]().
+Be sure to read the documentation comments in the [source code](https://github.com/stfxecutables/empyricalRMT/tree/master/empyricalRMT).
