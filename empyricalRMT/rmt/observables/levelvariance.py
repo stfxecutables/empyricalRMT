@@ -40,6 +40,41 @@ def sigmaSquared(
     min_L=0.5,
     max_L=20,
 ) -> [np.array, np.array]:
+    """Compute the level number variance for a particular unfolding.
+
+    Computes the level number variance (sigma squared, ∑² [1]_) for a
+    particular set of eigenvalues and their unfolding.
+
+    Parameters
+    ----------
+    eigs : np.array
+        The sorted (ascending) eigenvalues.
+    unfolded : np.array
+        The sorted (ascending) eigenvalues computed from eigs.
+    L_grid_size : int = 100
+        The number of values of L to generate betwen min_L and max_L.
+    min_L : int = 0.5
+        The lowest possible L value for which to compute the spectral
+        rigidity.
+    max_L : int = 20
+        The largest possible L value for which to compute the spectral
+        rigidity.
+    c_iters: int = 50
+        How many times the location of the center, c, of the interval
+        [c - L/2, c + L/2] should be chosen uniformly at random for
+        each L in order to compute the estimate of the number level
+        variance.
+
+    Returns
+    -------
+    L : np.array
+        The L values generated based on the values of L_grid_size,
+        min_L, and max_L.
+    sigma_sq : np.array
+        The computed number level variance values for each of L.
+
+    .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier.
+    """
     L_grid = np.linspace(min_L, max_L, L_grid_size)
     sigma_sq = np.empty([L_grid_size])
     pbar_widgets = [
