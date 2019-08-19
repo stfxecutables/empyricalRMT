@@ -19,7 +19,13 @@ setup(
     author_email="dmberger.dev@gmail.com",
     version="0.1dev",
     description="Eigenvalue unfolding and spectral observable computation",
-    url="https://github.com/stfxecutables/rmt",
+    url="https://github.com/stfxecutables/empyricalRMT",
     license="MIT",
     long_description=read_file("README.md"),
+    long_description_content_type="text/markdown",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
 )
