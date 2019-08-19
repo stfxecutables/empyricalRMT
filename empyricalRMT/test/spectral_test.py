@@ -5,10 +5,11 @@ from pathlib import Path
 
 import empyricalRMT.rmt.unfold as unfold
 import empyricalRMT.rmt.plot
+import empyricalRMT.rmt as rmt
 
 from ..rmt.construct import generateGOEMatrix
 from ..rmt.eigenvalues import getEigs, trim_iteratively
-from ..rmt.observables.rigidity import spectralRigidityRewrite
+from ..rmt.observables.rigidity import spectralRigidity
 from ..rmt.plot import spectralRigidity as plotSpectral
 from ..utils import eprint
 
@@ -34,7 +35,7 @@ def load_eigs(matsize=10000):
     return eigs
 
 
-def new_eigs(matsize):
+def newEigs(matsize):
     M = generateGOEMatrix(matsize)
     eigs = getEigs(M)
     return eigs
@@ -46,28 +47,20 @@ def test_spectral_rigidity(
     eigs=None,
     plot_step=False,
     unfold_degree=None,
-    use_brain=False,
     kind="goe",
 ):
     unfolded = None
     if eigs is not None:
         pass
         unfolded = unfold.polynomial(eigs, 11)
-    elif use_brain:
-        eigs = np.load(
-            "/home/derek/Desktop/fMRI_Data/Rest+Various/ds000224-download/derivatives/"
-            "rmt/sub-MSC01/eigs_corrmat_sub-MSC01_ses-func03_task-rest_bold.npy"
-        )
-        eigs = trim_iteratively(eigs)
-        unfolded = unfold.polynomial(eigs, unfold_degree, 10000, None, None)
     else:
-        eigs = new_eigs(matsize) if neweigs else load_eigs(matsize)
+        eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
         unfolded = unfold.polynomial(eigs, 11)
 
     if plot_step:
         rmt.plot.stepFunction(eigs, trim=False, block=True)
 
-    L_vals, delta3 = spectralRigidityRewrite(
+    L_vals, delta3 = spectralRigidity(
         unfolded, eigs, c_iters=2000, L_grid_size=100, min_L=0.5, max_L=25
     )
     df = pd.DataFrame({"L": L_vals, "∆3(L)": delta3})

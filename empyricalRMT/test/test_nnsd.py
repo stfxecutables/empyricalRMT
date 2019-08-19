@@ -29,23 +29,17 @@ def load_eigs(matsize=10000):
     return eigs
 
 
-def new_eigs(matsize):
+def newEigs(matsize):
     M = generateGOEMatrix(matsize)
     eigs = getEigs(M)
     return eigs
 
 
-def test_semicircle(matsize=1000, neweigs=False, eigs=None, use_brain=False):
+def test_semicircle(matsize=1000, neweigs=False, eigs=None):
     if eigs is not None:
         pass  # use passed in eigenvalues
-    elif use_brain:
-        eigs = np.load(
-            "/home/derek/Desktop/fMRI_Data/Rest+Various/ds000224-download/derivatives/"
-            "rmt/sub-MSC01/eigs_corrmat_sub-MSC01_ses-func03_task-rest_bold.npy"
-        )
-        eigs = trim_iteratively(eigs)
     else:
-        eigs = new_eigs(matsize) if neweigs else load_eigs(matsize)
+        eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
     rawEigDist(eigs, bins=100, title="Wigner Semicircle", block=True)
 
 
@@ -53,7 +47,7 @@ def test_nnsd(matsize=10000, neweigs=False, eigs=None, kind="goe"):
     if eigs is not None:
         pass  # use passed in eigenvalues
     else:
-        eigs = new_eigs(matsize) if neweigs else load_eigs(matsize)
+        eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
     spacings = eigs[1:] - eigs[:-1]
     D = np.mean(spacings)
     s = spacings / D

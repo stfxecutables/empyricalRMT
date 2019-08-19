@@ -36,7 +36,7 @@ from ...rmt.eigenvalues import stepFunctionG, stepFunctionVectorized
 #    l_i ≤ c + L, as per Equation (4). This process can be repeated an
 #    appropriate number of times to generate a dataset consisting of
 #    datapoints (L, ∆3(L)).
-def spectralRigidityRewrite(
+def spectralRigidity(
     eigs: np.array,
     unfolded: np.array,
     c_iters: int = 1000,
@@ -60,7 +60,7 @@ def spectralRigidityRewrite(
     pbar = ProgressBar(widgets=pbar_widgets, maxval=L_vals.shape[0]).start()
     for i, L in enumerate(L_vals):
         delta3_L_vals = np.empty((c_iters))
-        spectralIterRewrite(eigs, unfolded, delta3_L_vals, L, c_iters, 100)
+        spectralIter(eigs, unfolded, delta3_L_vals, L, c_iters, 100)
         if len(delta3_L_vals) != c_iters:
             raise Exception("We aren't computing enough L values")
         delta3[i] = np.mean(delta3_L_vals)
@@ -83,21 +83,7 @@ def slope(x: np.array, y: np.array) -> np.float64:
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def intercept(x: np.array, y: np.array, slope: np.float64) -> np.float64:
-    return np.mean(y) - slope * np.mean(x)
-
-
-@jit(nopython=True, fastmath=True, cache=True)
-def integrateFast(grid: np.array, values: np.array) -> np.float64:
-    """https://en.wikipedia.org/wiki/Trapezoidal_rule#Uniform_grid"""
-    delta_x = (grid[-1] - grid[0]) / len(grid)
-    scale = delta_x / 2
-    integral = scale * (values[0] + values[-1] + 2 * np.sum(values[1:-1]))
-    return integral
-
-
-@jit(nopython=True, fastmath=True, cache=True)
-def spectralIterRewrite(
+def spectralIter(
     eigs: np.array,
     unfolded: np.array,
     delta3_L_vals: np.array,
@@ -116,6 +102,20 @@ def spectralIterRewrite(
         delta3 = integrateFast(grid, y_vals)
         delta3_L_vals[i] = delta3 / L
     return delta3_L_vals
+
+
+@jit(nopython=True, fastmath=True, cache=True)
+def intercept(x: np.array, y: np.array, slope: np.float64) -> np.float64:
+    return np.mean(y) - slope * np.mean(x)
+
+
+@jit(nopython=True, fastmath=True, cache=True)
+def integrateFast(grid: np.array, values: np.array) -> np.float64:
+    """https://en.wikipedia.org/wiki/Trapezoidal_rule#Uniform_grid"""
+    delta_x = (grid[-1] - grid[0]) / len(grid)
+    scale = delta_x / 2
+    integral = scale * (values[0] + values[-1] + 2 * np.sum(values[1:-1]))
+    return integral
 
 
 @jit(nopython=True, fastmath=True, cache=True)

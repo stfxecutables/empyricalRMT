@@ -4,7 +4,7 @@ import empyricalRMT.rmt.construct as construct
 import empyricalRMT.rmt.plot
 import empyricalRMT.rmt.unfold as unfold
 
-from ..rmt.observables.levelvariance import sigma_squared_exhaustive
+from ..rmt.observables.levelvariance import sigmaSquared_exhaustive
 from ..rmt.observables.rigidity import spectralRigidity
 from ..rmt.observables.spacings import computeSpacings
 from ..utils import is_symmetric
@@ -39,7 +39,7 @@ def test_spline_unfold(
         spec_data, f"{knots}-knots Spline Unfolding, Middle {percent}%"
     )
 
-    level_var_spline = sigma_squared_exhaustive(unfolded, c_step=0.1, L_grid_size=100)
+    level_var_spline = sigmaSquared_exhaustive(unfolded, c_step=0.1, L_grid_size=100)
     rmt.plot.levelNumberVariance(
         level_var_spline, f"{knots}-knots Spline Unfolding, Middle {percent}%"
     )
@@ -68,7 +68,7 @@ def test_poly_unfold(matsize=1000, degree=5, percent=98, detrend=True, raws=Fals
         spec_data, f"Degree-{degree} Polynomial Unfolding, Middle {percent}%"
     )
 
-    level_var_spline = sigma_squared_exhaustive(unfolded, c_step=0.1, L_grid_size=100)
+    level_var_spline = sigmaSquared_exhaustive(unfolded, c_step=0.1, L_grid_size=100)
     rmt.plot.levelNumberVariance(
         level_var_spline, f"Degree-{degree} Polynomial Unfolding, Middle {percent}%"
     )

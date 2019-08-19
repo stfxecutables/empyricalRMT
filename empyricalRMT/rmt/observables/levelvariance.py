@@ -32,7 +32,7 @@ def sigma_iter(eigs: np.array, unfolded: np.array, L: float, c_iters: int = 100)
     return av_of_sq_levels - av_of_levels_sq
 
 
-def sigma_squared(
+def sigmaSquared(
     eigs: np.array,
     unfolded: np.array,
     c_iters: int = 50,
@@ -62,7 +62,7 @@ def sigma_squared(
     return L_grid, sigma_sq
 
 
-def sigma_squared_exhaustive(
+def sigmaSquared_exhaustive(
     unfolded: np.array, c_step=0.05, L_grid_size: int = 100, max_L=50
 ):
     if max_L is None:
@@ -95,7 +95,7 @@ def sigma_squared_exhaustive(
     return np.array([L_grid, sigma_sq], dtype=float).T
 
 
-def sigma_squared_rewrite():
+def sigmaSquared_rewrite():
     pass
 
 
