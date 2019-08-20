@@ -44,6 +44,43 @@ def spectralRigidity(
     min_L=2,
     max_L=25,
 ) -> [np.array, np.array]:
+    """Compute the spectral rigidity for a particular unfolding.
+
+    Computes the spectral rigidity (delta_3, ∆₃ [1]_) for a
+    particular set of eigenvalues and their unfolding.
+
+    Parameters
+    ----------
+    eigs : np.array
+        The sorted (ascending) eigenvalues.
+    unfolded : np.array
+        The sorted (ascending) eigenvalues computed from eigs.
+    L_grid_size : int = 100
+        The number of values of L to generate betwen min_L and max_L.
+    min_L : int = 0.5
+        The lowest possible L value for which to compute the spectral
+        rigidity.
+    max_L : int = 20
+        The largest possible L value for which to compute the spectral
+        rigidity.
+    c_iters: int = 50
+        How many times the location of the center, c, of the interval
+        [c - L/2, c + L/2] should be chosen uniformly at random for
+        each L in order to compute the estimate of the spectral
+        rigidity.
+
+    Returns
+    -------
+    L : np.array
+        The L values generated based on the values of L_grid_size,
+        min_L, and max_L.
+    delta3 : np.array
+        The computed spectral rigidity values for each of L.
+
+    References
+    ----------
+    .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier.
+    """
     L_vals = np.linspace(min_L, max_L, L_grid_size)
     delta3 = np.zeros(L_vals.shape)
     pbar_widgets = [
@@ -70,19 +107,6 @@ def spectralRigidity(
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def slope(x: np.array, y: np.array) -> np.float64:
-    x_mean = np.mean(x)
-    y_mean = np.mean(y)
-    x_dev = x - x_mean
-    y_dev = y - y_mean
-    cov = np.sum(x_dev * y_dev)
-    var = np.sum(x_dev * x_dev)
-    if var == 0:
-        return 0
-    return cov / var
-
-
-@jit(nopython=True, fastmath=True, cache=True)
 def spectralIter(
     eigs: np.array,
     unfolded: np.array,
@@ -102,6 +126,19 @@ def spectralIter(
         delta3 = integrateFast(grid, y_vals)
         delta3_L_vals[i] = delta3 / L
     return delta3_L_vals
+
+
+@jit(nopython=True, fastmath=True, cache=True)
+def slope(x: np.array, y: np.array) -> np.float64:
+    x_mean = np.mean(x)
+    y_mean = np.mean(y)
+    x_dev = x - x_mean
+    y_dev = y - y_mean
+    cov = np.sum(x_dev * y_dev)
+    var = np.sum(x_dev * x_dev)
+    if var == 0:
+        return 0
+    return cov / var
 
 
 @jit(nopython=True, fastmath=True, cache=True)
