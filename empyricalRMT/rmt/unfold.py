@@ -11,6 +11,7 @@ from PyEMD import EMD
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import minimize_scalar
 from scipy.stats import mode
+from warnings import warn
 
 from ..rmt.construct import generateGOEMatrix
 from ..rmt.eigenvalues import getEigs, stepFunctionG, stepFunctionVectorized
@@ -601,13 +602,142 @@ def generate_grid(eigs, grid_size) -> np.array:
 
 
 class Unfolder:
-    def __init__(self, eigs):
+    """Base class for storing eigenvalues, trimmed eigenvalues, and
+    unfolded eigenvalues"""
+
+    def __init__(self, eigs, trim):
+        """Construct an Unfolder.
+
+        Parameters
+        ----------
+        eigs: array_like
+            a list, numpy array, or other iterable of the computed eigenvalues
+            of some matrix
+
+        """
+
+        self.__raw_eigs = np.array(eigs)
+        self.__sorted_eigs = np.sort(self.__raw_eigs)
+        self.__trimmed_eigs = None
+        self.__trimmed_indices = (None, None)
         return
 
-    def trim(self, method="auto"):
+    @property
+    def eigenvalues(self) -> np.array:
+        """get the original (sorted) eigenvalues as a numpy array"""
+        return self.__sorted_eigs
+
+    @property
+    def eigs(self) -> np.array:
+        """get the original (sorted) eigenvalues as a numpy array (alternate)"""
+        return self.__sorted_eigs
+
+    def trim(self, method="auto", smoother="polynomial"):
+        """compute the optimal trim region and fit statistics"""
+        pass
+
+    def trim_summary(self):
+        pass
+
+    def unfold(self):
         pass
 
 
 class UnfoldOptions:
-    def __init__(self, method="polynomial", degree=9):
-        pass
+    """Basically you pass in a dict like:
+    {
+        "smooth_function": "poly" | "spline" | "gompertz" | lambda | None,
+        "poly_degree": int | "auto" | None,
+        "knots": int | None,
+        "emd_detrend": boolean | None,
+        "method": "auto" | "manual" | None,
+    }
+    """
+
+    def __init__(
+        self,
+        smooth_function="poly",
+        poly_degree=8,
+        knots=None,
+        emd_detrend=False,
+        method=None,
+        options=None,
+    ):
+        """ if `options` is not None, only look at `options` argument. If options is
+        None, ignore `options` argument.
+        """
+        if options is None:
+            self.options = self.__validate_dict(self.__default())
+            return
+
+        options = self.__validate_dict(
+            {
+                "smooth_function": smooth_function,
+                "poly_degree": poly_degree,
+                "knots": knots,
+                "emd_detrend": emd_detrend,
+                "method": method,
+            }
+        )
+
+    @staticmethod
+    def __default(self) -> dict:
+        default = {
+            "smooth_function": "poly",
+            "poly_degree": 8,
+            "knots": 8,
+            "emd_detrend": False,
+            "method": None,
+        }
+        return default
+
+    def __validate_dict(self, options: dict):
+        func = options.get("smooth_function")
+        degree = options.get("poly_degree")
+        knots = options.get("knots")
+        emd = options.get("emd_detrend")
+        method = options.get("method")
+
+        if func == "poly":
+            if degree is None:
+                degree = self.__default["poly_degree"]
+                warn(
+                    f"No degree set for polynomial unfolding. Will default to polynomial of degree {degree}.",
+                    category=UserWarning,
+                )
+            if not isinstance(degree, int):
+                raise ValueError("Polynomial degree must be of type `int`")
+            if degree < 3:
+                raise ValueError("Unfolding polynomial must have minimum degree 3.")
+        elif func == "spline":
+            if knots is None:
+                warn(
+                    "No number of knots specified for spline unfolding. Will default to 8 knots.",
+                    category=UserWarning,
+                )
+            if not isinstance(knots, int):
+                raise ValueError("Number of spline knots must be of type `int`")
+            if knots < 2:
+                raise ValueError("Invalid number of knots for spline")
+
+        if emd is None:
+            emd = False
+        elif isinstance(emd, bool):
+            pass
+        else:
+            raise ValueError("UnfoldOption `emd` can only be either True or False.")
+
+        if method is None or method == "auto" or method == "manual":
+            pass
+        else:
+            raise ValueError(
+                "UnfoldOption `method` must be one of 'auto', 'manual', or 'None'"
+            )
+
+        return {
+            "smooth_function": func,
+            "poly_degree": degree,
+            "knots": knots,
+            "emd_detrend": emd,
+            "method": method,
+        }
