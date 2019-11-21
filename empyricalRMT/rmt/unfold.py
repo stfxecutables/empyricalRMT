@@ -605,7 +605,7 @@ class Unfolder:
     """Base class for storing eigenvalues, trimmed eigenvalues, and
     unfolded eigenvalues"""
 
-    def __init__(self, eigs, trim):
+    def __init__(self, eigs, options: UnfoldOptions = UnfoldOptions()):
         """Construct an Unfolder.
 
         Parameters
@@ -615,7 +615,19 @@ class Unfolder:
             of some matrix
 
         """
+        if eigs is None:
+            raise ValueError("`eigs` must be an array_like.")
+        try:
+            length = len(eigs);
+            if length < 50:
+                warn("You have less than 50 eigenvalues, and the assumptions of Random Matrix Theory are almost certainly not justified. Any results obtained should be interpreted with caution, unless you really know what you are doing.", category=UserWarning)
+        except TypeError:
+            raise ValueError("The `eigs` passed to unfolded must be an object with a defined length via `len()`.")
 
+        if not isinstance(options, UnfoldOptions):
+            raise ValueError("`options` argument must be of type `UnfoldOptions")
+
+        self.__unfold_options = UnfoldOptions(options=options)
         self.__raw_eigs = np.array(eigs)
         self.__sorted_eigs = np.sort(self.__raw_eigs)
         self.__trimmed_eigs = None
@@ -634,6 +646,7 @@ class Unfolder:
 
     def trim(self, method="auto", smoother="polynomial"):
         """compute the optimal trim region and fit statistics"""
+        method = self.
         pass
 
     def trim_summary(self):
@@ -666,19 +679,17 @@ class UnfoldOptions:
         """ if `options` is not None, only look at `options` argument. If options is
         None, ignore `options` argument.
         """
-        if options is None:
-            self.options = self.__validate_dict(self.__default())
+        if options is not None:
+            self.options = self.__validate_dict(options)
             return
 
-        options = self.__validate_dict(
-            {
-                "smooth_function": smooth_function,
-                "poly_degree": poly_degree,
-                "knots": knots,
-                "emd_detrend": emd_detrend,
-                "method": method,
-            }
-        )
+        options = self.__validate_dict(self.__default())
+        options["smooth_function"] = smooth_function
+        options["poly_degree"] = poly_degree
+        options["knots"] = knots
+        options["emd_detrend"] = emd_detrend
+        options["method"] = method
+        self.options = self.__validate_dict(options)
 
     @staticmethod
     def __default(self) -> dict:
@@ -690,6 +701,26 @@ class UnfoldOptions:
             "method": None,
         }
         return default
+
+    @property
+    def smoother(self):
+        return self.options["smooth_function"]
+
+    @property
+    def degree(self):
+        return self.options["poly_degree"]
+
+    @property
+    def knots(self):
+        return self.options["knots"]
+
+    @property
+    def emd(self):
+        return self.options["emd_detrend"]
+
+    @property
+    def method(self):
+        return self.options["method"]
 
     def __validate_dict(self, options: dict):
         func = options.get("smooth_function")
