@@ -1,13 +1,13 @@
 import numpy as np
 
 import empyricalRMT.rmt.construct as construct
-import empyricalRMT.rmt.plot
+import empyricalRMT.rmt as rmt
 import empyricalRMT.rmt.unfold as unfold
 
-from ..rmt.observables.levelvariance import sigmaSquared_exhaustive
-from ..rmt.observables.rigidity import spectralRigidity
-from ..rmt.observables.spacings import computeSpacings
-from ..utils import is_symmetric
+from empyricalRMT.rmt.observables.levelvariance import sigmaSquared_exhaustive
+from empyricalRMT.rmt.observables.rigidity import spectralRigidity
+from empyricalRMT.rmt.observables.spacings import computeSpacings
+from empyricalRMT.utils import is_symmetric
 
 
 def test_spline_unfold(
@@ -33,10 +33,12 @@ def test_spline_unfold(
         rmt.plot.rawEigDist(eigs)
         rmt.plot.unfoldedFit(unfolded, f"{knots}-knots Spline Fit, Middle {percent}%")
 
-    rmt.plot.spacings(spacings, f"{knots}-knots Spline Fit, Middle {percent}%")
-    spec_data = spectralRigidity(unfolded, L_iters=10, L_grid_size=100)
+    rmt.plot.spacings(spacings, title=f"{knots}-knots Spline Fit, Middle {percent}%")
+    spec_data = spectralRigidity(eigs, unfolded, L_grid_size=100)
     rmt.plot.spectralRigidity(
-        spec_data, f"{knots}-knots Spline Unfolding, Middle {percent}%"
+        unfolded=unfolded,
+        data=spec_data,
+        title=f"{knots}-knots Spline Unfolding, Middle {percent}%",
     )
 
     level_var_spline = sigmaSquared_exhaustive(unfolded, c_step=0.1, L_grid_size=100)
