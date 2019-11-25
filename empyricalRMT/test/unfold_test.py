@@ -21,6 +21,16 @@ def test_unfold_init():
     assert np.alltrue(unfolder.eigenvalues == eigs)
 
 
+def test_trim():
+    options = UnfoldOptions("poly", poly_degree=8, emd_detrend=False, method="auto")
+    M = np.random.normal(2, 5, 1000000).reshape([1000, 1000])
+    M = M + M.T
+    eigs = np.linalg.eigvalsh(M)
+    unfolder = Unfolder(eigs, options)
+    unfolder.trim()
+    unfolder.trim_summary()
+
+
 def test_spline_unfold(
     M=construct.generateGOEMatrix(1000),
     matsize=1000,

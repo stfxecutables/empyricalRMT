@@ -739,6 +739,7 @@ class Unfolder:
         self.__sorted_eigs = np.sort(self.__raw_eigs)
         self.__trimmed_eigs = None
         self.__trimmed_indices = (None, None)
+        self.__trimmed_steps = []
         return
 
     @property
@@ -756,25 +757,40 @@ class Unfolder:
         print("Trimming to central eigenvalues.")
         method = self.__unfold_options.method
 
-        start, end = 0, len(eigs)
-        unfolded, steps = self.__fit(start, end)
-        X = np.vstack([eigs, steps]).T
+        eigs = self.eigs
+        unfolded, steps = self.__fit(0, len(eigs))
 
         if method == "auto":
-            hb = HBOS(tol=outlier_tol)
-            labs = hb.fit(X).labels_
-            str_labels = ["Outlier" if label else "Inlier" for label in labs]
-            in_idx = np.array(1 - labs, dtype=bool)  # boolean array for selecting inliers
-            out_idx = np.array(labs, dtype=bool)  # boolean array for selecting outliers
-            orig = X  # save for plotting context
-            outs = X[out_idx, :]
-            X = X[in_idx, :]  # boolean / mask indicing always copies anyway
-            x, y = X[:, 0], X[:, 1]
-
-        pass
+            self.__trimmed_steps = self.__collect_outliers(eigs, steps)
 
     def trim_summary(self):
-        pass
+        if len(self.__trimmed_steps) == 0:
+            raise RuntimeError(
+                "Eigenvalues have not been trimmed yet. Call Unfolder.trim() before attempting to generate a trim summary."
+            )
+        sbn.set_style("darkgrid")
+        size = np.ceil(np.sqrt(len(self.__trimmed_steps)))
+        for i, df in enumerate(self.__trimmed_steps):
+            df = df.rename(index=str, columns={"eigs": "λ", "steps": "N(λ)"})
+            trim_percent = np.round(
+                100 * (1 - len(df["cluster"] == "inlier") / len(self.eigs)), 2
+            )
+            plt.subplot(size, size, i + 1)
+            sbn.scatterplot(
+                data=df,
+                x="λ",
+                y="N(λ)",
+                hue="cluster",
+                style="cluster",
+                style_order=["inlier", "outlier"],
+                linewidth=0,
+                legend="brief",
+                markers=[".", "X"],
+                palette=["black", "red"],
+                hue_order=["inlier", "outlier"],
+            )
+            plt.title("No trimming" if i == 0 else f"Trimming {trim_percent}%")
+        plt.show()
 
     def unfold(self):
         pass
@@ -800,29 +816,34 @@ class Unfolder:
             return np.sort(spline(eigs)), steps
         if smoother == "gompertz":
             # use steps[end] as guess for the asymptote, a, of gompertz curve
-            [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[end-1], 1, 1))
+            [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[end - 1], 1, 1))
             return np.sort(gompertz(eigs, a, b, c)), steps
 
     def __collect_outliers(self, eigs, steps, tolerance=0.1):
-        iter_results = [pd.DataFrame({
-            "eigs": eigs,
-            "steps": steps,
-            "cluster": ["inlier" for _ in eigs],
-        })]
+        iter_results = [
+            pd.DataFrame(
+                {"eigs": eigs, "steps": steps, "cluster": ["inlier" for _ in eigs]}
+            )
+        ]
 
-        removed = [0]  # eigs removed at each iteration
-
-        while (len(iter_results[-1]) / len(eigs)) > 0.5:  # terminate if we have trimmed half
+        while (
+            len(iter_results[-1]) / len(eigs)
+        ) > 0.5:  # terminate if we have trimmed half
             # because eigs are sorted, HBOS will always identify outliers at one of the
             # two ends of the eigenvalues, which is what we want
             df = iter_results[-1].copy(deep=True)
             df = df[df["cluster"] == "inlier"]
             hb = HBOS(tol=tolerance)
-            is_outlier = np.array(hb.fit(df).labels_, dtype=bool)  # outliers get "1"
+            is_outlier = np.array(
+                hb.fit(df[["eigs", "steps"]]).labels_, dtype=bool
+            )  # outliers get "1"
             df["cluster"] = ["outlier" if label else "inlier" for label in is_outlier]
             iter_results.append(df)
+            if np.alltrue(~is_outlier):
+                break
 
+        return iter_results
 
-    def _evaluate_fit(self,):
+    def _evaluate_fit(self):
         eigs = self.__sorted_eigs
 
