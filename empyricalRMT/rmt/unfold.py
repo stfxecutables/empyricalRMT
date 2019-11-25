@@ -9,11 +9,12 @@ from numpy.polynomial.polynomial import polyfit, polyval
 from pyod.models.hbos import HBOS
 from PyEMD import EMD
 from scipy.interpolate import UnivariateSpline as USpline
-from scipy.optimize import minimize_scalar
+from scipy.optimize import curve_fit, minimize_scalar
 from scipy.stats import mode
 from warnings import warn
 
 from ..rmt.construct import generateGOEMatrix
+from ..rmt.detrend import emd_detrend
 from ..rmt.eigenvalues import getEigs, stepFunctionG, stepFunctionVectorized
 from ..rmt.observables.spacings import computeSpacings
 from ..rmt.observables.rigidity import slope as fullSlope
@@ -23,33 +24,6 @@ from ..rmt.plot import setup_plotting
 from ..utils import eprint, is_symmetric, write_block, write_in_place
 
 RESET = Style.RESET_ALL
-
-# detrended unfolding via the Empirical Mode Decomposition and first
-# intrinsic mode function
-def emd_detrend(unfolded: np.array) -> np.array:
-    spacings = computeSpacings(unfolded, trim=False)
-    s_av = np.average(spacings)
-    s_i = spacings - s_av
-
-    ns = np.zeros([len(unfolded)], dtype=int)
-    delta_n = np.zeros([len(unfolded)])
-    for n in range(len(unfolded)):
-        delta_n[n] = np.sum(s_i[0:n])
-        ns[n] = n
-
-    # last member of IMF basis is the trend
-    trend = EMD().emd(delta_n)[-1]
-    detrended_delta = delta_n - trend
-
-    # see Morales (2011) DOI: 10.1103/PhysRevE.84.016203, Eq. 15
-    unfolded_detrend = np.empty([len(unfolded)])
-    for i in range(len(unfolded_detrend)):
-        if i == 0:
-            unfolded_detrend[i] = unfolded[i]
-            continue
-        unfolded_detrend[i] = detrended_delta[i - 1] + unfolded[0] + (i - 1) * s_av
-
-    return unfolded_detrend
 
 
 def spline(
@@ -64,10 +38,6 @@ def spline(
     if plot:
         plot_unfold_fit(eigs, eigs, unfolded, section="full", curve="Full 3-Spline")
     return unfolded
-
-
-def spline_test(eigs, steps):
-    pass
 
 
 # TODO: rename -> naive_polynomial()
@@ -301,8 +271,8 @@ def manual_outlier_find(eigs, degree=5, tolerance=0.1) -> [np.array, np.array]:
     while iter_count < 20:
         labs = hb.fit(X).labels_
         str_labels = ["Outlier" if label else "Inlier" for label in labs]
-        mask = np.array(1 - labs, dtype=bool)
-        out_mask = np.array(labs, dtype=bool)
+        mask = np.array(1 - labs, dtype=bool)  # boolean array for selecting inliers
+        out_mask = np.array(labs, dtype=bool)  # boolean array for selecting outliers
         orig = X  # save for plotting context
         outs = X[out_mask, :]
         X = X[mask, :]  # boolean / mask indicing always copies anyway
@@ -564,6 +534,11 @@ def gompertz(t, a, b, c):
     return a * np.exp(-b * np.exp(-c * t))
 
 
+@jit(nopython=True, fastmath=True)
+def inverse_gompertz(t, a, b, c):
+    return np.log(b / np.log(1 / t)) / c
+
+
 def generate_grid(eigs, grid_size) -> np.array:
     if grid_size < len(eigs):
         eprint("Grid less dense than eigenvalues. Choosing `grid_size` = 10*len(eigs).")
@@ -601,67 +576,13 @@ def generate_grid(eigs, grid_size) -> np.array:
     # print(f"Minimizing x: {start}, Maximizing x: {end}")
 
 
-class Unfolder:
-    """Base class for storing eigenvalues, trimmed eigenvalues, and
-    unfolded eigenvalues"""
-
-    def __init__(self, eigs, options: UnfoldOptions = UnfoldOptions()):
-        """Construct an Unfolder.
-
-        Parameters
-        ----------
-        eigs: array_like
-            a list, numpy array, or other iterable of the computed eigenvalues
-            of some matrix
-
-        """
-        if eigs is None:
-            raise ValueError("`eigs` must be an array_like.")
-        try:
-            length = len(eigs);
-            if length < 50:
-                warn("You have less than 50 eigenvalues, and the assumptions of Random Matrix Theory are almost certainly not justified. Any results obtained should be interpreted with caution, unless you really know what you are doing.", category=UserWarning)
-        except TypeError:
-            raise ValueError("The `eigs` passed to unfolded must be an object with a defined length via `len()`.")
-
-        if not isinstance(options, UnfoldOptions):
-            raise ValueError("`options` argument must be of type `UnfoldOptions")
-
-        self.__unfold_options = UnfoldOptions(options=options)
-        self.__raw_eigs = np.array(eigs)
-        self.__sorted_eigs = np.sort(self.__raw_eigs)
-        self.__trimmed_eigs = None
-        self.__trimmed_indices = (None, None)
-        return
-
-    @property
-    def eigenvalues(self) -> np.array:
-        """get the original (sorted) eigenvalues as a numpy array"""
-        return self.__sorted_eigs
-
-    @property
-    def eigs(self) -> np.array:
-        """get the original (sorted) eigenvalues as a numpy array (alternate)"""
-        return self.__sorted_eigs
-
-    def trim(self, method="auto", smoother="polynomial"):
-        """compute the optimal trim region and fit statistics"""
-        method = self.
-        pass
-
-    def trim_summary(self):
-        pass
-
-    def unfold(self):
-        pass
-
-
 class UnfoldOptions:
     """Basically you pass in a dict like:
     {
         "smooth_function": "poly" | "spline" | "gompertz" | lambda | None,
         "poly_degree": int | "auto" | None,
-        "knots": int | None,
+        "spline_degree": int | None,
+        "spline_smooth": float | "heuristic" | None,
         "emd_detrend": boolean | None,
         "method": "auto" | "manual" | None,
     }
@@ -671,7 +592,8 @@ class UnfoldOptions:
         self,
         smooth_function="poly",
         poly_degree=8,
-        knots=None,
+        spline_degree=None,
+        spline_smooth=None,
         emd_detrend=False,
         method=None,
         options=None,
@@ -683,10 +605,11 @@ class UnfoldOptions:
             self.options = self.__validate_dict(options)
             return
 
-        options = self.__validate_dict(self.__default())
+        options = self.__validate_dict(self.__default(self))
         options["smooth_function"] = smooth_function
         options["poly_degree"] = poly_degree
-        options["knots"] = knots
+        options["spline_degree"] = spline_degree
+        options["spline_smooth"] = spline_smooth
         options["emd_detrend"] = emd_detrend
         options["method"] = method
         self.options = self.__validate_dict(options)
@@ -696,7 +619,8 @@ class UnfoldOptions:
         default = {
             "smooth_function": "poly",
             "poly_degree": 8,
-            "knots": 8,
+            "spline_degree": 3,
+            "spline_smooth": None,
             "emd_detrend": False,
             "method": None,
         }
@@ -711,8 +635,12 @@ class UnfoldOptions:
         return self.options["poly_degree"]
 
     @property
-    def knots(self):
-        return self.options["knots"]
+    def spline_degree(self):
+        return self.options["spline_degree"]
+
+    @property
+    def spline_smooth(self):
+        return self.options["spline_smooth"]
 
     @property
     def emd(self):
@@ -725,7 +653,8 @@ class UnfoldOptions:
     def __validate_dict(self, options: dict):
         func = options.get("smooth_function")
         degree = options.get("poly_degree")
-        knots = options.get("knots")
+        spline_degree = options.get("spline_degree")
+        spline_smooth = options.get("spline_smooth")
         emd = options.get("emd_detrend")
         method = options.get("method")
 
@@ -741,15 +670,14 @@ class UnfoldOptions:
             if degree < 3:
                 raise ValueError("Unfolding polynomial must have minimum degree 3.")
         elif func == "spline":
-            if knots is None:
-                warn(
-                    "No number of knots specified for spline unfolding. Will default to 8 knots.",
-                    category=UserWarning,
-                )
-            if not isinstance(knots, int):
-                raise ValueError("Number of spline knots must be of type `int`")
-            if knots < 2:
-                raise ValueError("Invalid number of knots for spline")
+            if spline_degree is None:
+                spline_degree = 3
+            if not isinstance(spline_degree, int):
+                raise ValueError("Degree of spline must be an int <= 5")
+            if spline_degree > 5:
+                raise ValueError("Degree of spline must be an int <= 5")
+            if spline_smooth is not None and spline_smooth != "heuristic":
+                spline_smooth = float(spline_smooth)
 
         if emd is None:
             emd = False
@@ -768,7 +696,133 @@ class UnfoldOptions:
         return {
             "smooth_function": func,
             "poly_degree": degree,
-            "knots": knots,
+            "spline_degree": spline_degree,
+            "spline_smooth": spline_smooth,
             "emd_detrend": emd,
             "method": method,
         }
+
+
+class Unfolder:
+    """Base class for storing eigenvalues, trimmed eigenvalues, and
+    unfolded eigenvalues"""
+
+    def __init__(self, eigs, options: UnfoldOptions = UnfoldOptions()):
+        """Construct an Unfolder.
+
+        Parameters
+        ----------
+        eigs: array_like
+            a list, numpy array, or other iterable of the computed eigenvalues
+            of some matrix
+
+        """
+        if eigs is None:
+            raise ValueError("`eigs` must be an array_like.")
+        try:
+            length = len(eigs)
+            if length < 50:
+                warn(
+                    "You have less than 50 eigenvalues, and the assumptions of Random Matrix Theory are almost certainly not justified. Any results obtained should be interpreted with caution, unless you really know what you are doing.",
+                    category=UserWarning,
+                )
+        except TypeError:
+            raise ValueError(
+                "The `eigs` passed to unfolded must be an object with a defined length via `len()`."
+            )
+
+        if not isinstance(options, UnfoldOptions):
+            raise ValueError("`options` argument must be of type `UnfoldOptions")
+
+        self.__unfold_options = UnfoldOptions(options=options.options)
+        self.__raw_eigs = np.array(eigs)
+        self.__sorted_eigs = np.sort(self.__raw_eigs)
+        self.__trimmed_eigs = None
+        self.__trimmed_indices = (None, None)
+        return
+
+    @property
+    def eigenvalues(self) -> np.array:
+        """get the original (sorted) eigenvalues as a numpy array"""
+        return self.__sorted_eigs
+
+    @property
+    def eigs(self) -> np.array:
+        """get the original (sorted) eigenvalues as a numpy array (alternate)"""
+        return self.__sorted_eigs
+
+    def trim(self, method="auto", smoother="polynomial", outlier_tol=0.1):
+        """compute the optimal trim region and fit statistics"""
+        print("Trimming to central eigenvalues.")
+        method = self.__unfold_options.method
+
+        start, end = 0, len(eigs)
+        unfolded, steps = self.__fit(start, end)
+        X = np.vstack([eigs, steps]).T
+
+        if method == "auto":
+            hb = HBOS(tol=outlier_tol)
+            labs = hb.fit(X).labels_
+            str_labels = ["Outlier" if label else "Inlier" for label in labs]
+            in_idx = np.array(1 - labs, dtype=bool)  # boolean array for selecting inliers
+            out_idx = np.array(labs, dtype=bool)  # boolean array for selecting outliers
+            orig = X  # save for plotting context
+            outs = X[out_idx, :]
+            X = X[in_idx, :]  # boolean / mask indicing always copies anyway
+            x, y = X[:, 0], X[:, 1]
+
+        pass
+
+    def trim_summary(self):
+        pass
+
+    def unfold(self):
+        pass
+
+    def __fit(self, start: int, end: int) -> (np.array, np.array):
+        smoother = self.__unfold_options.smoother
+        eigs = self.__sorted_eigs
+        steps = stepFunctionVectorized(eigs[start:end], eigs[start:end])
+        if smoother == "poly":
+            degree = self.__unfold_options.degree
+            poly_coef = polyfit(eigs[start:end], steps, degree)
+            unfolded = np.sort(polyval(eigs[start:end], poly_coef))
+            return unfolded, steps
+        if smoother == "spline":
+            k = self.__unfold_options.spline_degree
+            smoothing = self.__unfold_options.spline_smooth
+            if smoothing == "heuristic":
+                spline = USpline(
+                    eigs[start:end], steps, k=k, s=len(eigs[start:end]) ** 1.4
+                )
+            else:
+                spline = USpline(eigs[start:end], steps, k=k, s=smoothing)
+            return np.sort(spline(eigs)), steps
+        if smoother == "gompertz":
+            # use steps[end] as guess for the asymptote, a, of gompertz curve
+            [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[end-1], 1, 1))
+            return np.sort(gompertz(eigs, a, b, c)), steps
+
+    def __collect_outliers(self, eigs, steps, tolerance=0.1):
+        iter_results = [pd.DataFrame({
+            "eigs": eigs,
+            "steps": steps,
+            "cluster": ["inlier" for _ in eigs],
+        })]
+
+        removed = [0]  # eigs removed at each iteration
+
+        while (len(iter_results[-1]) / len(eigs)) > 0.5:  # terminate if we have trimmed half
+            # because eigs are sorted, HBOS will always identify outliers at one of the
+            # two ends of the eigenvalues, which is what we want
+            df = iter_results[-1].copy(deep=True)
+            df = df[df["cluster"] == "inlier"]
+            hb = HBOS(tol=tolerance)
+            is_outlier = np.array(hb.fit(df).labels_, dtype=bool)  # outliers get "1"
+            df["cluster"] = ["outlier" if label else "inlier" for label in is_outlier]
+            iter_results.append(df)
+
+
+    def _evaluate_fit(self,):
+        eigs = self.__sorted_eigs
+

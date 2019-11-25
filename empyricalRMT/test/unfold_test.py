@@ -7,7 +7,18 @@ import empyricalRMT.rmt.unfold as unfold
 from empyricalRMT.rmt.observables.levelvariance import sigmaSquared_exhaustive
 from empyricalRMT.rmt.observables.rigidity import spectralRigidity
 from empyricalRMT.rmt.observables.spacings import computeSpacings
+from empyricalRMT.rmt.unfold import UnfoldOptions, Unfolder
 from empyricalRMT.utils import is_symmetric
+
+
+def test_unfold_init():
+    options = UnfoldOptions("poly", poly_degree=8, emd_detrend=False, method="auto")
+    M = np.random.normal(2, 5, 1000000).reshape([1000, 1000])
+    M = M + M.T
+    eigs = np.linalg.eigvalsh(M)
+    unfolder = Unfolder(eigs, options)
+    assert np.alltrue(unfolder.eigs == eigs)
+    assert np.alltrue(unfolder.eigenvalues == eigs)
 
 
 def test_spline_unfold(
