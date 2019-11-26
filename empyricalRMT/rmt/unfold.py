@@ -723,7 +723,9 @@ class Unfolder:
             length = len(eigs)
             if length < 50:
                 warn(
-                    "You have less than 50 eigenvalues, and the assumptions of Random Matrix Theory are almost certainly not justified. Any results obtained should be interpreted with caution, unless you really know what you are doing.",
+                    "You have less than 50 eigenvalues, and the assumptions of Random "
+                    "Matrix Theory are almost certainly not justified. Any results "
+                    "obtained should be interpreted with caution",
                     category=UserWarning,
                 )
         except TypeError:
@@ -758,7 +760,7 @@ class Unfolder:
         method = self.__unfold_options.method
 
         eigs = self.eigs
-        unfolded, steps = self.__fit(0, len(eigs))
+        unfolded, steps = self.__fit(eigs)
 
         if method == "auto":
             self.__trimmed_steps = self.__collect_outliers(eigs, steps)
@@ -766,16 +768,20 @@ class Unfolder:
     def trim_summary(self):
         if len(self.__trimmed_steps) == 0:
             raise RuntimeError(
-                "Eigenvalues have not been trimmed yet. Call Unfolder.trim() before attempting to generate a trim summary."
+                "Eigenvalues have not been trimmed yet. Call Unfolder.trim() "
+                "before attempting to generate a trim summary."
             )
         sbn.set_style("darkgrid")
         size = np.ceil(np.sqrt(len(self.__trimmed_steps)))
+        fig = plt.figure()
         for i, df in enumerate(self.__trimmed_steps):
             df = df.rename(index=str, columns={"eigs": "λ", "steps": "N(λ)"})
             trim_percent = np.round(
                 100 * (1 - len(df["cluster"] == "inlier") / len(self.eigs)), 2
             )
             plt.subplot(size, size, i + 1)
+            spacings = np.sort(np.array(df["unfolded"]))
+            spacings = spacings[1:] - spacings[:-1]
             sbn.scatterplot(
                 data=df,
                 x="λ",
@@ -789,40 +795,48 @@ class Unfolder:
                 palette=["black", "red"],
                 hue_order=["inlier", "outlier"],
             )
-            plt.title("No trimming" if i == 0 else f"Trimming {trim_percent}%")
+            title = "No trim" if i == 0 else "Trim {:.2f}%".format(trim_percent)
+            info = "<s> {:.4f} var(s) {:.4f}".format(
+                np.mean(spacings), np.var(spacings, ddof=1)
+            )
+            plt.title(f"{title}\n{info}")
+        plt.subplots_adjust(wspace=0.8, hspace=0.8)
+        plt.suptitle("Trim fits: Goal <s> == 1, var(s) == 0.286")
         plt.show()
 
     def unfold(self):
         pass
 
-    def __fit(self, start: int, end: int) -> (np.array, np.array):
+    def __fit(self, eigs) -> (np.array, np.array):
         smoother = self.__unfold_options.smoother
-        eigs = self.__sorted_eigs
-        steps = stepFunctionVectorized(eigs[start:end], eigs[start:end])
+        steps = stepFunctionVectorized(eigs, eigs)
         if smoother == "poly":
             degree = self.__unfold_options.degree
-            poly_coef = polyfit(eigs[start:end], steps, degree)
-            unfolded = np.sort(polyval(eigs[start:end], poly_coef))
+            poly_coef = polyfit(eigs, steps, degree)
+            unfolded = np.sort(polyval(eigs, poly_coef))
             return unfolded, steps
         if smoother == "spline":
             k = self.__unfold_options.spline_degree
             smoothing = self.__unfold_options.spline_smooth
             if smoothing == "heuristic":
-                spline = USpline(
-                    eigs[start:end], steps, k=k, s=len(eigs[start:end]) ** 1.4
-                )
+                spline = USpline(eigs, steps, k=k, s=len(eigs) ** 1.4)
             else:
-                spline = USpline(eigs[start:end], steps, k=k, s=smoothing)
+                spline = USpline(eigs, steps, k=k, s=smoothing)
             return np.sort(spline(eigs)), steps
         if smoother == "gompertz":
             # use steps[end] as guess for the asymptote, a, of gompertz curve
-            [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[end - 1], 1, 1))
+            [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[-1], 1, 1))
             return np.sort(gompertz(eigs, a, b, c)), steps
 
     def __collect_outliers(self, eigs, steps, tolerance=0.1):
         iter_results = [
             pd.DataFrame(
-                {"eigs": eigs, "steps": steps, "cluster": ["inlier" for _ in eigs]}
+                {
+                    "eigs": eigs,
+                    "steps": steps,
+                    "unfolded": self.__fit(eigs)[0],
+                    "cluster": ["inlier" for _ in eigs],
+                }
             )
         ]
 
@@ -838,6 +852,7 @@ class Unfolder:
                 hb.fit(df[["eigs", "steps"]]).labels_, dtype=bool
             )  # outliers get "1"
             df["cluster"] = ["outlier" if label else "inlier" for label in is_outlier]
+            df["unfolded"], _ = self.__fit(np.array(df["eigs"]))
             iter_results.append(df)
             if np.alltrue(~is_outlier):
                 break
