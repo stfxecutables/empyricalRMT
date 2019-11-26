@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import empyricalRMT.rmt.construct as construct
 import empyricalRMT.rmt as rmt
 import empyricalRMT.rmt.unfold as unfold
 
+from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.observables.levelvariance import sigmaSquared_exhaustive
 from empyricalRMT.rmt.observables.rigidity import spectralRigidity
 from empyricalRMT.rmt.observables.spacings import computeSpacings
@@ -15,8 +17,7 @@ from empyricalRMT.utils import is_symmetric
 
 def test_unfold_init():
     options = UnfoldOptions("poly", poly_degree=8, emd_detrend=False, method="auto")
-    M = np.random.normal(2, 5, 4000000).reshape([2000, 2000])
-    M = M + M.T
+    M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
     unfolder = Unfolder(eigs, options)
     assert np.alltrue(unfolder.eigs == eigs)
@@ -25,14 +26,20 @@ def test_unfold_init():
 
 def test_trim():
     options = UnfoldOptions("poly", poly_degree=8, emd_detrend=False, method="auto")
-    M = np.random.normal(2, 5, 4000000).reshape([2000, 2000])
-    M = M + M.T
+    M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
     unfolder = Unfolder(eigs, options)
     unfolder.trim()
-    unfolder.trim_summary(
-        show_plot=True, save_plot=Path.home() / "Desktop" / "trim_summary.png"
-    )
+    test_dir = Path(__file__).absolute().parent
+    output_plot = test_dir / "trim_summary.png"
+    report = unfolder.trim_summary(show_plot=False, save_plot=output_plot)
+    assert output_plot.exists
+    os.remove(output_plot)
+
+    output_csv = test_dir / "trim_report.csv"
+    report.to_csv(output_csv)
+    assert output_csv.exists
+    # os.remove(output_csv)
 
 
 def test_spline_unfold(

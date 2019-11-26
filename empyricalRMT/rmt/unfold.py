@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import pandas as pd
 import seaborn as sbn
 
@@ -34,7 +33,8 @@ from ..utils import (
 )
 
 RESET = Style.RESET_ALL
-
+EXPECTED_GOE_VARIANCE = 0.286
+EXPECTED_GOE_MEAN = 1.000
 
 def spline(
     eigs: np.array, knots: int = 3, detrend=None, percent=None, plot=False
@@ -782,15 +782,74 @@ class Unfolder:
                 "before attempting to generate a trim summary."
             )
         self.__plot_outliers(show_plot, save_plot)
+        return self.trim_report()
+
+    def trim_report(self):
+        """Generate a dataframe showing the unfoldings that results from different
+        trim percentages, and different choices of smoothing functions.
+        """
+        eigs = self.eigs
+        trims = self.__trimmed_steps
+
+        df = pd.DataFrame()
+        for i, trim in enumerate(trims):
+            all_unfolds = self.__fit_all(trim["eigs"])  # dataframe
+            trim_percent = np.round(100*(1 - len(trim["eigs"]) / len(self.eigs)), 3)
+            if i == 0: # initalize once we have data on column names
+                means = [f"mean_spacing-{colname}" for colname in all_unfolds]
+                variances = [f"var_spacing-{colname}" for colname in all_unfolds]
+                scores = [f"scores-{colname}" for colname in all_unfolds]
+                row = pd.DataFrame(columns=["trim_percent"] + means + variances + scores)
+            row["trim_percent"] = trim_percent
+
+            for col in all_unfolds:  # get summary starts for each unfolding by smoother
+                unfolded = np.array(all_unfolds[col])
+                mean, var, score = self._evaluate_unfolding(unfolded)
+                row[f"mean_spacing-{col}"] = mean
+                row[f"var_spacing-{col}"] = var
+                row[f"score"] = score
+
+            # grotesque
+            df = df.append({colname: row[colname] for colname in row})
+
+        return df
+
+
+
+
+
+
+        spacings = [trim["unfolded"][1:] - trim["unfolded"][:-1] for trim in trims]
+        # TODO: create a df with all different unfoldings (smoothers) methods,
+        # and, report the mean spacing, spacing variance, fits, fits on trims
+        df = pd.DataFrame(
+            {
+                "trimmed": [
+                    np.sum(trim["cluster"] == "inlier") / len(eigs) for trim in trims
+                ],
+                "mean_spacing": [np.mean(s) for s in spacings],
+                "var_spacing": [np.var(s, ddof=1) for s in spacings],
+                # TODO compute unfolding for each available methods
+            }
+        )
 
     def unfold(self):
         pass
 
-    def __fit(self, eigs) -> (np.array, np.array):
-        smoother = self.__unfold_options.smoother
+    def __fit(
+        self, eigs, method=None, poly_degree=None, spline_smooth=None
+    ) -> (np.array, np.array):
+        eigs = np.array(eigs)
+        if method is None:
+            smoother = self.__unfold_options.smoother
+        else:
+            smoother = method
         steps = stepFunctionVectorized(eigs, eigs)
         if smoother == "poly":
-            degree = self.__unfold_options.degree
+            if poly_degree is None:
+                degree = self.__unfold_options.degree
+            else:
+                degree = poly_degree
             poly_coef = polyfit(eigs, steps, degree)
             unfolded = np.sort(polyval(eigs, poly_coef))
             return unfolded, steps
@@ -798,14 +857,45 @@ class Unfolder:
             k = self.__unfold_options.spline_degree
             smoothing = self.__unfold_options.spline_smooth
             if smoothing == "heuristic":
-                spline = USpline(eigs, steps, k=k, s=len(eigs) ** 1.4)
+                spline = USpline(eigs, steps, k=int(k), s=len(eigs) ** 1.4)
+            elif spline_smooth is not None:
+                if not isinstance(spline_smooth, float):
+                    raise ValueError("Spline smoothing factor must be a float")
+                spline = USpline(eigs, steps, k=int(k), s=len(eigs) ** spline_smooth)
             else:
-                spline = USpline(eigs, steps, k=k, s=smoothing)
+                spline = USpline(eigs, steps, k=int(k), s=smoothing)
             return np.sort(spline(eigs)), steps
         if smoother == "gompertz":
             # use steps[end] as guess for the asymptote, a, of gompertz curve
             [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[-1], 1, 1))
             return np.sort(gompertz(eigs, a, b, c)), steps
+
+    def __fit_all(
+        self,
+        eigs,
+        poly_degrees=[3, 4, 5, 6, 7, 8, 9, 10, 11],
+        spline_smooths=np.linspace(1, 2, num=11),
+        spline_degrees=[3],
+        dry_run=False,
+    ) -> pd.DataFrame:
+        spline_dict = {3: "cubic", 4: "quartic", 5: "quintic"}
+        spline_name = (
+            lambda i: spline_dict[i] if spline_dict.get(i) is not None else f"deg{i}"
+        )
+
+        # construct a dataframe to hold all info
+        df = pd.DataFrame()
+        for d in poly_degrees:
+            unfolded, _ = self.__fit(eigs, method="poly", poly_degree=d)
+            col_name = f"poly_{d}"
+            df[col_name] = unfolded
+        for s in spline_smooths:
+            for deg in spline_degrees:
+                unfoled, _ = self.__fit(eigs, method="spline", spline_smooth=s)
+                col_name = f"{spline_name(deg)}-spline_" "{:.1}".format(s)
+                df[col_name] = unfolded
+        df["gompertz"], _ = self.__fit(eigs, method="gompertz")
+        return df
 
     def __collect_outliers(self, eigs, steps, tolerance=0.1):
         iter_results = [
@@ -854,7 +944,7 @@ class Unfolder:
     def __plot_outliers(self, show_plot=True, save_plot=None):
         sbn.set_style("darkgrid")
         width = 5  # 5 plots
-        height = np.ceil(len(self.__trimmed_steps)/width)
+        height = np.ceil(len(self.__trimmed_steps) / width)
         for i, df in enumerate(self.__trimmed_steps):
             df = df.rename(index=str, columns={"eigs": "λ", "steps": "N(λ)"})
             trim_percent = np.round(
@@ -887,14 +977,25 @@ class Unfolder:
             path = Path(save_plot)
             mkdirp(path.parent)
             fig = plt.gcf()
-            fig.set_size_inches(width*3, height*3)
+            fig.set_size_inches(width * 3, height * 3)
             plt.savefig(path, dpi=100)
             print(f"Saved {path.name} to {str(path.parent.absolute())}")
         if show_plot:
             fig = plt.gcf()
-            fig.set_size_inches(width*3, height*3)
+            fig.set_size_inches(width * 3, height * 3)
             plt.show()
 
-    def _evaluate_fit(self):
-        eigs = self.__sorted_eigs
+    def _evaluate_unfolding(self, unfolded) -> [float, float, float]:
+        """Calculate a naive unfolding score via comparison to the expected mean and
+        variance of the level spacings of GOE matrices. Positive scores indicate
+        there is too much variability in the unfolded eigenvalue spacings, negative
+        scores indicate too little. Best score is zero.
+        """
+        spacings = unfolded[1:] - unfolded[:-1]
+        mean, var = np.mean(spacings), np.var(spacings, ddof=1)
+        mean_weight = 0.05  # variance gets weight 1, i.e. mean is 0.05 times as important
+        mean_norm = (mean - EXPECTED_GOE_MEAN)/EXPECTED_GOE_MEAN
+        var_norm = (var - EXPECTED_GOE_VARIANCE)/EXPECTED_GOE_VARIANCE
+        score = var_norm + mean_weight*mean_norm
+        return mean, var, score
 

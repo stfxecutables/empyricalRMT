@@ -33,7 +33,7 @@ def stepFunctionG(eigs: np.array, x: float):
 
 @jit(nopython=True, fastmath=True, cache=True)
 def stepFunctionVectorized(eigs: np.array, x: np.array):
-    ret = np.empty(len(x))
+    ret = np.empty((len(x)), dtype=np.float64)
     for i in prange(len(x)):
         ret[i] = stepFunctionG(eigs, x[i])
     return ret
