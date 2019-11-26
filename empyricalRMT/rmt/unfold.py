@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import seaborn as sbn
 
 from colorama import Fore, Style
 from numba import jit
 from numpy.polynomial.polynomial import polyfit, polyval
+from pathlib import Path
 from pyod.models.hbos import HBOS
 from PyEMD import EMD
 from scipy.interpolate import UnivariateSpline as USpline
@@ -21,7 +23,15 @@ from ..rmt.observables.rigidity import slope as fullSlope
 from ..rmt.plot import setup_plotting
 
 # from utils import eprint
-from ..utils import eprint, is_symmetric, write_block, write_in_place
+from ..utils import (
+    eprint,
+    find_first,
+    find_last,
+    is_symmetric,
+    mkdirp,
+    write_block,
+    write_in_place,
+)
 
 RESET = Style.RESET_ALL
 
@@ -765,44 +775,13 @@ class Unfolder:
         if method == "auto":
             self.__trimmed_steps = self.__collect_outliers(eigs, steps)
 
-    def trim_summary(self):
+    def trim_summary(self, show_plot=True, save_plot: Path = None):
         if len(self.__trimmed_steps) == 0:
             raise RuntimeError(
                 "Eigenvalues have not been trimmed yet. Call Unfolder.trim() "
                 "before attempting to generate a trim summary."
             )
-        sbn.set_style("darkgrid")
-        size = np.ceil(np.sqrt(len(self.__trimmed_steps)))
-        fig = plt.figure()
-        for i, df in enumerate(self.__trimmed_steps):
-            df = df.rename(index=str, columns={"eigs": "λ", "steps": "N(λ)"})
-            trim_percent = np.round(
-                100 * (1 - len(df["cluster"] == "inlier") / len(self.eigs)), 2
-            )
-            plt.subplot(size, size, i + 1)
-            spacings = np.sort(np.array(df["unfolded"]))
-            spacings = spacings[1:] - spacings[:-1]
-            sbn.scatterplot(
-                data=df,
-                x="λ",
-                y="N(λ)",
-                hue="cluster",
-                style="cluster",
-                style_order=["inlier", "outlier"],
-                linewidth=0,
-                legend="brief",
-                markers=[".", "X"],
-                palette=["black", "red"],
-                hue_order=["inlier", "outlier"],
-            )
-            title = "No trim" if i == 0 else "Trim {:.2f}%".format(trim_percent)
-            info = "<s> {:.4f} var(s) {:.4f}".format(
-                np.mean(spacings), np.var(spacings, ddof=1)
-            )
-            plt.title(f"{title}\n{info}")
-        plt.subplots_adjust(wspace=0.8, hspace=0.8)
-        plt.suptitle("Trim fits: Goal <s> == 1, var(s) == 0.286")
-        plt.show()
+        self.__plot_outliers(show_plot, save_plot)
 
     def unfold(self):
         pass
@@ -851,6 +830,19 @@ class Unfolder:
             is_outlier = np.array(
                 hb.fit(df[["eigs", "steps"]]).labels_, dtype=bool
             )  # outliers get "1"
+
+            # check we haven't removed middle values:
+            if is_outlier[0]:
+                start = find_first(is_outlier, False)
+                for i in range(start, len(is_outlier)):
+                    is_outlier[i] = False
+            if is_outlier[-1]:
+                stop = find_last(is_outlier, False)
+                for i in range(stop):
+                    is_outlier[i] = False
+            if not is_outlier[0] and not is_outlier[-1]:  # force a break later
+                is_outlier = np.zeros(is_outlier.shape, dtype=bool)
+
             df["cluster"] = ["outlier" if label else "inlier" for label in is_outlier]
             df["unfolded"], _ = self.__fit(np.array(df["eigs"]))
             iter_results.append(df)
@@ -858,6 +850,50 @@ class Unfolder:
                 break
 
         return iter_results
+
+    def __plot_outliers(self, show_plot=True, save_plot=None):
+        sbn.set_style("darkgrid")
+        width = 5  # 5 plots
+        height = np.ceil(len(self.__trimmed_steps)/width)
+        for i, df in enumerate(self.__trimmed_steps):
+            df = df.rename(index=str, columns={"eigs": "λ", "steps": "N(λ)"})
+            trim_percent = np.round(
+                100 * (1 - len(df["cluster"] == "inlier") / len(self.eigs)), 2
+            )
+            plt.subplot(height, width, i + 1)
+            spacings = np.sort(np.array(df["unfolded"]))
+            spacings = spacings[1:] - spacings[:-1]
+            sbn.scatterplot(
+                data=df,
+                x="λ",
+                y="N(λ)",
+                hue="cluster",
+                style="cluster",
+                style_order=["inlier", "outlier"],
+                linewidth=0,
+                legend="brief",
+                markers=[".", "X"],
+                palette=["black", "red"],
+                hue_order=["inlier", "outlier"],
+            )
+            title = "No trim" if i == 0 else "Trim {:.2f}%".format(trim_percent)
+            info = "<s> {:.4f} var(s) {:.4f}".format(
+                np.mean(spacings), np.var(spacings, ddof=1)
+            )
+            plt.title(f"{title}\n{info}")
+        plt.subplots_adjust(wspace=0.8, hspace=0.8)
+        plt.suptitle("Trim fits: Goal <s> == 1, var(s) == 0.286")
+        if save_plot is not None:
+            path = Path(save_plot)
+            mkdirp(path.parent)
+            fig = plt.gcf()
+            fig.set_size_inches(width*3, height*3)
+            plt.savefig(path, dpi=100)
+            print(f"Saved {path.name} to {str(path.parent.absolute())}")
+        if show_plot:
+            fig = plt.gcf()
+            fig.set_size_inches(width*3, height*3)
+            plt.show()
 
     def _evaluate_fit(self):
         eigs = self.__sorted_eigs

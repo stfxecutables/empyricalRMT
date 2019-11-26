@@ -51,6 +51,19 @@ def make_cheaty_nii(orig: Nifti1Image, array: np.array) -> Nifti1Image:
     return nib.Nifti1Image(dataobj=array, affine=affine, header=header)
 
 
+def mkdirp(path: Path):
+    try:
+        os.makedirs(path, exist_ok=True)
+    except Exception as e:
+        print(
+            f"Error making directory {path}. Another program may have modified the file "
+            "while this script was running.",
+            file=sys.stderr,
+        )
+        print("Original error:", file=sys.stderr)
+        raise e
+
+
 def make_directory(path: Path):
     if not os.path.exists(path):
         try:
@@ -104,6 +117,23 @@ def nd_find(arr: np.array, value) -> int:
         if val == value:
             return i
     return None
+
+
+@jit(nopython=True)
+def find_first(arr: np.array, value) -> int:
+    for i, val in enumerate(arr):
+        if val == value:
+            return i
+    return -1
+
+
+@jit(nopython=True)
+def find_last(arr: np.array, value) -> int:
+    for i in range(len(arr)):
+        j = len(arr) - i - 1
+        if arr[j] == value:
+            return j
+    return -1
 
 
 # clear all
