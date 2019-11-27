@@ -39,7 +39,11 @@ def test_trim():
     output_csv = test_dir / "trim_report.csv"
     report.to_csv(output_csv)
     assert output_csv.exists
-    # os.remove(output_csv)
+
+    # output_list_csv = test_dir / "trim_report__list.csv"
+    # report.to_csv(output_list_csv)
+    # assert output_list_csv.exists
+    # # os.remove(output_csv)
 
 
 def test_spline_unfold(
@@ -106,3 +110,6 @@ def test_poly_unfold(matsize=1000, degree=5, percent=98, detrend=True, raws=Fals
     rmt.plot.levelNumberVariance(
         level_var_spline, f"Degree-{degree} Polynomial Unfolding, Middle {percent}%"
     )
+
+
+test_trim()

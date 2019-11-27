@@ -788,56 +788,38 @@ class Unfolder:
         """Generate a dataframe showing the unfoldings that results from different
         trim percentages, and different choices of smoothing functions.
         """
-        eigs = self.eigs
         trims = self.__trimmed_steps
 
-        df = pd.DataFrame()
+        # trim_percents = [np.round(100*(1 - len(trim["eigs"]) / len(self.eigs)), 3) for trim in trims]
+        col_names_base = self.__fit_all(dry_run=True)
+        height = len(trims)
+        width = len(col_names_base) * 3 + 1  # entry for mean, var, score, plus trim_percent
+        arr = np.empty([height, width], dtype=np.float32)
         for i, trim in enumerate(trims):
             all_unfolds = self.__fit_all(trim["eigs"])  # dataframe
             trim_percent = np.round(100*(1 - len(trim["eigs"]) / len(self.eigs)), 3)
-            if i == 0: # initalize once we have data on column names
-                means = [f"mean_spacing-{colname}" for colname in all_unfolds]
-                variances = [f"var_spacing-{colname}" for colname in all_unfolds]
-                scores = [f"scores-{colname}" for colname in all_unfolds]
-                row = pd.DataFrame(columns=["trim_percent"] + means + variances + scores)
-            row["trim_percent"] = trim_percent
+            arr[i, 0] = trim_percent
 
-            for col in all_unfolds:  # get summary starts for each unfolding by smoother
+            for j, col in enumerate(all_unfolds):  # get summary starts for each unfolding by smoother
                 unfolded = np.array(all_unfolds[col])
                 mean, var, score = self._evaluate_unfolding(unfolded)
-                row[f"mean_spacing-{col}"] = mean
-                row[f"var_spacing-{col}"] = var
-                row[f"score"] = score
+                arr[i, 3*j+1] = mean  # arr[i, 0] is trim_percent
+                arr[i, 3*j+2] = var
+                arr[i, 3*j+3] = score
 
-            # grotesque
-            df = df.append({colname: row[colname] for colname in row})
-
+        col_names_final = ["trim_percent"]
+        for name in col_names_base:
+            col_names_final.append(f"{name}--mean_spacing")
+            col_names_final.append(f"{name}--var_spacing")
+            col_names_final.append(f"{name}--score")
+        df = pd.DataFrame(data=arr, columns=col_names_final)
         return df
-
-
-
-
-
-
-        spacings = [trim["unfolded"][1:] - trim["unfolded"][:-1] for trim in trims]
-        # TODO: create a df with all different unfoldings (smoothers) methods,
-        # and, report the mean spacing, spacing variance, fits, fits on trims
-        df = pd.DataFrame(
-            {
-                "trimmed": [
-                    np.sum(trim["cluster"] == "inlier") / len(eigs) for trim in trims
-                ],
-                "mean_spacing": [np.mean(s) for s in spacings],
-                "var_spacing": [np.var(s, ddof=1) for s in spacings],
-                # TODO compute unfolding for each available methods
-            }
-        )
 
     def unfold(self):
         pass
 
     def __fit(
-        self, eigs, method=None, poly_degree=None, spline_smooth=None
+        self, eigs, method=None, poly_degree=None, spline_smooth=None, spline_degree=None
     ) -> (np.array, np.array):
         eigs = np.array(eigs)
         if method is None:
@@ -854,7 +836,14 @@ class Unfolder:
             unfolded = np.sort(polyval(eigs, poly_coef))
             return unfolded, steps
         if smoother == "spline":
-            k = self.__unfold_options.spline_degree
+            if spline_degree is None:
+                k = self.__unfold_options.spline_degree
+            else:
+                try:
+                    k = int(spline_degree)
+                except BaseException as e:
+                    print(ValueError("Cannot convert spline degree to int."))
+                    raise e
             smoothing = self.__unfold_options.spline_smooth
             if smoothing == "heuristic":
                 spline = USpline(eigs, steps, k=int(k), s=len(eigs) ** 1.4)
@@ -872,12 +861,14 @@ class Unfolder:
 
     def __fit_all(
         self,
-        eigs,
+        eigs=None,
         poly_degrees=[3, 4, 5, 6, 7, 8, 9, 10, 11],
         spline_smooths=np.linspace(1, 2, num=11),
         spline_degrees=[3],
         dry_run=False,
     ) -> pd.DataFrame:
+        if eigs is None and (dry_run is False or dry_run is None):
+            raise ValueError("If not doing a dry run, you must input eigenvalues to __fit")
         spline_dict = {3: "cubic", 4: "quartic", 5: "quintic"}
         spline_name = (
             lambda i: spline_dict[i] if spline_dict.get(i) is not None else f"deg{i}"
@@ -885,17 +876,34 @@ class Unfolder:
 
         # construct a dataframe to hold all info
         df = pd.DataFrame()
+        col_names = []
+        if dry_run:  # early return strings of colums names
+            for d in poly_degrees:
+                col_names.append(f"poly_{d}")
+            for s in spline_smooths:
+                for deg in spline_degrees:
+                    col_name = f"{spline_name(deg)}-spline_" "{:1.1f}".format(s)
+                    col_names.append(col_name)
+            col_names.append("gompertz")
+            return col_names
+
         for d in poly_degrees:
-            unfolded, _ = self.__fit(eigs, method="poly", poly_degree=d)
             col_name = f"poly_{d}"
+            unfolded, _ = self.__fit(eigs, method="poly", poly_degree=d)
             df[col_name] = unfolded
         for s in spline_smooths:
             for deg in spline_degrees:
-                unfoled, _ = self.__fit(eigs, method="spline", spline_smooth=s)
-                col_name = f"{spline_name(deg)}-spline_" "{:.1}".format(s)
+                col_name = f"{spline_name(deg)}-spline_" "{:1.1f}".format(s)
+                if dry_run:
+                    col_names.append(col_name)
+                    break
+                unfolded, _ = self.__fit(eigs, method="spline", spline_smooth=s, spline_degree=deg)
                 df[col_name] = unfolded
-        df["gompertz"], _ = self.__fit(eigs, method="gompertz")
-        return df
+        if dry_run:
+            col_names.append("gompertz")
+        else:
+            df["gompertz"], _ = self.__fit(eigs, method="gompertz")
+            return df
 
     def __collect_outliers(self, eigs, steps, tolerance=0.1):
         iter_results = [
