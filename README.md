@@ -1,6 +1,11 @@
 A python library for Random Matrix Theory eigenvalue unfolding and
 computation and plotting of spectral observables.
 
+This libary is still undergoing major re-writes and development, and should
+be considered in pre-alpha at this point. Feel free to post issues or ask
+questions relating to the code, but keep in mind any bugs and/or issues are
+very likely to change in the near future.
+
 # Installation
 
 ## From Source
