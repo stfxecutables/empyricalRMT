@@ -36,6 +36,7 @@ RESET = Style.RESET_ALL
 EXPECTED_GOE_VARIANCE = 0.286
 EXPECTED_GOE_MEAN = 1.000
 
+
 def spline(
     eigs: np.array, knots: int = 3, detrend=None, percent=None, plot=False
 ) -> np.array:
@@ -782,32 +783,58 @@ class Unfolder:
                 "before attempting to generate a trim summary."
             )
         self.__plot_outliers(show_plot, save_plot)
-        return self.trim_report()
+        report = self.trim_report()
+        # TODO for each smoother fit, find the best score (gives us a set of best trims)
+        # TODO from the above set of best trims, choose the max-voted best trim
+        # NOTE: for each smoother, calculate average score, find best average score across
+        # smoothers, and report this?
+        # TODO: break trim_percent into trim_min and trim_max percents
+        best_GOE_trim_percents = [[], []]
+        best_rows = []
+        for i, col in enumerate(report):
+            if str(col).find("score") is not -1:
+                best_rows.append(np.argmax(np.array(report[col])))
+
+        return report
 
     def trim_report(self):
         """Generate a dataframe showing the unfoldings that results from different
         trim percentages, and different choices of smoothing functions.
         """
         trims = self.__trimmed_steps
+        eigs = self.eigs
 
         # trim_percents = [np.round(100*(1 - len(trim["eigs"]) / len(self.eigs)), 3) for trim in trims]
         col_names_base = self.__fit_all(dry_run=True)
         height = len(trims)
-        width = len(col_names_base) * 3 + 1  # entry for mean, var, score, plus trim_percent
+        width = (
+            len(col_names_base) * 3 + 3
+        )  # entry for mean, var, score, plus trim_percent, trim_low, trim_high
         arr = np.empty([height, width], dtype=np.float32)
         for i, trim in enumerate(trims):
-            all_unfolds = self.__fit_all(trim["eigs"])  # dataframe
-            trim_percent = np.round(100*(1 - len(trim["eigs"]) / len(self.eigs)), 3)
+            trimmed = np.array(trim["eigs"])
+            lower_trim_length = find_first(eigs, trimmed[0])
+            upper_trim_length = len(eigs) - 1 - find_last(eigs, trimmed[-1])
+            all_unfolds = self.__fit_all(trimmed)  # dataframe
+            trim_percent = np.round(100 * (1 - len(trimmed) / len(self.eigs)), 3)
+            lower_trim_percent = 100 * lower_trim_length / len(eigs)
+            upper_trim_percent = 100 * upper_trim_length / len(eigs)
             arr[i, 0] = trim_percent
+            arr[i, 1] = lower_trim_percent
+            arr[i, 2] = upper_trim_percent
 
-            for j, col in enumerate(all_unfolds):  # get summary starts for each unfolding by smoother
+            for j, col in enumerate(
+                all_unfolds
+            ):  # get summary starts for each unfolding by smoother
                 unfolded = np.array(all_unfolds[col])
                 mean, var, score = self._evaluate_unfolding(unfolded)
-                arr[i, 3*j+1] = mean  # arr[i, 0] is trim_percent
-                arr[i, 3*j+2] = var
-                arr[i, 3*j+3] = score
+                arr[
+                    i, 3 * j + 3
+                ] = mean  # arr[i, 0] is trim_percent, [i,1] is trim_min, etc
+                arr[i, 3 * j + 4] = var
+                arr[i, 3 * j + 5] = score
 
-        col_names_final = ["trim_percent"]
+        col_names_final = ["trim_percent", "trim_low", "trim_high"]
         for name in col_names_base:
             col_names_final.append(f"{name}--mean_spacing")
             col_names_final.append(f"{name}--var_spacing")
@@ -819,7 +846,12 @@ class Unfolder:
         pass
 
     def __fit(
-        self, eigs, method=None, poly_degree=None, spline_smooth=None, spline_degree=None
+        self,
+        eigs,
+        method=None,
+        poly_degree=None,
+        spline_smooth=None,
+        spline_degree=None,
     ) -> (np.array, np.array):
         eigs = np.array(eigs)
         if method is None:
@@ -868,7 +900,9 @@ class Unfolder:
         dry_run=False,
     ) -> pd.DataFrame:
         if eigs is None and (dry_run is False or dry_run is None):
-            raise ValueError("If not doing a dry run, you must input eigenvalues to __fit")
+            raise ValueError(
+                "If not doing a dry run, you must input eigenvalues to __fit"
+            )
         spline_dict = {3: "cubic", 4: "quartic", 5: "quintic"}
         spline_name = (
             lambda i: spline_dict[i] if spline_dict.get(i) is not None else f"deg{i}"
@@ -897,7 +931,9 @@ class Unfolder:
                 if dry_run:
                     col_names.append(col_name)
                     break
-                unfolded, _ = self.__fit(eigs, method="spline", spline_smooth=s, spline_degree=deg)
+                unfolded, _ = self.__fit(
+                    eigs, method="spline", spline_smooth=s, spline_degree=deg
+                )
                 df[col_name] = unfolded
         if dry_run:
             col_names.append("gompertz")
@@ -1001,9 +1037,10 @@ class Unfolder:
         """
         spacings = unfolded[1:] - unfolded[:-1]
         mean, var = np.mean(spacings), np.var(spacings, ddof=1)
-        mean_weight = 0.05  # variance gets weight 1, i.e. mean is 0.05 times as important
-        mean_norm = (mean - EXPECTED_GOE_MEAN)/EXPECTED_GOE_MEAN
-        var_norm = (var - EXPECTED_GOE_VARIANCE)/EXPECTED_GOE_VARIANCE
-        score = var_norm + mean_weight*mean_norm
+        mean_weight = (
+            0.05
+        )  # variance gets weight 1, i.e. mean is 0.05 times as important
+        mean_norm = (mean - EXPECTED_GOE_MEAN) / EXPECTED_GOE_MEAN
+        var_norm = (var - EXPECTED_GOE_VARIANCE) / EXPECTED_GOE_VARIANCE
+        score = var_norm + mean_weight * mean_norm
         return mean, var, score
-
