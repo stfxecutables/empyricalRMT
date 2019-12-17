@@ -1,5 +1,6 @@
 # Data Files
 empyricalRMT/plots
+test_eigs.npy
 *.nii.gz
 
 # Development
@@ -12,3 +13,4 @@ env
 main.py
 *.egg-info
 **/__pycache__
+
