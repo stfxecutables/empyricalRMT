@@ -1,6 +1,13 @@
 # Data Files
+
+## Plotting
 empyricalRMT/plots
+
+## Testing Remnants
+empyricalRMT/tests/*.csv
 test_eigs.npy
+
+## fMRI-related
 *.nii.gz
 
 # Development
