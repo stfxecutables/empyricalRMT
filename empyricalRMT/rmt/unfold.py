@@ -816,6 +816,7 @@ class Unfolder:
         top_smoothers_median = set(score_cols[best_median_col_idx])
         top_smoothers_mean = set(score_cols[best_mean_col_idx])
         consistent = top_smoothers_mean.intersection(top_smoothers_median)
+        consistent = list(map(lambda s: s.replace("--score", ""), consistent))
 
         return report, best_smoothers, consistent
 

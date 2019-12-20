@@ -32,7 +32,14 @@ def test_trim():
     unfolder.trim()
     test_dir = Path(__file__).absolute().parent
     output_plot = test_dir / "trim_summary.png"
-    report = unfolder.trim_summary(show_plot=False, save_plot=output_plot)
+    report, best_smoothers, consistent = unfolder.trim_summary(
+        show_plot=False, save_plot=output_plot
+    )
+    # basic sanity check
+    report_best = report.filter(regex="score").abs().min().min()
+    smoother_best = best_smoothers["best"].filter(regex="score").abs().values[0]
+    np.testing.assert_allclose(report_best, smoother_best)
+
     assert output_plot.exists
     os.remove(output_plot)
 
