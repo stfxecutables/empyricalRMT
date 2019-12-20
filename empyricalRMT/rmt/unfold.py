@@ -784,18 +784,40 @@ class Unfolder:
             )
         self.__plot_outliers(show_plot, save_plot)
         report = self.trim_report()
-        # TODO for each smoother fit, find the best score (gives us a set of best trims)
-        # TODO from the above set of best trims, choose the max-voted best trim
-        # NOTE: for each smoother, calculate average score, find best average score across
-        # smoothers, and report this?
-        # TODO: break trim_percent into trim_min and trim_max percents
-        best_GOE_trim_percents = [[], []]
-        best_rows = []
-        for i, col in enumerate(report):
-            if str(col).find("score") is not -1:
-                best_rows.append(np.argmax(np.array(report[col])))
+        scores = report.filter(regex=".*score.*").abs()
 
-        return report
+        # get column names so we don't have to deal with terrible Pandas return types
+        score_cols = np.array(scores.columns.to_list())
+        # gives column names of columns with lowest scores
+        best_smoother_cols = list(scores.abs().min().sort_values()[:3].to_dict().keys())
+        # indices of rows with best scores
+        best_smoother_rows = report[best_smoother_cols].abs().idxmin().to_list()
+
+        # construct dict with trim amounts of best overall scoring smoothers
+        best_smoothers = {}
+        trim_cols = ["trim_percent", "trim_low", "trim_high"]
+        for i, col in enumerate(best_smoother_cols):
+            min_score_i = best_smoother_rows[i]
+            cols = trim_cols + [col.replace("score", "mean_spacing"), col.replace("score", "var_spacing"), col]
+            if i == 0:
+                best_smoothers["best"] = report[cols].iloc[min_score_i, :]
+            elif i == 1:
+                best_smoothers["second"] = report[cols].iloc[min_score_i, :]
+            elif i == 2:
+                best_smoothers["third"] = report[cols].iloc[min_score_i, :]
+            best_smoothers[i] = report[cols].iloc[min_score_i, :]
+
+        median_scores = np.array(scores.median())
+        mean_scores = np.array(scores.mean())
+
+        # get most consistent 3 of each
+        best_median_col_idx = np.argsort(median_scores)[:3]
+        best_mean_col_idx = np.argsort(mean_scores)[:3]
+        top_smoothers_median = set(score_cols[best_median_col_idx])
+        top_smoothers_mean = set(score_cols[best_mean_col_idx])
+        consistent = top_smoothers_mean.intersection(top_smoothers_median)
+
+        return report, best_smoothers, consistent
 
     def trim_report(self):
         """Generate a dataframe showing the unfoldings that results from different
