@@ -32,7 +32,7 @@ def test_trim():
     unfolder.trim()
     test_dir = Path(__file__).absolute().parent
     output_plot = test_dir / "trim_summary.png"
-    report, best_smoothers, consistent = unfolder.trim_summary(
+    report, best_smoothers, consistent = unfolder.trim_report_summary(
         show_plot=False, save_plot=output_plot
     )
     # basic sanity check

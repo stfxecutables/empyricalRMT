@@ -776,7 +776,7 @@ class Unfolder:
         if method == "auto":
             self.__trimmed_steps = self.__collect_outliers(eigs, steps)
 
-    def trim_summary(self, show_plot=True, save_plot: Path = None):
+    def trim_report_summary(self, show_plot=True, save_plot: Path = None):
         if len(self.__trimmed_steps) == 0:
             raise RuntimeError(
                 "Eigenvalues have not been trimmed yet. Call Unfolder.trim() "
@@ -862,8 +862,7 @@ class Unfolder:
             col_names_final.append(f"{name}--mean_spacing")
             col_names_final.append(f"{name}--var_spacing")
             col_names_final.append(f"{name}--score")
-        df = pd.DataFrame(data=arr, columns=col_names_final)
-        return df
+        return pd.DataFrame(data=arr, columns=col_names_final)
 
     def unfold(self):
         pass
