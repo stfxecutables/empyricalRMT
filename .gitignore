@@ -1,6 +1,7 @@
 # Data Files
 
 ## Plotting
+**/*.png
 empyricalRMT/plots
 
 ## Testing Remnants
@@ -10,8 +11,16 @@ test_eigs.npy
 ## fMRI-related
 *.nii.gz
 
+
+
 # Development
 .vscode
+
+
+
+# OS-Related
+**/*.~lock*
+
 
 ## Python
 build
