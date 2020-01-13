@@ -1,3 +1,19 @@
+"""
+What we are really doing here is looking at the central eigenvalues that *appear
+to be GOE based on the Nearest-Neighbour Spacing Distributions, after unfolding*.
+By trimming system-specific eigenvalues related to overall non-random correlations,
+we can examine the part of the system that *appears to be random*, from the perspective
+of one of the RMT spectral observable metrics.
+
+If the spectral observables are correlated with interesting info, great! It doesn't
+matter that theory was violated in the process. The question then comes down to an
+information-theoretic question: are we sure that the spectral observable machinery of
+RMT hasn't just reduced the data in a trivial way and identified trivial differences
+between states / modes of interest?
+
+That is, since empirical RMT analyses are based solely on the sorted (unfolded)
+eigenvalues of the correlations of a system,
+"""
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -666,7 +682,7 @@ class UnfoldOptions:
         degree = options.get("poly_degree")
         spline_degree = options.get("spline_degree")
         spline_smooth = options.get("spline_smooth")
-        emd = options.get("emd_detrend")
+        emd = options.get("emd_detrend")  # TODO: implement
         method = options.get("method")
 
         if func == "poly":
@@ -693,6 +709,7 @@ class UnfoldOptions:
         if emd is None:
             emd = False
         elif isinstance(emd, bool):
+            # TODO: implement
             pass
         else:
             raise ValueError("UnfoldOption `emd` can only be either True or False.")
@@ -726,6 +743,8 @@ class Unfolder:
         eigs: array_like
             a list, numpy array, or other iterable of the computed eigenvalues
             of some matrix
+
+        options: UnfoldOptions
 
         """
         if eigs is None:
@@ -798,7 +817,11 @@ class Unfolder:
         trim_cols = ["trim_percent", "trim_low", "trim_high"]
         for i, col in enumerate(best_smoother_cols):
             min_score_i = best_smoother_rows[i]
-            cols = trim_cols + [col.replace("score", "mean_spacing"), col.replace("score", "var_spacing"), col]
+            cols = trim_cols + [
+                col.replace("score", "mean_spacing"),
+                col.replace("score", "var_spacing"),
+                col,
+            ]
             if i == 0:
                 best_smoothers["best"] = report[cols].iloc[min_score_i, :]
             elif i == 1:
@@ -875,6 +898,9 @@ class Unfolder:
         spline_smooth=None,
         spline_degree=None,
     ) -> (np.array, np.array):
+        """returns (unfolded, steps), the unfolded eigenvalues and the step
+        function values
+        """
         eigs = np.array(eigs)
         if method is None:
             smoother = self.__unfold_options.smoother
@@ -921,6 +947,14 @@ class Unfolder:
         spline_degrees=[3],
         dry_run=False,
     ) -> pd.DataFrame:
+        """unfold eigenvalues for all
+
+        Returns:
+        --------
+        DataFrame of unfolded eigenvalues for each set of fit parameters, e.g. where each
+        column contains a name indicating the fitting parameters, with the values of that
+        column being the (sorted) unfolded eigenvalues
+        """
         if eigs is None and (dry_run is False or dry_run is None):
             raise ValueError(
                 "If not doing a dry run, you must input eigenvalues to __fit"
@@ -1059,9 +1093,8 @@ class Unfolder:
         """
         spacings = unfolded[1:] - unfolded[:-1]
         mean, var = np.mean(spacings), np.var(spacings, ddof=1)
-        mean_weight = (
-            0.05
-        )  # variance gets weight 1, i.e. mean is 0.05 times as important
+        # variance gets weight 1, i.e. mean is 0.05 times as important
+        mean_weight = 0.05
         mean_norm = (mean - EXPECTED_GOE_MEAN) / EXPECTED_GOE_MEAN
         var_norm = (var - EXPECTED_GOE_VARIANCE) / EXPECTED_GOE_VARIANCE
         score = var_norm + mean_weight * mean_norm
