@@ -966,15 +966,13 @@ class Unfolder:
 
         # construct a dataframe to hold all info
         df = pd.DataFrame()
-        col_names = []
+        col_names = self.__get_column_names(
+            poly_degrees=poly_degrees,
+            spline_smooths=spline_smooths,
+            gompertz=True,
+            spline_degrees=spline_degrees,
+        )
         if dry_run:  # early return strings of colums names
-            for d in poly_degrees:
-                col_names.append(f"poly_{d}")
-            for s in spline_smooths:
-                for deg in spline_degrees:
-                    col_name = f"{spline_name(deg)}-spline_" "{:1.1f}".format(s)
-                    col_names.append(col_name)
-            col_names.append("gompertz")
             return col_names
 
         for d in poly_degrees:
@@ -996,6 +994,61 @@ class Unfolder:
         else:
             df["gompertz"], _ = self.__fit(eigs, method="gompertz")
             return df
+
+    def __get_column_names(
+        self, poly_degrees, spline_smooths, gompertz=True, spline_degrees=[3]
+    ) -> str:
+        """If arguments are arrays, generate names for all columns of report. Otherwise,
+        just return the name for indexing into the report.
+        """
+        spline_dict = {3: "cubic", 4: "quartic", 5: "quintic"}
+        spline_name = (
+            lambda i: spline_dict[i] if spline_dict.get(i) is not None else f"deg{i}"
+        )
+
+        col_names = []
+        if isinstance(poly_degrees, list):
+            for d in poly_degrees:
+                col_names.append(f"poly_{d}")
+        else:
+            raise ValueError("poly_degrees must be a list of int values")
+
+        try:
+            spline_smooths = list(spline_smooths)
+        except Exception as e:
+            raise ValueError(f"Error converting `spline_smooths` to list: {e}")
+        if isinstance(spline_smooths, list):
+            for s in spline_smooths:
+                if not isinstance(spline_degrees, list):
+                    raise ValueError("spline_degrees must be a list of integer values")
+                for deg in spline_degrees:
+                    col_name = f"{spline_name(deg)}-spline_" "{:1.1f}".format(s)
+                    col_names.append(col_name)
+        else:
+            raise ValueError("spline_smooths must be a list of float values")
+        if gompertz is True:
+            col_names.append("gompertz")
+        return col_names
+
+    def __column_name_from_args(
+        self, poly_degree=None, spline_smooth=None, gompertz=None, spline_degree=3
+    ) -> str:
+        if isinstance(poly_degree, int):
+            return f"poly_{poly_degree}"
+        if spline_smooth is not None:
+            spline_dict = {3: "cubic", 4: "quartic", 5: "quintic"}
+            spline_name = (
+                lambda i: spline_dict[i]
+                if spline_dict.get(i) is not None
+                else f"deg{i}"
+            )
+            spline_smooth = float(spline_smooth)  # if can't be converted, will throw
+            return f"{spline_name(spline_degree)}-spline_" "{:1.1f}".format(
+                spline_smooth
+            )
+        if gompertz is True:
+            return "gompertz"
+        raise ValueError("Arguments to __column_name_from_args cannot all be None")
 
     def __collect_outliers(self, eigs, steps, tolerance=0.1):
         iter_results = [
