@@ -790,19 +790,53 @@ class Unfolder:
         method = self.__unfold_options.method
 
         eigs = self.eigs
-        unfolded, steps = self.__fit(eigs)
+        _, steps = self.__fit(eigs)
 
         if method == "auto":
             self.__trimmed_steps = self.__collect_outliers(eigs, steps)
 
-    def trim_report_summary(self, show_plot=True, save_plot: Path = None):
+    def trim_report_summary(
+        self, show_plot=True, save_plot: Path = None
+    ) -> (pd.DataFrame, dict, pd.DataFrame, list):
+        """Performs unfolding and computes GOE fit scores for various possible default
+        smoothers, and returns various "best" fits.
+
+        Parameters
+        ----------
+        show_plot: boolean
+            if True, shows a plot of the automated outlier detection results
+        save_plot: Path
+            if save_plot is a pathlib file Path, save the outlier detection plot to that
+            location. Should be a .png, e.g. "save_plot = Path.home() / outlier_plot.png".
+
+        Returns
+        -------
+        report: DataFrame
+            A pandas DataFrame with various summary information about the different trims
+            and smoothing fits
+        best_smoothers: Dict
+            A dict with keys "best", "second", "third", "0", "1", "2" and the GOE fit
+            scores
+        best_unfoldeds: DataFrame
+            a DataFrame with column names identifying the fit method, and columns
+            corresponding to the unfolded eigenvalues using those methods. The first
+            column has the "best" unfolded values, the second column the second best, and
+            etc, up to the third best
+        consistent: List
+            a list of the "generally" best overall smoothers, across various possible
+            trimmings. I.e. returns the smoothers with the best mean and median GOE fit
+            scores across all trimmings.
+
+        """
         if len(self.__trimmed_steps) == 0:
             raise RuntimeError(
                 "Eigenvalues have not been trimmed yet. Call Unfolder.trim() "
                 "before attempting to generate a trim summary."
             )
         self.__plot_outliers(show_plot, save_plot)
-        report, unfolds = self.trim_report() # unfolds can be used to get best unfolded eigs
+        report, unfolds = (
+            self.trim_report()
+        )  # unfolds can be used to get best unfolded eigs
         scores = report.filter(regex=".*score.*").abs()
 
         # get column names so we don't have to deal with terrible Pandas return types
@@ -812,7 +846,9 @@ class Unfolder:
         # indices of rows with best scores
         best_smoother_rows = report[best_smoother_cols].abs().idxmin().to_list()
         # best unfolded eigenvalues
-        best_unfoldeds = unfolds[map(lambda s: s.replace("--score", ""), best_smoother_cols)]
+        best_unfoldeds = unfolds[
+            map(lambda s: s.replace("--score", ""), best_smoother_cols)
+        ]
 
         # construct dict with trim amounts of best overall scoring smoothers
         best_smoothers = {}
@@ -845,9 +881,17 @@ class Unfolder:
 
         return report, best_smoothers, best_unfoldeds, consistent
 
-    def trim_report(self):
+    def trim_report(self) -> (pd.DataFrame, pd.DataFrame):
         """Generate a dataframe showing the unfoldings that results from different
         trim percentages, and different choices of smoothing functions.
+
+        Returns
+        -------
+        report: a pandas DataFrame of various statistics relating to the trimmed eigenvalues,
+        and metrics of how GOE the resultant trimmed central eigenvalues look
+
+        unfolded: a dataframe of all the different unfolded eigenvalues for each fitting /
+        smoothing function
         """
         trims = self.__trimmed_steps
         eigs = self.eigs
