@@ -802,7 +802,7 @@ class Unfolder:
                 "before attempting to generate a trim summary."
             )
         self.__plot_outliers(show_plot, save_plot)
-        report = self.trim_report()
+        report, unfolds = self.trim_report() # unfolds can be used to get best unfolded eigs
         scores = report.filter(regex=".*score.*").abs()
 
         # get column names so we don't have to deal with terrible Pandas return types
@@ -811,6 +811,8 @@ class Unfolder:
         best_smoother_cols = list(scores.abs().min().sort_values()[:3].to_dict().keys())
         # indices of rows with best scores
         best_smoother_rows = report[best_smoother_cols].abs().idxmin().to_list()
+        # best unfolded eigenvalues
+        best_unfoldeds = unfolds[map(lambda s: s.replace("--score", ""), best_smoother_cols)]
 
         # construct dict with trim amounts of best overall scoring smoothers
         best_smoothers = {}
@@ -841,7 +843,7 @@ class Unfolder:
         consistent = top_smoothers_mean.intersection(top_smoothers_median)
         consistent = list(map(lambda s: s.replace("--score", ""), consistent))
 
-        return report, best_smoothers, consistent
+        return report, best_smoothers, best_unfoldeds, consistent
 
     def trim_report(self):
         """Generate a dataframe showing the unfoldings that results from different
@@ -885,7 +887,7 @@ class Unfolder:
             col_names_final.append(f"{name}--mean_spacing")
             col_names_final.append(f"{name}--var_spacing")
             col_names_final.append(f"{name}--score")
-        return pd.DataFrame(data=arr, columns=col_names_final)
+        return pd.DataFrame(data=arr, columns=col_names_final), all_unfolds
 
     def unfold(self):
         pass
