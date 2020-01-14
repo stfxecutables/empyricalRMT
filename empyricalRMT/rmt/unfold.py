@@ -907,6 +907,7 @@ class Unfolder:
         else:
             smoother = method
         steps = stepFunctionVectorized(eigs, eigs)
+
         if smoother == "poly":
             if poly_degree is None:
                 degree = self.__unfold_options.degree
@@ -915,6 +916,7 @@ class Unfolder:
             poly_coef = polyfit(eigs, steps, degree)
             unfolded = np.sort(polyval(eigs, poly_coef))
             return unfolded, steps
+
         if smoother == "spline":
             if spline_degree is None:
                 k = self.__unfold_options.spline_degree
@@ -934,6 +936,7 @@ class Unfolder:
             else:
                 spline = USpline(eigs, steps, k=int(k), s=smoothing)
             return np.sort(spline(eigs)), steps
+
         if smoother == "gompertz":
             # use steps[end] as guess for the asymptote, a, of gompertz curve
             [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[-1], 1, 1))
@@ -982,18 +985,12 @@ class Unfolder:
         for s in spline_smooths:
             for deg in spline_degrees:
                 col_name = f"{spline_name(deg)}-spline_" "{:1.1f}".format(s)
-                if dry_run:
-                    col_names.append(col_name)
-                    break
                 unfolded, _ = self.__fit(
                     eigs, method="spline", spline_smooth=s, spline_degree=deg
                 )
                 df[col_name] = unfolded
-        if dry_run:
-            col_names.append("gompertz")
-        else:
-            df["gompertz"], _ = self.__fit(eigs, method="gompertz")
-            return df
+        df["gompertz"], _ = self.__fit(eigs, method="gompertz")
+        return df
 
     def __get_column_names(
         self, poly_degrees, spline_smooths, gompertz=True, spline_degrees=[3]
@@ -1050,7 +1047,7 @@ class Unfolder:
             return "gompertz"
         raise ValueError("Arguments to __column_name_from_args cannot all be None")
 
-    def __collect_outliers(self, eigs, steps, tolerance=0.1):
+    def __collect_outliers(self, eigs, steps, tolerance=0.1, max_trim=0.5):
         iter_results = [
             pd.DataFrame(
                 {
@@ -1064,7 +1061,7 @@ class Unfolder:
 
         while (
             len(iter_results[-1]) / len(eigs)
-        ) > 0.5:  # terminate if we have trimmed half
+        ) > max_trim:  # terminate if we have trimmed max_trim
             # because eigs are sorted, HBOS will always identify outliers at one of the
             # two ends of the eigenvalues, which is what we want
             df = iter_results[-1].copy(deep=True)
