@@ -30,9 +30,11 @@ from scipy.optimize import curve_fit, minimize_scalar
 from scipy.stats import mode
 from warnings import warn
 
+
 from ..rmt.construct import generateGOEMatrix
 from ..rmt.detrend import emd_detrend
 from ..rmt.eigenvalues import getEigs, stepFunctionVectorized
+from ..rmt.exponentials import gompertz
 from ..rmt.observables.spacings import computeSpacings
 from ..rmt.observables.rigidity import slope as fullSlope
 from ..rmt.plot import setup_plotting
@@ -46,7 +48,7 @@ EXPECTED_GOE_MEAN = 1.000
 
 DEFAULT_POLY_DEGREE = 9
 DEFAULT_SPLINE_SMOOTH = 1.4
-DEFAULT_SPLINE_DEGREES = 3
+DEFAULT_SPLINE_DEGREE = 3
 
 DEFAULT_POLY_DEGREES = [3, 4, 5, 6, 7, 8, 9, 10, 11]
 DEFAULT_SPLINE_SMOOTHS = np.linspace(1, 2, num=11)
@@ -122,140 +124,11 @@ def test(method="spline", param=9, percent: int = None, title="Default"):
     plt.show()
 
 
-class UnfoldOptions:
-    # TODO: Make this not be a class, and just Unfolder args, with validation there.
-    """Basically you pass in a dict like:
-    {
-        "smooth_function": "poly" | "spline" | "gompertz" | lambda | None,
-        "poly_degree": int | "auto" | None,
-        "spline_degree": int | None,
-        "spline_smooth": float | "heuristic" | None,
-        "emd_detrend": boolean | None,
-        "method": "auto" | "manual" | None,
-    }
-    """
-
-    def __init__(
-        self,
-        smooth_function="poly",
-        poly_degree=8,
-        spline_degree=None,
-        spline_smooth=None,
-        emd_detrend=False,
-        method=None,
-        options=None,
-    ):
-        """ if `options` is not None, only look at `options` argument. If options is
-        None, ignore `options` argument.
-        """
-        if options is not None:
-            self.options = self.__validate_dict(options)
-            return
-
-        options = self.__validate_dict(self.__default(self))
-        options["smooth_function"] = smooth_function
-        options["poly_degree"] = poly_degree
-        options["spline_degree"] = spline_degree
-        options["spline_smooth"] = spline_smooth
-        options["emd_detrend"] = emd_detrend
-        options["method"] = method
-        self.options = self.__validate_dict(options)
-
-    @staticmethod
-    def __default(self) -> dict:
-        default = {
-            "smooth_function": "poly",
-            "poly_degree": 8,
-            "spline_degree": 3,
-            "spline_smooth": None,
-            "emd_detrend": False,
-            "method": None,
-        }
-        return default
-
-    @property
-    def smoother(self):
-        return self.options["smooth_function"]
-
-    @property
-    def degree(self):
-        return self.options["poly_degree"]
-
-    @property
-    def spline_degree(self):
-        return self.options["spline_degree"]
-
-    @property
-    def spline_smooth(self):
-        return self.options["spline_smooth"]
-
-    @property
-    def emd(self):
-        return self.options["emd_detrend"]
-
-    @property
-    def method(self):
-        return self.options["method"]
-
-    def __validate_dict(self, options: dict):
-        func = options.get("smooth_function")
-        degree = options.get("poly_degree")
-        spline_degree = options.get("spline_degree")
-        spline_smooth = options.get("spline_smooth")
-        emd = options.get("emd_detrend")  # TODO: implement
-        method = options.get("method")
-
-        if func == "poly":
-            if degree is None:
-                degree = self.__default["poly_degree"]
-                warn(
-                    f"No degree set for polynomial unfolding. Will default to polynomial of degree {degree}.",
-                    category=UserWarning,
-                )
-            if not isinstance(degree, int):
-                raise ValueError("Polynomial degree must be of type `int`")
-            if degree < 3:
-                raise ValueError("Unfolding polynomial must have minimum degree 3.")
-        elif func == "spline":
-            if spline_degree is None:
-                spline_degree = 3
-            if not isinstance(spline_degree, int):
-                raise ValueError("Degree of spline must be an int <= 5")
-            if spline_degree > 5:
-                raise ValueError("Degree of spline must be an int <= 5")
-            if spline_smooth is not None and spline_smooth != "heuristic":
-                spline_smooth = float(spline_smooth)
-
-        if emd is None:
-            emd = False
-        elif isinstance(emd, bool):
-            # TODO: implement
-            pass
-        else:
-            raise ValueError("UnfoldOption `emd` can only be either True or False.")
-
-        if method is None or method == "auto" or method == "manual":
-            pass
-        else:
-            raise ValueError(
-                "UnfoldOption `method` must be one of 'auto', 'manual', or 'None'"
-            )
-
-        return {
-            "smooth_function": func,
-            "poly_degree": degree,
-            "spline_degree": spline_degree,
-            "spline_smooth": spline_smooth,
-            "emd_detrend": emd,
-            "method": method,
-        }
-
-
 class Unfolder:
     """Base class for storing eigenvalues, trimmed eigenvalues, and
     unfolded eigenvalues"""
 
-    def __init__(self, eigs, options: UnfoldOptions = UnfoldOptions()):
+    def __init__(self, eigs):
         """Construct an Unfolder.
 
         Parameters
@@ -263,9 +136,6 @@ class Unfolder:
         eigs: array_like
             a list, numpy array, or other iterable of the computed eigenvalues
             of some matrix
-
-        options: UnfoldOptions
-
         """
         if eigs is None:
             raise ValueError("`eigs` must be an array_like.")
@@ -283,10 +153,6 @@ class Unfolder:
                 "The `eigs` passed to unfolded must be an object with a defined length via `len()`."
             )
 
-        if not isinstance(options, UnfoldOptions):
-            raise ValueError("`options` argument must be of type `UnfoldOptions")
-
-        self.__unfold_options = UnfoldOptions(options=options.options)
         self.__raw_eigs = np.array(eigs)
         self.__sorted_eigs = np.sort(self.__raw_eigs)
         self.__trimmed_eigs = None
@@ -327,7 +193,7 @@ class Unfolder:
         print("Trimming to central eigenvalues.")
 
         eigs = self.eigs
-        _, steps = self.__fit(eigs)
+        _, steps = self.__fit(eigs, steps_only=True)
         self.__trimmed_steps = []
         self.__trimmed_steps = self.__collect_outliers(
             eigs, steps, tolerance=outlier_tol, max_trim=max_trim
@@ -544,26 +410,21 @@ class Unfolder:
         pass
 
     def __fit(
-        self,
-        eigs,
-        method=None,
-        poly_degree=None,
-        spline_smooth=None,
-        spline_degree=None,
+        self, eigs, smoother="poly", degree=None, spline_smooth=None, steps_only=False
     ) -> (np.array, np.array):
         """returns (unfolded, steps), the unfolded eigenvalues and the step
         function values
 
         Parameters
         ----------
-        poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
-        spline_smooths: List[float]
-            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
-            Default np.linspace(1, 2, num=11)
-        spline_degrees: List[int]
-            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
-            fits. Default [3]
+        eigs: np.array
+            sorted eigenvalues
+        smoother: "poly" | "spline" | "gompertz" | lambda
+            the type of smoothing function used to fit the step function
+        degree: int
+            the degree of the polynomial or spline
+        spline_smooth: float
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline
 
         Returns
         -------
@@ -573,40 +434,38 @@ class Unfolder:
         steps: np.array
             the step-function values
         """
-        eigs = np.array(eigs)
-        if method is None:
-            smoother = self.__unfold_options.smoother
-        else:
-            smoother = method
+        eigs = np.sort(np.array(eigs))
         steps = stepFunctionVectorized(eigs, eigs)
+        if steps_only:
+            return eigs, steps
+        self.__validate_args(
+            smoother=smoother, degree=degree, spline_smooth=spline_smooth
+        )
 
         if smoother == "poly":
-            if poly_degree is None:
-                degree = self.__unfold_options.degree
-            else:
-                degree = poly_degree
+            if degree is None:
+                degree = DEFAULT_POLY_DEGREE
             poly_coef = polyfit(eigs, steps, degree)
             unfolded = np.sort(polyval(eigs, poly_coef))
             return unfolded, steps
 
         if smoother == "spline":
-            if spline_degree is None:
-                k = self.__unfold_options.spline_degree
+            if degree is None:
+                degree = DEFAULT_SPLINE_DEGREE
             else:
                 try:
-                    k = int(spline_degree)
+                    k = int(degree)
                 except BaseException as e:
                     print(ValueError("Cannot convert spline degree to int."))
                     raise e
-            smoothing = self.__unfold_options.spline_smooth
-            if smoothing == "heuristic":
-                spline = USpline(eigs, steps, k=int(k), s=len(eigs) ** 1.4)
+            if spline_smooth == "heuristic":
+                spline = USpline(eigs, steps, k=k, s=len(eigs) ** 1.4)
             elif spline_smooth is not None:
                 if not isinstance(spline_smooth, float):
                     raise ValueError("Spline smoothing factor must be a float")
-                spline = USpline(eigs, steps, k=int(k), s=len(eigs) ** spline_smooth)
+                spline = USpline(eigs, steps, k=k, s=len(eigs) ** spline_smooth)
             else:
-                spline = USpline(eigs, steps, k=int(k), s=smoothing)
+                spline = USpline(eigs, steps, k=k, s=spline_smooth)
             return np.sort(spline(eigs)), steps
 
         if smoother == "gompertz":
@@ -663,16 +522,16 @@ class Unfolder:
 
         for d in poly_degrees:
             col_name = f"poly_{d}"
-            unfolded, _ = self.__fit(eigs, method="poly", poly_degree=d)
+            unfolded, _ = self.__fit(eigs, smoother="poly", degree=d)
             df[col_name] = unfolded
         for s in spline_smooths:
-            for deg in spline_degrees:
-                col_name = f"{spline_name(deg)}-spline_" "{:1.1f}".format(s)
+            for d in spline_degrees:
+                col_name = f"{spline_name(d)}-spline_" "{:1.1f}".format(s)
                 unfolded, _ = self.__fit(
-                    eigs, method="spline", spline_smooth=s, spline_degree=deg
+                    eigs, smoother="spline", spline_smooth=s, degree=d
                 )
                 df[col_name] = unfolded
-        df["gompertz"], _ = self.__fit(eigs, method="gompertz")
+        df["gompertz"], _ = self.__fit(eigs, smoother="gompertz")
         return df
 
     def __get_column_names(
@@ -737,7 +596,7 @@ class Unfolder:
                 {
                     "eigs": eigs,
                     "steps": steps,
-                    "unfolded": self.__fit(eigs)[0],
+                    "unfolded": self.__fit(eigs, degree=DEFAULT_POLY_DEGREE)[0],
                     "cluster": ["inlier" for _ in eigs],
                 }
             )
@@ -768,7 +627,9 @@ class Unfolder:
                 is_outlier = np.zeros(is_outlier.shape, dtype=bool)
 
             df["cluster"] = ["outlier" if label else "inlier" for label in is_outlier]
-            df["unfolded"], _ = self.__fit(np.array(df["eigs"]))
+            df["unfolded"], _ = self.__fit(
+                np.array(df["eigs"]), degree=DEFAULT_POLY_DEGREE
+            )
             iter_results.append(df)
             if np.alltrue(~is_outlier):
                 break
@@ -818,6 +679,52 @@ class Unfolder:
             fig = plt.gcf()
             fig.set_size_inches(width * 3, height * 3)
             plt.show()
+
+    def __validate_args(self, **kwargs):
+        """throw an error if args are in any way invalid"""
+        smoother = kwargs.get("smoother")
+        degree = kwargs.get("degree")
+        spline_smooth = kwargs.get("spline_smooth")
+        emd = kwargs.get("emd_detrend")  # TODO: implement
+        method = kwargs.get("method")
+
+        if smoother == "poly":
+            if degree is None:
+                warn(
+                    f"No degree set for polynomial unfolding. Will default to polynomial of degree {DEFAULT_POLY_DEGREE}.",
+                    category=UserWarning,
+                )
+            if not isinstance(degree, int):
+                raise ValueError("Polynomial degree must be of type `int`")
+            if degree < 3:
+                raise ValueError("Unfolding polynomial must have minimum degree 3.")
+        elif smoother == "spline":
+            spline_degree = degree
+            if degree is None:
+                warn(
+                    f"No degree set for spline unfolding. Will default to spline of degree {DEFAULT_SPLINE_DEGREE}.",
+                    category=UserWarning,
+                )
+            if not isinstance(spline_degree, int) or spline_degree > 5:
+                raise ValueError("Degree of spline must be an int <= 5")
+            if spline_smooth is not None and spline_smooth != "heuristic":
+                spline_smooth = float(spline_smooth)
+        elif smoother == "gompertz":
+            pass  # just allow this for now
+        elif callable(smoother):
+            # NOTE: above is not a great check, but probably good enough for our purposes
+            # https://stackoverflow.com/questions/624926/how-do-i-detect-whether-a-python-variable-is-a-function#comment437753_624939
+            raise NotImplementedError("Custom fit functions not currently implemented.")
+        else:
+            raise ValueError("Unrecognized smoother argument.")
+
+        if emd is not None and not isinstance(emd, bool):
+            raise ValueError("`emd_detrend` can be only a boolean or undefined (None).")
+
+        if method is None or method == "auto" or method == "manual":
+            pass
+        else:
+            raise ValueError("`method` must be one of 'auto', 'manual', or 'None'")
 
     def _evaluate_unfolding(self, unfolded) -> [float, float, float]:
         """Calculate a naive unfolding score via comparison to the expected mean and

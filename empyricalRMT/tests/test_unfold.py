@@ -11,24 +11,22 @@ from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.observables.levelvariance import sigmaSquared_exhaustive
 from empyricalRMT.rmt.observables.rigidity import spectralRigidity
 from empyricalRMT.rmt.observables.spacings import computeSpacings
-from empyricalRMT.rmt.unfold import UnfoldOptions, Unfolder
+from empyricalRMT.rmt.unfold import Unfolder
 from empyricalRMT.utils import is_symmetric
 
 
 def test_unfold_init():
-    options = UnfoldOptions("poly", poly_degree=8, emd_detrend=False, method="auto")
     M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
-    unfolder = Unfolder(eigs, options)
+    unfolder = Unfolder(eigs)
     assert np.alltrue(unfolder.eigs == eigs)
     assert np.alltrue(unfolder.eigenvalues == eigs)
 
 
 def test_trim():
-    options = UnfoldOptions("poly", poly_degree=8, emd_detrend=False, method="auto")
     M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
-    unfolder = Unfolder(eigs, options)
+    unfolder = Unfolder(eigs)
     unfolder.trim()
     test_dir = Path(__file__).absolute().parent
     output_plot = test_dir / "trim_summary.png"
