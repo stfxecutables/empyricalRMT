@@ -38,9 +38,6 @@ def test_trim():
     # basic sanity check
     report_best = report.filter(regex="score").abs().min().min()
     smoother_best = best_smoothers["best"].filter(regex="score").abs().values[0]
-    best_label = list(dict(best_smoothers["best"].filter(regex="score")).keys())[
-        0
-    ].replace("--score", "")
     np.testing.assert_allclose(report_best, smoother_best)
 
     assert output_plot.exists

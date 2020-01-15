@@ -44,6 +44,10 @@ RESET = Style.RESET_ALL
 EXPECTED_GOE_VARIANCE = 0.286
 EXPECTED_GOE_MEAN = 1.000
 
+DEFAULT_POLY_DEGREE = 9
+DEFAULT_SPLINE_SMOOTH = 1.4
+DEFAULT_SPLINE_DEGREES = 3
+
 DEFAULT_POLY_DEGREES = [3, 4, 5, 6, 7, 8, 9, 10, 11]
 DEFAULT_SPLINE_SMOOTHS = np.linspace(1, 2, num=11)
 DEFAULT_SPLINE_DEGREES = [3]
@@ -149,6 +153,7 @@ def inverse_gompertz(t, a, b, c):
 
 
 class UnfoldOptions:
+    # TODO: Make this not be a class, and just Unfolder args, with validation there.
     """Basically you pass in a dict like:
     {
         "smooth_function": "poly" | "spline" | "gompertz" | lambda | None,
@@ -353,6 +358,7 @@ class Unfolder:
 
         eigs = self.eigs
         _, steps = self.__fit(eigs)
+        self.__trimmed_steps = []
         self.__trimmed_steps = self.__collect_outliers(
             eigs, steps, tolerance=outlier_tol, max_trim=max_trim
         )
@@ -366,7 +372,19 @@ class Unfolder:
         spline_degrees=DEFAULT_SPLINE_DEGREES,
     ) -> np.array:
         """Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
-        percent and smoother according to GOE score."""
+        percent and smoother according to GOE score.
+
+        Parameters
+        ----------
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
+        """
         _, _, best_unfoldeds, _ = self.trim_report_summary(show_plot=False)
         self.__unfolded = np.array(best_unfoldeds["best"])
         return np.copy(self.__unfolded)
@@ -549,7 +567,10 @@ class Unfolder:
             col_names_final.append(f"{name}--score")
         return pd.DataFrame(data=arr, columns=col_names_final), all_unfolds
 
-    def unfold(self):
+    def unfold(
+        self, smoother="poly", degree=9, spline_smooth="heuristic", return_steps=False
+    ) -> np.array:
+
         pass
 
     def __fit(
