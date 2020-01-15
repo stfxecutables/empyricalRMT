@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pytest
 
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from empyricalRMT.rmt.unfold import Unfolder
 from empyricalRMT.utils import is_symmetric
 
 
+@pytest.mark.unfolder
 def test_unfold_init():
     M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
@@ -23,6 +25,7 @@ def test_unfold_init():
     assert np.alltrue(unfolder.eigenvalues == eigs)
 
 
+@pytest.mark.unfolder
 def test_trim():
     M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
