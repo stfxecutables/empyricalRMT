@@ -49,26 +49,3 @@ def exponential(x, a, b, c, d):
     """
     return b - a * np.exp(-c * x ** (1 / d))
 
-
-A = np.random.standard_normal(1000 * 1000).reshape([1000, 1000])
-A = (1 / np.sqrt(2)) * (A + A.T)
-eigs = np.linalg.eigvalsh(A)
-steps = stepFunctionVectorized(eigs, eigs)
-
-
-sbn.set_style("darkgrid")
-plt.plot(eigs, steps, color="black", label="step")
-[a, b, c], cov = curve_fit(gompertz, eigs, steps, (np.max(eigs), 1, 1))
-plt.plot(eigs, gompertz(eigs, a, b, c), color="orange", label="gompertz")
-[a, b, c, d], cov2 = curve_fit(
-    exponential, eigs, steps, (np.min(steps), np.max(steps), 1000, 10)
-)
-plt.plot(eigs, exponential(eigs, a, b, c, d), color="red", label="exponential")
-plt.legend()
-plt.show()
-
-# x = np.linspace(-10, 100, 100000)
-# print(inverse_gompertz(x, 1, 1, 1))
-# plt.plot(x, inverse_gompertz(x, 1, 2, 2))
-# plt.show()
-
