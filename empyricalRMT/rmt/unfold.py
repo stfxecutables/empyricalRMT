@@ -52,6 +52,10 @@ RESET = Style.RESET_ALL
 EXPECTED_GOE_VARIANCE = 0.286
 EXPECTED_GOE_MEAN = 1.000
 
+DEFAULT_POLY_DEGREES = [3, 4, 5, 6, 7, 8, 9, 10, 11]
+DEFAULT_SPLINE_SMOOTHS = np.linspace(1, 2, num=11)
+DEFAULT_SPLINE_DEGREES = [3]
+
 
 def spline(
     eigs: np.array, knots: int = 3, detrend=None, percent=None, plot=False
@@ -772,6 +776,7 @@ class Unfolder:
         self.__trimmed_eigs = None
         self.__trimmed_indices = (None, None)
         self.__trimmed_steps = []
+        self.__unfolded = None
         return
 
     @property
@@ -784,19 +789,60 @@ class Unfolder:
         """get the original (sorted) eigenvalues as a numpy array (alternate)"""
         return self.__sorted_eigs
 
-    def trim(self, method="auto", smoother="polynomial", outlier_tol=0.1):
-        """compute the optimal trim region and fit statistics"""
+    def trim(
+        self, show_plot=False, save_plot: Path = None, outlier_tol=0.1, max_trim=0.5
+    ):
+        """compute the optimal trim regions iteratively via histogram-based outlier detection
+
+        Parameters
+        ----------
+        show_plot: Boolean
+            if True, show a (blocking) plot of the iterative trims
+        save_plot: Path
+            if a pathlib file Path is specified, ending in .png, the outlier plot will be
+            saved to Path, without blocking
+        outlier_tol: float
+            A float between 0 and 1. Determines the tolerance paramater for HBOD
+            histogram-based outlier detection
+        max_trim: float
+            A float between 0 and 1 of the maximum allowable proportion of eigenvalues
+            that can be trimmed.
+        """
         print("Trimming to central eigenvalues.")
-        method = self.__unfold_options.method
 
         eigs = self.eigs
         _, steps = self.__fit(eigs)
+        self.__trimmed_steps = self.__collect_outliers(
+            eigs, steps, tolerance=outlier_tol, max_trim=max_trim
+        )
+        if show_plot is True or save_plot is not None:
+            self.__plot_outliers(show_plot, save_plot)
 
-        if method == "auto":
-            self.__trimmed_steps = self.__collect_outliers(eigs, steps)
+    def trim_unfold_best(
+        self,
+        poly_degrees=DEFAULT_POLY_DEGREES,
+        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees=DEFAULT_SPLINE_DEGREES,
+    ) -> np.array:
+        """Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
+        percent and smoother according to GOE score."""
+        _, _, best_unfoldeds, _ = self.trim_report_summary(show_plot=False)
+        self.__unfolded = np.array(best_unfoldeds["best"])
+        return np.copy(self.__unfolded)
+
+    def trim_manual(self, start: int, end: int) -> np.array:
+        """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]], and save
+        this in the Unfolder object"""
+        self.__trimmed_eigs = self.eigs[start:end]
+        return np.copy(self.__trimmed_eigs)
 
     def trim_report_summary(
-        self, show_plot=True, save_plot: Path = None
+        self,
+        show_plot=True,
+        save_plot: Path = None,
+        poly_degrees=DEFAULT_POLY_DEGREES,
+        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees=DEFAULT_SPLINE_DEGREES,
     ) -> (pd.DataFrame, dict, pd.DataFrame, list):
         """Performs unfolding and computes GOE fit scores for various possible default
         smoothers, and returns various "best" fits.
@@ -808,6 +854,14 @@ class Unfolder:
         save_plot: Path
             if save_plot is a pathlib file Path, save the outlier detection plot to that
             location. Should be a .png, e.g. "save_plot = Path.home() / outlier_plot.png".
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
 
         Returns
         -------
@@ -881,9 +935,25 @@ class Unfolder:
 
         return report, best_smoothers, best_unfoldeds, consistent
 
-    def trim_report(self) -> (pd.DataFrame, pd.DataFrame):
+    def trim_report(
+        self,
+        poly_degrees=DEFAULT_POLY_DEGREES,
+        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees=DEFAULT_SPLINE_DEGREES,
+    ) -> (pd.DataFrame, pd.DataFrame):
         """Generate a dataframe showing the unfoldings that results from different
         trim percentages, and different choices of smoothing functions.
+
+        Parameters
+        ----------
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
 
         Returns
         -------
@@ -897,7 +967,12 @@ class Unfolder:
         eigs = self.eigs
 
         # trim_percents = [np.round(100*(1 - len(trim["eigs"]) / len(self.eigs)), 3) for trim in trims]
-        col_names_base = self.__fit_all(dry_run=True)
+        col_names_base = self.__fit_all(
+            dry_run=True,
+            poly_degrees=poly_degrees,
+            spline_smooths=spline_smooths,
+            spline_degrees=spline_degrees,
+        )
         height = len(trims)
         width = (
             len(col_names_base) * 3 + 3
@@ -946,6 +1021,25 @@ class Unfolder:
     ) -> (np.array, np.array):
         """returns (unfolded, steps), the unfolded eigenvalues and the step
         function values
+
+        Parameters
+        ----------
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
+
+        Returns
+        -------
+        unfolded: np.array
+            the unfolded eigenvalues
+
+        steps: np.array
+            the step-function values
         """
         eigs = np.array(eigs)
         if method is None:
@@ -991,12 +1085,23 @@ class Unfolder:
     def __fit_all(
         self,
         eigs=None,
-        poly_degrees=[3, 4, 5, 6, 7, 8, 9, 10, 11],
-        spline_smooths=np.linspace(1, 2, num=11),
-        spline_degrees=[3],
+        poly_degrees=DEFAULT_POLY_DEGREES,
+        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees=DEFAULT_SPLINE_DEGREES,
         dry_run=False,
     ) -> pd.DataFrame:
-        """unfold eigenvalues for all
+        """unfold eigenvalues for all possible smoothers
+
+        Parameters
+        ----------
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
 
         Returns:
         --------
@@ -1094,6 +1199,7 @@ class Unfolder:
         raise ValueError("Arguments to __column_name_from_args cannot all be None")
 
     def __collect_outliers(self, eigs, steps, tolerance=0.1, max_trim=0.5):
+        # zeroth iteration is just the full set of values, none considered outliers
         iter_results = [
             pd.DataFrame(
                 {
