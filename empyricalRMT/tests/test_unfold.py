@@ -7,6 +7,7 @@ from pathlib import Path
 from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.unfold import Unfolder
 
+
 @pytest.mark.unfolder
 def test_unfold_init():
     M = generateGOEMatrix(2000)
@@ -16,8 +17,23 @@ def test_unfold_init():
     assert np.alltrue(unfolder.eigenvalues == eigs)
 
 
+@pytest.mark.trim
+def test_trim_manual():
+    M = generateGOEMatrix(2000)
+    eigs = np.linalg.eigvalsh(M)
+    for i in range(20):
+        unfolder = Unfolder(eigs)
+        m, n = np.sort(np.array(np.random.uniform(0, len(eigs), 2), dtype=int))
+        raw_trimmed = np.copy(eigs[m:n])
+        unfolder = Unfolder(eigs)
+        trimmed = unfolder.trim_manual(m, n)
+        assert np.allclose(raw_trimmed, trimmed)
+        assert np.allclose(raw_trimmed, unfolder.trimmed)
+
+
+@pytest.mark.trim
 @pytest.mark.unfolder
-def test_trim():
+def test_trim_reports():
     M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
     unfolder = Unfolder(eigs)

@@ -166,6 +166,11 @@ class Unfolder:
         """get the original (sorted) eigenvalues as a numpy array (alternate)"""
         return self.__sorted_eigs
 
+    @property
+    def trimmed(self) -> np.array:
+        """get the trimmed, sorted eigenvalues as a numpy array"""
+        return self.__trimmed_eigs
+
     def trim(
         self, show_plot=False, save_plot: Path = None, outlier_tol=0.1, max_trim=0.5
     ):
