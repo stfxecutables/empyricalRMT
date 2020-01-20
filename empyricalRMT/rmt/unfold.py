@@ -19,15 +19,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sbn
 
-from colorama import Fore, Style
-from numba import jit
 from numpy.polynomial.polynomial import polyfit, polyval
 from pathlib import Path
 from pyod.models.hbos import HBOS
 from PyEMD import EMD
 from scipy.interpolate import UnivariateSpline as USpline
-from scipy.optimize import curve_fit, minimize_scalar
-from scipy.stats import mode
+from scipy.optimize import curve_fit
 from warnings import warn
 
 
@@ -36,13 +33,11 @@ from ..rmt.detrend import emd_detrend
 from ..rmt.eigenvalues import getEigs, stepFunctionVectorized
 from ..rmt.exponentials import gompertz
 from ..rmt.observables.spacings import computeSpacings
-from ..rmt.observables.rigidity import slope as fullSlope
 from ..rmt.plot import setup_plotting
 
 # from utils import eprint
 from ..utils import find_first, find_last, is_symmetric, mkdirp
 
-RESET = Style.RESET_ALL
 EXPECTED_GOE_VARIANCE = 0.286
 EXPECTED_GOE_MEAN = 1.000
 
