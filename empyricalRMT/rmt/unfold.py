@@ -122,6 +122,10 @@ def test(
     plt.show()
 
 
+# TODO: Potentially rename this to like a "Modeler", "Fitter", or "(RMT_)Smoother",
+# and have it return an "Unfolded" class which will not only make typing more
+# consistent by always passing around and working with Unfolded objects, but
+# also allow handy utility methods like "unfolded.spacings" to be implemented
 class Unfolder:
     """Base class for storing eigenvalues, trimmed eigenvalues, and
     unfolded eigenvalues"""
