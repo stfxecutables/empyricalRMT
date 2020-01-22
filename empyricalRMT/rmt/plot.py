@@ -113,6 +113,28 @@ def spacings(
     mode="block",
     outfile: Path = Path("plots/spacings.png"),
 ):
+    """Plots a histogram of the Nearest-Neighbors Spacing Distribution
+
+    Parameters
+    ----------
+    unfolded: np.array
+        the unfolded eigenvalues
+    bins: int
+        the number of (equal-sized) bins to display and use for the histogram
+    kde: boolean
+        If False (default), do not display a kernel density estimate. If true, use
+        [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
+        with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+    title: string
+        The plot title string
+    mode: "block" | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return the matplotlib axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+    """
     spacings = np.sort(unfolded[1:] - unfolded[:-1])
     # Generate expected distributions for classical ensembles
     pi = np.pi
@@ -174,6 +196,8 @@ def spacings(
         print("Saving figure")
         plt.savefig(outfile)
         # plt.clf()
+    elif mode == "return":
+        return axes
     else:
         raise Exception("Invalid plotting mode.")
 
