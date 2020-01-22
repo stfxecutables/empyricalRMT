@@ -28,9 +28,12 @@ class Poisson:
 
 class GOE:
     @staticmethod
-    def spacing_distribution(unfolded: np.array) -> np.array:
+    def spacing_distribution(unfolded: np.array, n_points: int = 1000) -> np.array:
+        """return expected spacings over the range [spacings.min(), spacings.max()], where
+        `spacings` are the spacings calculated from `unfolded`
+        """
         spacings = unfolded[1:] - unfolded[:-1]
-        s = np.linspace(spacings.min(), spacings.max(), 10000)
+        s = np.linspace(spacings.min(), spacings.max(), n_points)
         p = np.pi
         return ((p * s) / 2) * np.exp(-(p / 4) * s * s)
 
