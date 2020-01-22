@@ -51,7 +51,9 @@ DEFAULT_SPLINE_DEGREES = [3]
 
 
 # Morales et al. (2011) DOI: 10.1103/PhysRevE.84.016203
-def test(method="spline", param=9, percent: int = None, title="Default"):
+def test(
+    smoother="poly", degree=DEFAULT_POLY_DEGREE, percent: int = None, title="Default"
+):
     sbn.set(rc={"lines.linewidth": 0.9})
 
     M = np.corrcoef(generateGOEMatrix(400))  # get corr matrix
@@ -59,6 +61,7 @@ def test(method="spline", param=9, percent: int = None, title="Default"):
         raise ValueError("Non-symmetric matrix generated")
     eigs = getEigs(M)  # already sorted ascending
 
+    # TODO: update this
     if method == "spline":
         unfolded = spline(eigs, param, None, percent)
     else:
@@ -404,10 +407,20 @@ class Unfolder:
         return pd.DataFrame(data=arr, columns=col_names_final), all_unfolds
 
     def unfold(
-        self, smoother="poly", degree=9, spline_smooth="heuristic", return_steps=False
+        self,
+        smoother="poly",
+        degree=9,
+        spline_smooth="heuristic",
+        trim=True,
+        return_steps=False,
     ) -> np.array:
-
-        pass
+        unfolded, steps = self.__fit(
+            self.eigs, smoother=smoother, degree=degree, spline_smooth=spline_smooth
+        )
+        self.__unfolded = unfolded
+        if return_steps:
+            return unfolded, steps
+        return unfolded
 
     def __fit(
         self, eigs, smoother="poly", degree=None, spline_smooth=None, steps_only=False

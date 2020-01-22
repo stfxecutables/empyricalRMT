@@ -108,6 +108,7 @@ def spacings(
     spacings: np.array,
     bins=100,
     kde=False,
+    kde_kws={"label": "Kernel Density Estimate"},
     title=None,
     mode="block",
     outfile: Path = Path("plots/spacings.png"),
@@ -121,10 +122,7 @@ def spacings(
         axlabel="spacing (s)",
         color="black",
         label="Empirical Spacing Distribution",
-        kde_kws={
-            "label": "Kernel Density Estimate",
-            # "bw": "silverman"
-        },
+        kde_kws=kde_kws,
     )
     # _, right = plt.xlim()
     # x = np.linspace(0.01, right, 1000)
@@ -182,6 +180,10 @@ def spacings(
 def spectralRigidity(
     unfolded, data, title="Default", mode="block", outfile=Path("plots/rigidity")
 ):
+    """
+    `data` argument is such that:
+        df = pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
+    """
     # L = pd.DataFrame({"L", L})
     # delta3 = pd.DataFrame({"∆3(L)", delta3})
     df = pd.DataFrame(data, columns=["L", "∆3(L)"])
