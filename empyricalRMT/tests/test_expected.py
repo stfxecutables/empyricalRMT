@@ -21,42 +21,7 @@ def test_GOE():
         M = generateGOEMatrix(1000)
         eigs = np.sort(np.linalg.eigvals(M))
         unfolded = Unfolder(eigs).unfold(trim=False)
-        spacings = np.sort(unfolded[1:] - unfolded[:-1])
-        kde = KDE(spacings)
-        kde.fit(kernel="gau", bw="scott", cut=0)
-        plotting_spacings = np.linspace(spacings[0], spacings[-1], len(spacings) - 1)
-        evaluated_kde = np.empty_like(plotting_spacings)
-        for i, s in enumerate(evaluated_kde):
-            evaluated_kde[i] = kde.evaluate(plotting_spacings[i])
-
-        axes = sbn.distplot(
-            spacings,
-            norm_hist=True,
-            bins=20,  # doane
-            kde=True,
-            axlabel="spacing (s)",
-            color="black",
-            label="Empirical Spacing Distribution",
-            kde_kws={
-                "kernel": "gau",
-                "label": "Automatic KDE",
-                "cut": 0,
-                "bw": "scott",
-            },
-        )
-
-        kde_curve = axes.plot(plotting_spacings, evaluated_kde, label="Manual KDE")
-        plt.setp(kde_curve, color="#EA00FF")
-        plt.title("Manual vs. Auto KDE")
-        plt.legend()
-        plt.show()
-
-        # plotSpacings(
-        #     actual,
-        #     bins=25,
-        #     kde=True,
-        #     kde_kws={"kernel": "gau", "label": "KDE", "cut": 0, "bw": "scott"},
-        # )
+        plotSpacings(unfolded, bins=20, kde=True, mode="block")
 
 
 test_GOE()

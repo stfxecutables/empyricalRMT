@@ -6,6 +6,7 @@ import seaborn as sbn
 
 from colorama import Fore, Style
 from pathlib import Path
+from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 
 from ..rmt.eigenvalues import stepFunctionVectorized, trim_largest
 from ..rmt.observables.spacings import computeSpacings
@@ -105,60 +106,60 @@ def unfoldedFit(unfolded: np.array, title="Spline Fit (Default)", block=False):
 
 # this essentially plots the nearest-neighbors spacing distribution
 def spacings(
-    spacings: np.array,
+    unfolded: np.array,
     bins=100,
     kde=False,
-    kde_kws={"label": "Kernel Density Estimate"},
-    title=None,
+    title="Unfolded Spacing Distribution",
     mode="block",
     outfile: Path = Path("plots/spacings.png"),
 ):
-    # print("Computing kernel density estimate")
+    spacings = np.sort(unfolded[1:] - unfolded[:-1])
+    # Generate expected distributions for classical ensembles
+    pi = np.pi
+    s = np.linspace(spacings.min(), spacings.max(), 10000)
+    poisson = np.exp(-s)
+    goe = ((np.pi * s) / 2) * np.exp(-(np.pi / 4) * s * s)
+    gue = (32 / pi ** 2) * (s * s) * np.exp(-(4 * s * s) / pi)
+    gse = (
+        (2 ** 18 / (3 ** 6 * pi ** 3)) * (s ** 4) * np.exp(-((64 / (9 * pi)) * (s * s)))
+    )
+
     axes = sbn.distplot(
         spacings,
         norm_hist=True,
         bins=bins,  # doane
-        kde=kde,
+        kde=False,
+        label="Empirical Spacing Distribution",
         axlabel="spacing (s)",
         color="black",
-        label="Empirical Spacing Distribution",
-        kde_kws=kde_kws,
-    )
-    # _, right = plt.xlim()
-    # x = np.linspace(0.01, right, 1000)
-
-    # print("Computing predicted curves")
-    pi = np.pi
-    # x = np.linspace(spacings.min(), spacings[spacings < 10].max(), 1000)
-    x = np.linspace(spacings.min(), spacings.max(), 10000)
-    poisson = np.exp(-x)
-    goe = ((np.pi * x) / 2) * np.exp(-(np.pi / 4) * x * x)
-    gue = (32 / pi ** 2) * (x * x) * np.exp(-(4 * x * x) / pi)
-    gse = (
-        (2 ** 18 / (3 ** 6 * pi ** 3)) * (x ** 4) * np.exp(-((64 / (9 * pi)) * (x * x)))
     )
 
-    # poisson = plt.plot(x, poisson, label="Poisson")
-    poisson = axes.plot(x, poisson, label="Poisson")
+    # calculate KDE for observed spacings
+    # we are doing this manually because we want to ensure consistecny of the KDE
+    # calculation and remove Seaborn control over the process, while also avoiding
+    # inconsistent behaviours like https://github.com/mwaskom/seaborn/issues/938 and
+    # https://github.com/mwaskom/seaborn/issues/796
+    if kde is True:
+        kde = KDE(spacings)
+        kde.fit(kernel="gau", bw="scott", cut=0)
+        evaluated = np.empty_like(s)
+        for i, _ in enumerate(evaluated):
+            evaluated[i] = kde.evaluate(s[i])
+        kde_curve = axes.plot(s, evaluated, label="Kernel Density Estimate")
+        plt.setp(kde_curve, color="black")
+
+    poisson = axes.plot(s, poisson, label="Poisson")
+    goe = axes.plot(s, goe, label="Gaussian Orthogonal")
+    gue = axes.plot(s, gue, label="Gaussian Unitary")
+    gse = plt.plot(s, gse, label="Gaussian Symplectic")
     plt.setp(poisson, color="#08FD4F")
-
-    # goe = plt.plot(x, goe, label="Gaussian Orthogonal")
-    goe = axes.plot(x, goe, label="Gaussian Orthogonal")
     plt.setp(goe, color="#FD8208")
-
-    gue = axes.plot(x, gue, label="Gaussian Unitary")
     plt.setp(gue, color="#0066FF")
-
-    gse = plt.plot(x, gse, label="Gaussian Symplectic")
     plt.setp(gse, color="#EA00FF")
 
     plt.ylabel("Density p(s)")
-    if title is None:
-        plt.title(f"Spacing Distribution - {title} Unfolding")
-    else:
-        plt.title(title)
+    plt.title(title)
     plt.legend()
-
     # adjusting the right bounds can be necessary when / if there are
     # many large eigenvalue spacings
     axes.set_xlim(left=0, right=np.percentile(spacings, 99))
