@@ -38,11 +38,14 @@ def test_nnsd_mad_msd(capsys):
     def _msd(arr1, arr2):
         return np.mean((arr1 - arr2) ** 2)
 
-    def _evaluate_distances(sizes=[50, 100, 200, 500, 1000, 2000, 4000], **kwargs):
+    def _evaluate_distances(
+        sizes=[50, 100, 200, 500, 1000, 2000, 4000], reps=10, **kwargs
+    ):
         log = []
+        all_msqds = []
         for size in sizes:
             mads, msqds = [], []
-            for i in range(10):
+            for i in range(reps):
                 M = generateGOEMatrix(size)
                 eigs = np.sort(np.linalg.eigvalsh(M))
                 unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
@@ -50,33 +53,137 @@ def test_nnsd_mad_msd(capsys):
                 obs = _get_kde_values(spacings, 10000)
                 exp = expected.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
-                mads.append(mad), msqds.append(msd)
+                mads.append(mad), msqds.append(msd), all_msqds.append(msd)
+
             mean_mad, mean_msqd = np.mean(mads), np.mean(msqds)
 
-            log.append(f"\nDeviations for {size}x{size} GOE matrices:")
-            log.append(f"mean MAD: {mean_mad}, ({np.percentile(mads, [5, 95])})")
-            log.append(f"mean MSqD: {mean_msqd}, ({np.percentile(msqds, [5, 95])})")
-            log.append(f"MAD z-score: {mean_mad / np.std(mads, ddof=1)}")
-            log.append(f"MSqD z-score: {mean_msqd / np.std(msqds, ddof=1)}")
+            mad_z = mean_mad / np.std(mads, ddof=1)
+            msqd_z = mean_msqd / np.std(msqds, ddof=1)
+            mad_perc = np.percentile(mads, [5, 95])
+            msqd_perc = np.percentile(msqds, [5, 95])
+            msqds = np.array(msqds)
+            msqds_below_threshold = len(msqds[msqds <= 0.01]) / len(msqds)
 
+            log.append(f"\nDeviations for {size}x{size} GOE matrices:")
+            log.append(
+                "mean MAD:  {:06.5f}, [{:06.5f},{:06.5f}]: z == {:04.3f}".format(
+                    mean_mad, mad_perc[0], mad_perc[1], mad_z
+                )
+            )
+            log.append(
+                "mean MSqD: {:06.5f}, [{:06.5f},{:06.5f}]: z == {:06.5f}".format(
+                    mean_msqd, msqd_perc[0], msqd_perc[1], msqd_z
+                )
+            )
+            log.append(
+                "Percent identified as GOE: {:03.1f}".format(
+                    100 * msqds_below_threshold
+                )
+            )
+        all_msqds = np.array(all_msqds)
+        all_msqds_below_threshold = len(all_msqds[all_msqds <= 0.01]) / len(all_msqds)
+        log.append(f"{'-'*80}")
+        log.append(
+            "Percent identified as GOE across sizes: {:03.1f}".format(
+                100 * all_msqds_below_threshold
+            )
+        )
+        log.append(f"{'-'*80}")
+
+        # compare to eigenvalues randomly selected from a uniform distribution
+        all_msqds = []
         for size in sizes:
             mads, msqds = [], []
-            for i in range(10):
+            for i in range(reps):
                 eigs = np.sort(np.random.uniform(-1, 1, size))
                 unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
                 spacings = unfolded[1:] - unfolded[:-1]
                 obs = _get_kde_values(spacings, 10000)
                 exp = expected.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
-                mads.append(mad), msqds.append(msd)
+                mads.append(mad), msqds.append(msd), all_msqds.append(msd)
             mean_mad, mean_msqd = np.mean(mads), np.mean(msqds)
 
-            log.append(f"\nDeviations for {size}x{size} Standard Uniform matrices:")
-            log.append(f"\nDeviations for {size}x{size} square GOE matrices:")
-            log.append(f"mean MAD: {mean_mad}, ({np.percentile(mads, [5, 95])})")
-            log.append(f"mean MSqD: {mean_msqd}, ({np.percentile(msqds, [5, 95])})")
-            log.append(f"MAD z-score: {mean_mad / np.std(mads, ddof=1)}")
-            log.append(f"MSqD z-score: {mean_msqd / np.std(msqds, ddof=1)}")
+            mad_z = mean_mad / np.std(mads, ddof=1)
+            msqd_z = mean_msqd / np.std(msqds, ddof=1)
+            mad_perc = np.percentile(mads, [5, 95])
+            msqd_perc = np.percentile(msqds, [5, 95])
+            msqds = np.array(msqds)
+            msqds_below_threshold = len(msqds[msqds <= 0.01]) / len(msqds)
+
+            log.append(f"\nDeviations for {size} eigenvalues from U(-1, 1):")
+            log.append(
+                "mean MAD:  {:06.5f}, [{:06.5f},{:06.5f}]: z == {:04.3f}".format(
+                    mean_mad, mad_perc[0], mad_perc[1], mad_z
+                )
+            )
+            log.append(
+                "mean MSqD: {:06.5f}, [{:06.5f},{:06.5f}]: z == {:06.5f}".format(
+                    mean_msqd, msqd_perc[0], msqd_perc[1], msqd_z
+                )
+            )
+            log.append(
+                "Percent identified as GOE: {:03.1f}".format(
+                    100 * msqds_below_threshold
+                )
+            )
+        all_msqds = np.array(all_msqds)
+        all_msqds_below_threshold = len(all_msqds[all_msqds <= 0.01]) / len(all_msqds)
+        log.append(f"{'-'*80}")
+        log.append(
+            "Percent random uniform eigenvalues identified as from GOE across sizes: {:03.1f}".format(
+                100 * all_msqds_below_threshold
+            )
+        )
+        log.append(f"{'-'*80}")
+
+        # compare to eigenvalues randomly selected from a standard normal distribution
+        all_msqds = []
+        for size in sizes:
+            mads, msqds = [], []
+            for i in range(reps):
+                eigs = np.sort(np.random.standard_normal(size))
+                unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
+                spacings = unfolded[1:] - unfolded[:-1]
+                obs = _get_kde_values(spacings, 10000)
+                exp = expected.GOE.spacing_distribution(unfolded, 10000)
+                mad, msd = _mad(obs, exp), _msd(obs, exp)
+                mads.append(mad), msqds.append(msd), all_msqds.append(msd)
+            mean_mad, mean_msqd = np.mean(mads), np.mean(msqds)
+
+            mad_z = mean_mad / np.std(mads, ddof=1)
+            msqd_z = mean_msqd / np.std(msqds, ddof=1)
+            mad_perc = np.percentile(mads, [5, 95])
+            msqd_perc = np.percentile(msqds, [5, 95])
+            msqds = np.array(msqds)
+            msqds_below_threshold = len(msqds[msqds <= 0.01]) / len(msqds)
+
+            log.append(f"\nDeviations for {size} eigenvalues from N(0, 1):")
+            log.append(
+                "mean MAD:  {:06.5f}, [{:06.5f},{:06.5f}]: z == {:04.3f}".format(
+                    mean_mad, mad_perc[0], mad_perc[1], mad_z
+                )
+            )
+            log.append(
+                "mean MSqD: {:06.5f}, [{:06.5f},{:06.5f}]: z == {:06.5f}".format(
+                    mean_msqd, msqd_perc[0], msqd_perc[1], msqd_z
+                )
+            )
+            log.append(
+                "Percent identified as GOE: {:03.1f}".format(
+                    100 * msqds_below_threshold
+                )
+            )
+        all_msqds = np.array(all_msqds)
+        all_msqds_below_threshold = len(all_msqds[all_msqds <= 0.01]) / len(all_msqds)
+        log.append(f"{'-'*80}")
+        log.append(
+            "Percent random standard normal eigenvalues identified as from GOE across sizes: {:03.1f}".format(
+                100 * all_msqds_below_threshold
+            )
+        )
+        log.append(f"{'-'*80}")
+
         return log
 
     degrees = [5, 7, 9, 11]
@@ -85,7 +192,7 @@ def test_nnsd_mad_msd(capsys):
             print(
                 f"\n{'='*80}\nComputing distances for polynomial degree {degree}\n{'='*80}"
             )
-            log = _evaluate_distances(degree=degree)
+            log = _evaluate_distances(degree=degree, reps=2)
             for line in log:
                 print(line)
     for smoothing in np.linspace(1, 2, num=5):
@@ -94,15 +201,13 @@ def test_nnsd_mad_msd(capsys):
                 f"\n{'='*80}\nComputing distances for splines with smoothing {smoothing}\n{'='*80}"
             )
             log = _evaluate_distances(
-                degree=3, smoother="spline", spline_smooth=smoothing
+                degree=3, reps=2, smoother="spline", spline_smooth=smoothing
             )
             for line in log:
                 print(line)
     with capsys.disabled():
-        print(
-            f"\n{'='*80}\nComputing distances for gompertz function {smoothing}\n{'='*80}"
-        )
-        log = _evaluate_distances(smoother="gompertz")
+        print(f"\n{'='*80}\nComputing distances for gompertz smoother\n{'='*80}")
+        log = _evaluate_distances(smoother="gompertz", reps=2)
         for line in log:
             print(line)
 
