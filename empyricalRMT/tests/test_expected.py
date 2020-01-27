@@ -1,5 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import pytest
+import seaborn as sbn
 
 from scipy.stats import ks_2samp, kstest
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
@@ -212,7 +214,7 @@ def test_nnsd_mad_msd(capsys):
             print(line)
 
 
-def test_nnsd_kolmogorov(capsys=None):
+def test_nnsd_kolmogorov(capsys):
     """To compare an observed NNSD to the expected NNSDs, we should not only
     perform a two-sample Kolmogorov-Smirnov test, but also simply measure the distances
     between the observed and expected distribution values.
@@ -224,39 +226,93 @@ def test_nnsd_kolmogorov(capsys=None):
     to be GOE. So we need to generate some example GOE data and see what the KS tests and
     various mean distance functions look like.
     """
-    raise NotImplementedError("Python kstest implementations are terrible")
+    sizes = [50, 100, 200, 500, 1000, 2000, 4000]
+    goe_eigs = [np.sort(np.linalg.eigvalsh(generateGOEMatrix(size))) for size in sizes]
+    goe_unfolded = [Unfolder(eigs).unfold(trim=False) for eigs in goe_eigs]
+    goe_spacings = np.array([unfolded[1:] - unfolded[:-1] for unfolded in goe_unfolded])
 
-    def get_kde_values(spacings: np.array, n_points: int = 1000) -> np.array:
-        spacings = np.sort(spacings)
-        kde = KDE(spacings)
-        kde.fit(kernel="gau", bw="scott", cut=0, fft=False, gridsize=n_points)
-        s = np.linspace(spacings[0], spacings[-1], n_points)
-        # evaluated = np.empty_like(s)
-        # for i, _ in enumerate(evaluated):
-        #     evaluated[i] = kde.evaluate(s[i])
-        # return evaluated
-        return kde.cdf
+    def _compute_ks(reps=10, **unfold_kwargs) -> [str]:
+        log = []
+        for i, size in enumerate(sizes):
+            # compare to uniformly distributed eigenvalues
+            stats, p_vals = [], []
+            for _ in range(reps):
+                eigs = np.sort(np.random.uniform(-1, 1, size))
+                unfolded = Unfolder(eigs).unfold(trim=False, **unfold_kwargs)
+                compare_spacings = unfolded[1:] - unfolded[:-1]
+                goe = goe_spacings[i]
+                D, p_val = ks_2samp(compare_spacings, goe)
+                stats.append(D), p_vals.append(1000 * p_val)
+                plotSpacings(unfolded, bins=20, kde=True, title=f"{size} uniformly-distributed eigens")
+            mean_d, mean_p = np.mean(stats), np.mean(p_vals)
+            d_perc = np.percentile(stats, [5, 95])
+            p_perc = np.percentile(p_vals, [5, 95])
+            log.append(
+                f"\nComparing {size} U(-1, 1) eigenvalues to ({size}x{size}) GOE spacings"
+            )
+            log.append(
+                "Mean D_n:   {:05.3f} [{:05.3f},{:05.3f}]".format(
+                    mean_d, d_perc[0], d_perc[1]
+                )
+            )
+            log.append(
+                "Mean p-val (x1000): {:05.3f} [{:05.3f},{:05.3f}]".format(
+                    mean_p, p_perc[0], p_perc[1]
+                )
+            )
 
-    sizes = [50, 100, 200, 500, 1000, 2000]
-    for size in sizes:
-        ks_vals = []
-        for i in range(10):
-            M = generateGOEMatrix(size)
-            eigs = np.sort(np.linalg.eigvals(M))
-            unfolded = Unfolder(eigs).unfold(trim=False)
-            spacings = unfolded[1:] - unfolded[:-1]
-            # density_obs = get_kde_values(spacings, 1000)
-            density_exp = expected.GOE.spacing_distribution(unfolded, 1000)
-            # rvs = lambda: density_exp  # workaround for terrible implementation
-            cdf = lambda x: get_kde_values(spacings)
-            rvs = lambda **kwargs: spacings
-            ks_vals.append(kstest(rvs, cdf, N=len(spacings)))
-            # ks_vals.append(ks_2samp(density_obs, density_exp))
-            # ks_vals.append(kstest(density_obs, density_exp))
-        # with capsys.disabled():
-        #     print(f"KS-test values observed for square GOE matrix of size {size}:")
-        #     for val in ks_vals:
-        #         print(val)
+        for i, size in enumerate(sizes):
+            # compare to standard normally distributed eigenvalues (poisson)
+            stats, p_vals = [], []
+            for _ in range(reps):
+                eigs = np.sort(np.random.standard_normal(size))
+                unfolded = Unfolder(eigs).unfold(trim=False, **unfold_kwargs)
+                compare_spacings = unfolded[1:] - unfolded[:-1]
+                goe = goe_spacings[i]
+                D, p_val = ks_2samp(compare_spacings, goe)
+                stats.append(D), p_vals.append(p_val * 1000)
+                plotSpacings(unfolded, bins=20, kde=True, title=f"{size} normally-distributed eigens")
 
-    pass
+            mean_d, mean_p = np.mean(stats), np.mean(p_vals)
+            d_perc = np.percentile(stats, [5, 95])
+            p_perc = np.percentile(p_vals, [5, 95])
+            log.append(
+                f"\nComparing {size} N(0, 1) eigenvalues to ({size}x{size}) GOE spacings"
+            )
+            log.append(
+                "Mean D_n:   {:05.3f} [{:05.3f},{:05.3f}]".format(
+                    mean_d, d_perc[0], d_perc[1]
+                )
+            )
+            log.append(
+                "Mean p-val (x1000): {:05.3f} [{:05.3f},{:05.3f}]".format(
+                    mean_p, p_perc[0], p_perc[1]
+                )
+            )
+        return log
 
+    degrees = [5, 7, 9, 11]
+    reps = 2
+    for degree in degrees:
+        with capsys.disabled():
+            print(
+                f"\n{'='*80}\nComputing KS-tests for polynomial degree {degree}\n{'='*80}"
+            )
+            log = _compute_ks(degree=degree, reps=reps)
+            for line in log:
+                print(line)
+    for smoothing in np.linspace(1, 2, num=5):
+        with capsys.disabled():
+            print(
+                f"\n{'='*80}\nComputing KS-tests for splines with smoothing {smoothing}\n{'='*80}"
+            )
+            log = _compute_ks(
+                degree=3, reps=reps, smoother="spline", spline_smooth=smoothing
+            )
+            for line in log:
+                print(line)
+    with capsys.disabled():
+        print(f"\n{'='*80}\nComputing KS-tests for gompertz smoother\n{'='*80}")
+        log = _compute_ks(smoother="gompertz", reps=reps)
+        for line in log:
+            print(line)
