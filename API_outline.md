@@ -1,3 +1,8 @@
+# Folder Structure
+
+To be decided.
+
+
 # Actual "Objects" in RMT
 
 ## Helper Class
@@ -62,13 +67,14 @@ class Unfolded(RawEigs):
 
 ```python
 class Ensemble:
-    .GOE
-    .GUE
-    .GSE
-    .GDE / Poisson
-    .m-GOE (GOE with m blocks)
-        .generate_eigs(unfold: boolean) -> Eigenvalues | Unfolded
-        .nnsd()                         -> np.array
-        .spectral_rigidity()            -> np.array
-        .level_variance()               -> np.array
+    .generate_eigs(unfold: boolean) -> Eigenvalues | Unfolded
+    .nnsd()                         -> np.array
+    .spectral_rigidity()            -> np.array
+    .level_variance()               -> np.array
+
+class GOE(Ensemble):
+class GUE(Ensemble):
+class GSE(Ensemble):
+class GDE(Ensemble):
+class m_GOE(Ensemble): # m GOE blocks
 ```
