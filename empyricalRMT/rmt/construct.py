@@ -24,6 +24,34 @@ def newEigs(matsize, mean=0, sd=1, kind="goe"):
     return eigs
 
 
+def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100):
+    """Use independence and fact that eigvalsh is bottleneck to more quickly generate
+    eigenvalues. E.g. if matsize == 1024, sub_matsize == 100, generate 10 (100x100)
+    matrices and one (24x24) matrix, can concatenate the resultant eigenvalues.
+    Parameters
+    ----------
+    matsize: int
+        the desired size of the square matrix, or number of eigenvalues
+    sub_matsize: int
+        the size of the smaller matrices to use to speed eigenvalue calculation
+    """
+    if matsize < 100:
+        return newEigs(matsize, kind="goe")
+    if sub_matsize >= matsize:
+        raise ValueError("Submatrices must be smaller in order to speed calculation.")
+    n_submats = int(matsize / sub_matsize)
+    last_matsize = matsize % sub_matsize
+    eigs_submats = np.empty([n_submats, sub_matsize])
+    for i in range(n_submats):
+        M = generateGOEMatrix(size=sub_matsize)
+        sub_eigs = np.linalg.eigvalsh(M)
+        eigs_submats[i, :] = sub_eigs
+    eigs_remain = np.linalg.eigvalsh(generateGOEMatrix(size=last_matsize))
+    eigs = list(eigs_submats.flatten()) + list(eigs_remain)
+    eigs = np.sort(eigs)
+    return eigs
+
+
 def generateUniform(matsize=1000, lower=0, upper=1):
     pass
 
