@@ -63,4 +63,4 @@ def test_spectral_rigidity(
         unfolded, eigs, c_iters=2000, L_grid_size=100, min_L=0.5, max_L=25
     )
     df = pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
-    plotSpectral(unfolded, df, f"{kind.upper()} Matrix", mode="block")
+    plotSpectral(unfolded, df, title=f"{kind.upper()} Matrix", mode="block")

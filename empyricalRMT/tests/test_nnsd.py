@@ -4,7 +4,6 @@ from pathlib import Path
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.plot import rawEigDist
-from empyricalRMT.rmt.plot import spacings as plotSpacings
 from empyricalRMT.utils import eprint
 
 CUR_DIR = Path(__file__).parent
@@ -39,16 +38,4 @@ def test_semicircle(matsize=1000, neweigs=False, eigs=None):
         pass  # use passed in eigenvalues
     else:
         eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
-    rawEigDist(eigs, bins=100, title="Wigner Semicircle", block=True)
-
-
-def test_nnsd(matsize=10000, neweigs=False, eigs=None, kind="goe"):
-    if eigs is not None:
-        pass  # use passed in eigenvalues
-    else:
-        eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
-    spacings = eigs[1:] - eigs[:-1]
-    D = np.mean(spacings)
-    s = spacings / D
-
-    plotSpacings(s, kde=True, title=f"NNSD of {kind.upper()} N={matsize} Matrix")
+    rawEigDist(eigs, bins=100, title="Wigner Semicircle", kde=False, mode="block")

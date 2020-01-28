@@ -11,4 +11,3 @@ def test_fast_poisson():
         eigs = fast_poisson_eigs(5000)
         unfolded = Unfolder(eigs).unfold(trim=False)
         plotSpacings(unfolded, bins=20, kde=True, mode="block")
-
