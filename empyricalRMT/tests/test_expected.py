@@ -6,7 +6,7 @@ import seaborn as sbn
 from scipy.stats import ks_2samp, kstest
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 
-import empyricalRMT.rmt.expected as expected
+import empyricalRMT.rmt.ensemble as ensemble
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.plot import spacings as plotSpacings
@@ -53,7 +53,7 @@ def test_nnsd_mad_msd(capsys):
                 unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
                 spacings = unfolded[1:] - unfolded[:-1]
                 obs = _get_kde_values(spacings, 10000)
-                exp = expected.GOE.spacing_distribution(unfolded, 10000)
+                exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
                 mads.append(mad), msqds.append(msd), all_msqds.append(msd)
 
@@ -101,7 +101,7 @@ def test_nnsd_mad_msd(capsys):
                 unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
                 spacings = unfolded[1:] - unfolded[:-1]
                 obs = _get_kde_values(spacings, 10000)
-                exp = expected.GOE.spacing_distribution(unfolded, 10000)
+                exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
                 mads.append(mad), msqds.append(msd), all_msqds.append(msd)
             mean_mad, mean_msqd = np.mean(mads), np.mean(msqds)
@@ -148,7 +148,7 @@ def test_nnsd_mad_msd(capsys):
                 unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
                 spacings = unfolded[1:] - unfolded[:-1]
                 obs = _get_kde_values(spacings, 10000)
-                exp = expected.GOE.spacing_distribution(unfolded, 10000)
+                exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
                 mads.append(mad), msqds.append(msd), all_msqds.append(msd)
             mean_mad, mean_msqd = np.mean(mads), np.mean(msqds)
@@ -243,7 +243,12 @@ def test_nnsd_kolmogorov(capsys):
                 goe = goe_spacings[i]
                 D, p_val = ks_2samp(compare_spacings, goe)
                 stats.append(D), p_vals.append(1000 * p_val)
-                plotSpacings(unfolded, bins=20, kde=True, title=f"{size} uniformly-distributed eigens")
+                plotSpacings(
+                    unfolded,
+                    bins=20,
+                    kde=True,
+                    title=f"{size} uniformly-distributed eigens",
+                )
             mean_d, mean_p = np.mean(stats), np.mean(p_vals)
             d_perc = np.percentile(stats, [5, 95])
             p_perc = np.percentile(p_vals, [5, 95])
@@ -271,7 +276,12 @@ def test_nnsd_kolmogorov(capsys):
                 goe = goe_spacings[i]
                 D, p_val = ks_2samp(compare_spacings, goe)
                 stats.append(D), p_vals.append(p_val * 1000)
-                plotSpacings(unfolded, bins=20, kde=True, title=f"{size} normally-distributed eigens")
+                plotSpacings(
+                    unfolded,
+                    bins=20,
+                    kde=True,
+                    title=f"{size} normally-distributed eigens",
+                )
 
             mean_d, mean_p = np.mean(stats), np.mean(p_vals)
             d_perc = np.percentile(stats, [5, 95])

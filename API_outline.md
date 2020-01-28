@@ -28,21 +28,23 @@ class EigVals:
 ```python
 class Eigenvalues(EigVals):
     .trim()                     -> Trimmed
-    .trim_manual()              -> Trimmed
+    .trim_manually()            -> Trimmed
+    .trim_interactively()       -> Trimmed
     .trim_unfold()              -> Unfolded
     .unfold(smoother: Smoother) -> Unfolded
 ```
 
 ## Trimmed
 
+Doesn't make sense to keep trimmming, trimming should be an operation that is
+only done once, and on the original eigenvalues. We can enforce this by removing
+trimming methods on Trimmed objects.
+
 ```python
-class Trimmed(Eigenvalues):
-    .trim_report()              -> pd.DataFrame
-    .trim_indices()             -> (int, int)
+class Trimmed(EigVals):
+    .trim_report                -> pd.DataFrame
+    .trim_indices               -> (int, int)
     .plot_trimmed()             -> Axes
-    .trim()                     -> Trimmed
-    .trim_manual()              -> Trimmed
-    .trim_unfold()              -> Unfolded
     .unfold()                   -> Unfolded
 ```
 
