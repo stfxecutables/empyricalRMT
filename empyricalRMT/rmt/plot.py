@@ -8,9 +8,9 @@ from colorama import Fore, Style
 from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 
-from ..rmt.eigenvalues import stepFunctionVectorized, trim_largest
-from ..rmt.observables.spacings import computeSpacings
-from ..utils import make_parent_directories
+from empyricalRMT.rmt._eigvals import stepFunctionVectorized, trim_largest
+from empyricalRMT.rmt.observables.spacings import computeSpacings
+from empyricalRMT.utils import make_parent_directories
 
 RESET = Style.RESET_ALL
 

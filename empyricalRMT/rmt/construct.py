@@ -1,7 +1,6 @@
 import numpy as np
 
-from ..rmt.eigenvalues import getEigs
-from ..utils import eprint
+from empyricalRMT.utils import eprint
 
 
 def newEigs(matsize, mean=0, sd=1, kind="goe"):

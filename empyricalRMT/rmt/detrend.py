@@ -2,7 +2,7 @@ import numpy as np
 
 from PyEMD import EMD
 
-from ..rmt.observables.spacings import computeSpacings
+from empyricalRMT.rmt.observables.spacings import computeSpacings
 
 # detrended unfolding via the Empirical Mode Decomposition and first
 # intrinsic mode function

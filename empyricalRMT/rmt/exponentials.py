@@ -5,7 +5,7 @@ import seaborn as sbn
 from numba import jit
 from scipy.optimize import curve_fit
 
-from empyricalRMT.rmt.eigenvalues import stepFunctionVectorized
+from empyricalRMT.rmt._eigvals import stepFunctionVectorized
 
 
 @jit(nopython=True, fastmath=True)

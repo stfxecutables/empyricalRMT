@@ -5,11 +5,11 @@ from pathlib import Path
 
 import empyricalRMT.rmt.unfold as unfold
 
-from ..rmt.construct import generateGOEMatrix
-from ..rmt.eigenvalues import trim_iteratively
-from ..rmt.observables.levelvariance import sigmaSquared
-from ..rmt.plot import levelNumberVariance
-from ..utils import eprint
+from empyricalRMT.rmt.construct import generateGOEMatrix
+from empyricalRMT.rmt._eigvals import trim_iteratively
+from empyricalRMT.rmt.observables.levelvariance import sigmaSquared
+from empyricalRMT.rmt.plot import levelNumberVariance
+from empyricalRMT.utils import eprint
 
 CUR_DIR = Path(__file__).parent
 

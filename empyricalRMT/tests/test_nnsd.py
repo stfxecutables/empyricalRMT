@@ -2,11 +2,10 @@ import numpy as np
 
 from pathlib import Path
 
-from ..rmt.construct import generateGOEMatrix
-from ..rmt.eigenvalues import trim_iteratively
-from ..rmt.plot import rawEigDist
-from ..rmt.plot import spacings as plotSpacings
-from ..utils import eprint
+from empyricalRMT.rmt.construct import generateGOEMatrix
+from empyricalRMT.rmt.plot import rawEigDist
+from empyricalRMT.rmt.plot import spacings as plotSpacings
+from empyricalRMT.utils import eprint
 
 CUR_DIR = Path(__file__).parent
 

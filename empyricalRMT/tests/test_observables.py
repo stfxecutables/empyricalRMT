@@ -1,9 +1,9 @@
 import numpy as np
 
-from ..rmt.construct import generateGOEMatrix, generatePoisson
-from ..tests.test_levelvar import test_levelvariance
-from ..tests.test_spectral import test_spectral_rigidity
-from ..tests.test_nnsd import test_nnsd, test_semicircle
+from empyricalRMT.rmt.construct import generateGOEMatrix, generatePoisson
+from empyricalRMT.tests.test_levelvar import test_levelvariance
+from empyricalRMT.tests.test_spectral import test_spectral_rigidity
+from empyricalRMT.tests.test_nnsd import test_nnsd, test_semicircle
 
 
 def generateUniform(matsize=1000, lower=0, upper=1):

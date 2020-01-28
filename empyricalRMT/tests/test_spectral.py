@@ -7,11 +7,10 @@ import empyricalRMT.rmt.unfold as unfold
 import empyricalRMT.rmt.plot
 import empyricalRMT.rmt as rmt
 
-from ..rmt.construct import generateGOEMatrix
-from ..rmt.eigenvalues import trim_iteratively
-from ..rmt.observables.rigidity import spectralRigidity
-from ..rmt.plot import spectralRigidity as plotSpectral
-from ..utils import eprint
+from empyricalRMT.rmt.construct import generateGOEMatrix
+from empyricalRMT.rmt.observables.rigidity import spectralRigidity
+from empyricalRMT.rmt.plot import spectralRigidity as plotSpectral
+from empyricalRMT.utils import eprint
 
 CUR_DIR = Path(__file__).parent
 

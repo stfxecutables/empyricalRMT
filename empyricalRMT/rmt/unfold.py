@@ -28,12 +28,12 @@ from scipy.optimize import curve_fit
 from warnings import warn
 
 
-from ..rmt.construct import generateGOEMatrix
-from ..rmt.detrend import emd_detrend
-from ..rmt.eigenvalues import stepFunctionVectorized
-from ..rmt.exponentials import gompertz
-from ..rmt.observables.spacings import computeSpacings
-from ..rmt.plot import setup_plotting
+from empyricalRMT.rmt.construct import generateGOEMatrix
+from empyricalRMT.rmt.detrend import emd_detrend
+from empyricalRMT.rmt._eigvals import stepFunctionVectorized
+from empyricalRMT.rmt.exponentials import gompertz
+from empyricalRMT.rmt.observables.spacings import computeSpacings
+from empyricalRMT.rmt.plot import setup_plotting
 
 # from utils import eprint
 from ..utils import find_first, find_last, is_symmetric, mkdirp
