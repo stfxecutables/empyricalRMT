@@ -14,15 +14,23 @@ from empyricalRMT.rmt.unfold import Unfolder
 
 
 @pytest.mark.plot
+@pytest.mark.fast
 def test_GOE():
     for i in range(1):
         M = generateGOEMatrix(1000)
         eigs = np.sort(np.linalg.eigvals(M))
         unfolded = Unfolder(eigs).unfold(trim=False)
-        plotSpacings(unfolded, bins=20, kde=True, mode="block")
+        plotSpacings(
+            unfolded,
+            title="Generate GOE spacing plot test",
+            bins=20,
+            kde=True,
+            mode="block",
+        )
 
 
 @pytest.mark.expected
+@pytest.mark.slow
 def test_nnsd_mad_msd(capsys):
     def _get_kde_values(spacings: np.array, n_points: int = 1000) -> np.array:
         spacings = np.sort(spacings)
@@ -214,6 +222,7 @@ def test_nnsd_mad_msd(capsys):
             print(line)
 
 
+@pytest.mark.slow
 def test_nnsd_kolmogorov(capsys):
     """To compare an observed NNSD to the expected NNSDs, we should not only
     perform a two-sample Kolmogorov-Smirnov test, but also simply measure the distances

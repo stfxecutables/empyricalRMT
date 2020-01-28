@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from pathlib import Path
 
@@ -33,9 +34,10 @@ def newEigs(matsize):
     return eigs
 
 
+@pytest.mark.fast
 def test_semicircle(matsize=1000, neweigs=False, eigs=None):
     if eigs is not None:
         pass  # use passed in eigenvalues
     else:
         eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
-    rawEigDist(eigs, bins=100, title="Wigner Semicircle", kde=False, mode="block")
+    rawEigDist(eigs, bins=100, title="Wigner Semicircle PLotting Test", kde=False, mode="block")

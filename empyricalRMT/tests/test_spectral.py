@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from pathlib import Path
 
@@ -40,27 +41,25 @@ def newEigs(matsize):
     return eigs
 
 
+@pytest.mark.fast
 def test_spectral_rigidity(
-    matsize=1000,
-    neweigs=True,
-    eigs=None,
-    plot_step=False,
-    unfold_degree=None,
-    kind="goe",
+    matsize=1000, plot_step=False, unfold_degree=None, kind="goe"
 ):
-    unfolded = None
-    if eigs is not None:
-        pass
-        unfolded = unfold.polynomial(eigs, 11)
-    else:
-        eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
-        unfolded = unfold.polynomial(eigs, 11)
+    eigs = newEigs(matsize)
+    unfolded = unfold.Unfolder(eigs).unfold(trim=False)
 
     if plot_step:
-        rmt.plot.stepFunction(eigs, trim=False, block=True)
+        rmt.plot.stepFunction(
+            eigs, trim=False, mode="block", title="Spectral Rigidity Step Function Test"
+        )
 
     L_vals, delta3 = spectralRigidity(
         unfolded, eigs, c_iters=2000, L_grid_size=100, min_L=0.5, max_L=25
     )
     df = pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
-    plotSpectral(unfolded, df, title=f"{kind.upper()} Matrix", mode="block")
+    plotSpectral(
+        unfolded,
+        df,
+        title=f"{kind.upper()} Matrix Spectral Rigidity Plot test",
+        mode="block",
+    )

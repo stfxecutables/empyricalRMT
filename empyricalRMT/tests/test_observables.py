@@ -1,9 +1,10 @@
 import numpy as np
+import pytest
 
 from empyricalRMT.rmt.construct import generateGOEMatrix, generatePoisson
 from empyricalRMT.tests.test_levelvar import test_levelvariance
 from empyricalRMT.tests.test_spectral import test_spectral_rigidity
-from empyricalRMT.tests.test_nnsd import test_nnsd, test_semicircle
+from empyricalRMT.tests.test_nnsd import test_semicircle
 
 
 def generateUniform(matsize=1000, lower=0, upper=1):
@@ -30,57 +31,48 @@ def newEigs(matsize, mean=0, sd=1, kind="goe"):
     return eigs
 
 
+@pytest.mark.old
 def test_observables(
-    matsize=1000,
-    iters=2,
-    semicircle=True,
-    nnsd=True,
-    rigidity=True,
-    levelvar=True,
-    kind="goe",
+    matsize=1000, iters=1, semicircle=True, rigidity=True, levelvar=True, kind="goe"
 ):
-    if not semicircle and not nnsd and not rigidity and not levelvar:
+    if not semicircle and not rigidity and not levelvar:
         raise ValueError("Must test at least one observable")
-    for _ in range(2):
+    for _ in range(iters):
         eigs = newEigs(matsize, kind=kind)
         if semicircle:
             test_semicircle(1000, eigs=eigs)
-        if nnsd:
-            test_nnsd(1000, eigs=eigs, kind=kind)
         if rigidity:
             test_spectral_rigidity(1000, eigs=eigs, kind=kind)
         if levelvar:
             test_levelvariance(1000, eigs=eigs, kind=kind)
 
 
+@pytest.mark.old
 def test_poisson_observables(
-    matsize=1000, iters=2, semicircle=True, nnsd=True, rigidity=True, levelvar=True
+    matsize=1000, iters=1, semicircle=True, rigidity=True, levelvar=True
 ):
-    if not semicircle and not nnsd and not rigidity and not levelvar:
+    if not semicircle and not rigidity and not levelvar:
         raise ValueError("Must test at least one observable")
-    for _ in range(2):
+    for _ in range(iters):
         eigs = newEigs(matsize, kind="poisson")
         if semicircle:
             test_semicircle(1000, eigs=eigs)
-        if nnsd:
-            test_nnsd(1000, eigs=eigs)
         if rigidity:
             test_spectral_rigidity(1000, eigs=eigs)
         if levelvar:
             test_levelvariance(1000, eigs=eigs)
 
 
+@pytest.mark.old
 def test_uniform_observables(
-    matsize=1000, iters=2, semicircle=True, nnsd=True, rigidity=True, levelvar=True
+    matsize=1000, iters=1, semicircle=True, rigidity=True, levelvar=True
 ):
-    if not semicircle and not nnsd and not rigidity and not levelvar:
+    if not semicircle and not rigidity and not levelvar:
         raise ValueError("Must test at least one observable")
-    for _ in range(2):
+    for _ in range(iters):
         eigs = newEigs(matsize, poisson=True)
         if semicircle:
             test_semicircle(1000, eigs=eigs)
-        if nnsd:
-            test_nnsd(1000, eigs=eigs)
         if rigidity:
             test_spectral_rigidity(1000, eigs=eigs)
         if levelvar:

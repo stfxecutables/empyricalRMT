@@ -8,6 +8,7 @@ from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.unfold import Unfolder
 
 
+@pytest.mark.fast
 @pytest.mark.unfolder
 def test_unfold_init():
     M = generateGOEMatrix(2000)
@@ -17,6 +18,7 @@ def test_unfold_init():
     assert np.alltrue(unfolder.eigenvalues == eigs)
 
 
+@pytest.mark.fast
 @pytest.mark.trim
 def test_trim_manual():
     M = generateGOEMatrix(2000)
@@ -31,6 +33,7 @@ def test_trim_manual():
         assert np.allclose(raw_trimmed, unfolder.trimmed)
 
 
+@pytest.mark.fast
 @pytest.mark.trim
 @pytest.mark.unfolder
 def test_trim_reports():

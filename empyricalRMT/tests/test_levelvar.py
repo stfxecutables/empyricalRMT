@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from pathlib import Path
 
 import empyricalRMT.rmt.unfold as unfold
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
-from empyricalRMT.rmt._eigvals import trim_iteratively
 from empyricalRMT.rmt.observables.levelvariance import sigmaSquared
 from empyricalRMT.rmt.plot import levelNumberVariance
 from empyricalRMT.utils import eprint
@@ -39,17 +39,10 @@ def newEigs(matsize):
     return eigs
 
 
-def test_levelvariance(matsize=1000, neweigs=True, eigs=None, kind="goe"):
-    unfolded = None
-    if eigs is not None:
-        unfolded = unfold.polynomial(
-            eigs, 11, 10000
-        )  # eigs are GOE, so we don't need to unfold
-    else:
-        eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
-        unfolded = unfold.polynomial(
-            eigs, 11, 10000
-        )  # eigs are GOE, so we don't need to unfold
+@pytest.mark.fast
+def test_levelvariance(matsize=1000, kind="goe"):
+    eigs = newEigs(matsize)
+    unfolded = unfold.Unfolder(eigs).unfold(degree=11)
 
     L_grid, sigma_sq = sigmaSquared(
         eigs, unfolded, c_iters=1000, L_grid_size=100, min_L=0.5, max_L=20
