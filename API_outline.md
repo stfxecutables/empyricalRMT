@@ -36,10 +36,13 @@ class Eigenvalues(EigVals):
 ## Trimmed
 
 ```python
-class Trimmed(EigVals):
+class Trimmed(Eigenvalues):
     .trim_report()              -> pd.DataFrame
     .trim_indices()             -> (int, int)
     .plot_trimmed()             -> Axes
+    .trim()                     -> Trimmed
+    .trim_manual()              -> Trimmed
+    .trim_unfold()              -> Unfolded
     .unfold()                   -> Unfolded
 ```
 
