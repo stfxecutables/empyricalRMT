@@ -24,6 +24,34 @@ def rawEigDist(
     mode="block",
     outfile: Path = None,
 ):
+    """Plot a histogram of the raw eigenvalues.
+
+    Parameters
+    ----------
+    eigs: ndarray
+        The eigenvalues to plot.
+    bins: int
+        the number of (equal-sized) bins to display and use for the histogram
+    kde: boolean
+        If False (default), do not display a kernel density estimate. If true, use
+        [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
+        with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+    title: string
+        The plot title string
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+
+    Returns
+    -------
+    (fig, axes): (Figure, Axes)
+        The handles to the matplotlib objects, only if `mode` is "return".
+    """
     _setup_plotting()
     axes = sbn.distplot(
         eigs,
@@ -51,6 +79,31 @@ def stepFunction(
     mode="block",
     outfile: Path = None,
 ):
+    """Compute the step function vaues over a grid, and plot the resulting curve.
+
+    Parameters
+    ----------
+    eigs: ndarray
+        The eigenvalues to plot.
+    gridsize: int
+        The number of points to evaluate the step function over. The grid will be
+        generated as np.linspace(eigs.min(), eigs.max(), gridsize).
+    title: string
+        The plot title string
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+
+    Returns
+    -------
+    (fig, axes): (Figure, Axes)
+        The handles to the matplotlib objects, only if `mode` is "return".
+    """
     _setup_plotting()
     grid = np.linspace(eigs.min(), eigs.max(), gridsize)
     steps = stepFunctionVectorized(eigs, grid)
@@ -61,10 +114,43 @@ def stepFunction(
 
 
 def rawEigSorted(
-    eigs: np.array, title="Raw Eigenvalues", mode="block", outfile: Path = None
+    eigs: np.array,
+    title="Raw Eigenvalues",
+    mode="block",
+    outfile: Path = None,
+    kind="scatter",
 ):
+    """Plot a curve or scatterplot of the raw eigenvalues.
+
+    Parameters
+    ----------
+    eigs: ndarray
+        The eigenvalues to plot.
+    title: string
+        The plot title string
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+    kind: "scatter" (default) | "line"
+        Whether to use a scatterplot or line plot.
+
+    Returns
+    -------
+    (fig, axes): (Figure, Axes)
+        The handles to the matplotlib objects, only if `mode` is "return".
+    """
     _setup_plotting()
-    axes = sbn.scatterplot(data=eigs)
+    if kind == "scatter":
+        axes = sbn.scatterplot(data=eigs)
+    elif kind == "line":
+        axes = sbn.lineplot(data=eigs)
+    else:
+        raise ValueError("Invalid plot kind. Must be 'scatter' or 'line'.")
     plt.xlabel("Eigenvalue index")
     plt.ylabel("Eigenvalue")
     plt.title(title)
@@ -79,6 +165,34 @@ def unfoldedDist(
     mode="block",
     outfile=None,
 ):
+    """Plot a histogram of the unfolded eigenvalues.
+
+    Parameters
+    ----------
+    unfolded: ndarray
+        The unfolded eigenvalues to plot.
+    bins: int
+        the number of (equal-sized) bins to display and use for the histogram
+    kde: boolean
+        If False (default), do not display a kernel density estimate. If true, use
+        [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
+        with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+    title: string
+        The plot title string
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+
+    Returns
+    -------
+    (fig, axes): (Figure, Axes)
+        The handles to the matplotlib objects, only if `mode` is "return".
+    """
     _setup_plotting()
     axes = sbn.distplot(
         unfolded,
@@ -102,6 +216,30 @@ def unfoldedDist(
 def unfoldedFit(
     unfolded: np.array, title="Unfolding Fit", mode="block", outfile: Path = None
 ):
+    """Plot the unfolding fit against the step function.
+
+    Parameters
+    ----------
+    unfolded: ndarray
+        The unfolded eigenvalues to plot.
+    title: string
+        The plot title string
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+    kind: "scatter" (default) | "line"
+        Whether to use a scatterplot or line plot.
+
+    Returns
+    -------
+    (fig, axes): (Figure, Axes)
+        The handles to the matplotlib objects, only if `mode` is "return".
+    """
     _setup_plotting()
     N = len(unfolded)
     df = pd.DataFrame({"Step Function": np.arange(1, N + 1), "Unfolded λ": unfolded})
@@ -195,41 +333,65 @@ def spectralRigidity(
     title="Spectral Rigidity",
     mode="block",
     outfile: Path = None,
+    ensembles=["poisson", "goe", "gue", "gse"],
 ):
-    """
-    `data` argument is such that:
-        df = pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
+    """Plot the computed spectral rigidity against the various expected spectral
+    rigidity curves for the classical ensembles.
+
+    Parameters
+    ----------
+    unfolded: ndarray
+        The unfolded eigenvalues to plot.
+    data: DataFrame
+        `data` argument is pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
+        TODO: fix this
+    title: string
+        The plot title string
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+    ensembles: ["poisson", "goe", "gue", "gse"]
+        Which ensembles to display the expected spectral rigidity curves for comparison against.
+
+    Returns
+    -------
+    (fig, axes): (Figure, Axes)
+        The handles to the matplotlib objects, only if `mode` is "return".
     """
     _setup_plotting()
-    # L = pd.DataFrame({"L", L})
-    # delta3 = pd.DataFrame({"∆3(L)", delta3})
     df = pd.DataFrame(data, columns=["L", "∆3(L)"])
     axes = sbn.relplot(x="L", y="∆3(L)", data=df)
-    # sbn.scatterplot(x=data., y="∆3(L)", data=df)
+    ensembles = set(ensembles)
 
     _, right = plt.xlim()
 
     L = df["L"]
-    poisson = L / 15 / 2
     p, y = np.pi, np.euler_gamma
 
     # see pg 290 of Mehta (2004) for definition of s
     s = L / np.mean(computeSpacings(unfolded, trim=False))
-    # goe = (1/(pi**2)) * (np.log(2*pi*L) + np.euler_gamma - 5/4 - (pi**2)/8)
-    # gue = (1/(2*(pi**2))) * (np.log(2*pi*L) + np.euler_gamma - 5/4)
-    # gse = (1/(4*(pi**2))) * (np.log(4*pi*L) + np.euler_gamma - 5/4 + (pi**2)/8)
-    goe = (1 / (p ** 2)) * (np.log(2 * p * s) + y - 5 / 4 - (p ** 2) / 8)
-    gue = (1 / (2 * (p ** 2))) * (np.log(2 * p * s) + y - 5 / 4)
-    gse = (1 / (4 * (p ** 2))) * (np.log(4 * p * s) + y - 5 / 4 + (p ** 2) / 8)
 
-    poisson = plt.plot(L, poisson, label="Poisson")
-    goe = plt.plot(L, goe, label="Gaussian Orthogonal")
-    gue = plt.plot(L, gue, label="Gaussian Unitary")
-    gse = plt.plot(L, gse, label="Gaussian Symplectic")
-    plt.setp(poisson, color="#08FD4F")
-    plt.setp(goe, color="#FD8208")
-    plt.setp(gue, color="#0066FF")
-    plt.setp(gse, color="#EA00FF")
+    if "poisson" in ensembles:
+        poisson = L / 15 / 2
+        poisson = plt.plot(L, poisson, label="Poisson")
+        plt.setp(poisson, color="#08FD4F")
+    if "goe" in ensembles:
+        goe = (1 / (p ** 2)) * (np.log(2 * p * s) + y - 5 / 4 - (p ** 2) / 8)
+        goe = plt.plot(L, goe, label="Gaussian Orthogonal")
+        plt.setp(goe, color="#FD8208")
+    if "gue" in ensembles:
+        gue = (1 / (2 * (p ** 2))) * (np.log(2 * p * s) + y - 5 / 4)
+        gue = plt.plot(L, gue, label="Gaussian Unitary")
+        plt.setp(gue, color="#0066FF")
+    if "gse" in ensembles:
+        gse = (1 / (4 * (p ** 2))) * (np.log(4 * p * s) + y - 5 / 4 + (p ** 2) / 8)
+        gse = plt.plot(L, gse, label="Gaussian Symplectic")
+        plt.setp(gse, color="#EA00FF")
 
     plt.xlabel("L")
     plt.ylabel("∆3(L)")
@@ -245,10 +407,40 @@ def levelNumberVariance(
     title="Level Number Variance",
     mode="block",
     outfile: Path = None,
+    ensembles=["poisson", "goe", "gue", "gse"],
 ):
+    """Plot the computed level number variance against the various expected number
+    level variance curves for the classical ensembles.
+
+    Parameters
+    ----------
+    unfolded: ndarray
+        The unfolded eigenvalues to plot.
+    data: DataFrame
+        `data` argument is pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
+        TODO: fix this
+    title: string
+        The plot title string
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+    ensembles: ["poisson", "goe", "gue", "gse"]
+        Which ensembles to display the expected number level variance curves for comparison against.
+
+    Returns
+    -------
+    (fig, axes): (Figure, Axes)
+        The handles to the matplotlib objects, only if `mode` is "return".
+    """
     _setup_plotting()
     df = pd.DataFrame(data, columns=["L", "∑²(L)"])
     axes = sbn.relplot(x="L", y="∑²(L)", data=df)
+    ensembles = set(ensembles)
 
     _, right = plt.xlim()
 
@@ -256,19 +448,22 @@ def levelNumberVariance(
     p, y = np.pi, np.euler_gamma
     s = L / np.mean(computeSpacings(unfolded, trim=False))
 
-    poisson = L / 2  # waste of time, too large very often
-    goe = (2 / (p ** 2)) * (np.log(2 * p * s) + y + 1 - (p ** 2) / 8)
-    gue = (1 / (p ** 2)) * (np.log(2 * p * s) + y + 1)
-    gse = (1 / (2 * (p ** 2))) * (np.log(4 * p * s) + y + 1 + (p ** 2) / 8)
-
-    poisson = plt.plot(L, poisson, label="Poisson")
-    goe = plt.plot(L, goe, label="Gaussian Orthogonal")
-    gue = plt.plot(L, gue, label="Gaussian Unitary")
-    gse = plt.plot(L, gse, label="Gaussian Symplectic")
-    plt.setp(poisson, color="#08FD4F")
-    plt.setp(goe, color="#FD8208")
-    plt.setp(gue, color="#0066FF")
-    plt.setp(gse, color="#EA00FF")
+    if "poisson" in ensembles:
+        poisson = L / 2  # waste of time, too large very often
+        poisson = plt.plot(L, poisson, label="Poisson")
+        plt.setp(poisson, color="#08FD4F")
+    if "goe" in ensembles:
+        goe = (2 / (p ** 2)) * (np.log(2 * p * s) + y + 1 - (p ** 2) / 8)
+        goe = plt.plot(L, goe, label="Gaussian Orthogonal")
+        plt.setp(goe, color="#FD8208")
+    if "gue" in ensembles:
+        gue = (1 / (p ** 2)) * (np.log(2 * p * s) + y + 1)
+        gue = plt.plot(L, gue, label="Gaussian Unitary")
+        plt.setp(gue, color="#0066FF")
+    if "gse" in ensembles:
+        gse = (1 / (2 * (p ** 2))) * (np.log(4 * p * s) + y + 1 + (p ** 2) / 8)
+        gse = plt.plot(L, gse, label="Gaussian Symplectic")
+        plt.setp(gse, color="#EA00FF")
 
     plt.xlabel("L")
     plt.ylabel("∑²(L)")
