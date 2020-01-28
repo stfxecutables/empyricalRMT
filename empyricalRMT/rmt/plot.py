@@ -8,7 +8,7 @@ from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from warnings import warn
 
-from empyricalRMT.rmt._eigvals import stepFunctionVectorized
+from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 from empyricalRMT.rmt.observables.spacings import computeSpacings
 from empyricalRMT.utils import make_parent_directories
 

@@ -30,10 +30,9 @@ from warnings import warn
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.detrend import emd_detrend
-from empyricalRMT.rmt._eigvals import stepFunctionVectorized
 from empyricalRMT.rmt.exponentials import gompertz
 from empyricalRMT.rmt.observables.spacings import computeSpacings
-from empyricalRMT.rmt.plot import setup_plotting
+from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 
 # from utils import eprint
 from ..utils import find_first, find_last, is_symmetric, mkdirp

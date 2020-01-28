@@ -4,7 +4,7 @@ from colorama import Fore
 from numba import jit, prange
 from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
 
-from empyricalRMT.rmt._eigvals import stepFunctionG, stepFunctionVectorized
+from empyricalRMT.rmt.observables.step import stepFunctionG, stepFunctionVectorized
 
 
 # spectral rigidity ∆3

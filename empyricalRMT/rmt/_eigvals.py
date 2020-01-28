@@ -1,28 +1,69 @@
 import numpy as np
 
-from numba import jit, prange
+from numpy import ndarray
 
-# this function is equivalent to `return len(eigs[eigs <= x])`
-# in particular, since our eigenvalues are always sorted, we can simply
-# return the index of the eigenvalue in eigs, e.g. if we have eigs
-#   [0.1, 0.2, 0.3, 0.4]
-# then stepFunctionG(eigs, 0.20) is
-# this function could be improved with binary search and memoization if
-# necessary or if it becomes a bottleneck
-@jit(nopython=True, fastmath=True, cache=True)
-def stepFunctionG(eigs: np.array, x: float):
-    cumulative = 0
-    for eig in eigs:
-        if x <= eig:
-            break
-        else:
-            cumulative += 1
-    return float(cumulative)
+from empyricalRMT.rmt.observables.step import stepFunctionVectorized
+from empyricalRMT.rmt.plot import spacings as plotSpacings
+from empyricalRMT.rmt.plot import rawEigDist, rawEigSorted, stepFunction
 
 
-@jit(nopython=True, fastmath=True, cache=True)
-def stepFunctionVectorized(eigs: np.array, x: np.array):
-    ret = np.empty((len(x)), dtype=np.float64)
-    for i in prange(len(x)):
-        ret[i] = stepFunctionG(eigs, x[i])
-    return ret
+class EigVals:
+    def __init__(self, eigenvalues):
+        try:
+            self.__construct_vals = np.array(eigenvalues, dtype=np.float)
+        except ValueError as e:
+            raise ValueError(
+                "Must pass in eigenvalues that can be coerced to numpy.float type"
+            ) from e
+        self._steps = None
+        self._vals = np.sort(eigenvalues)  # to be overridden in actual classes
+
+    @property
+    def original_values(self) -> ndarray:
+        return self.__construct_vals
+
+    @property
+    def original_eigs(self) -> ndarray:
+        return self.__construct_vals
+
+    @property
+    def original_eigenvalues(self) -> ndarray:
+        return self.__construct_vals
+
+    # NOTE: This *must* be overridden
+    @property
+    def values(self) -> ndarray:
+        raise NotImplementedError(".values() should be implemented in derived classes.")
+        return self._vals
+
+    # NOTE: This *must* be overridden
+    @property
+    def vals(self) -> ndarray:
+        raise NotImplementedError(".vals() should be implemented in derived classes.")
+        return self._vals
+
+    @property
+    def steps(self) -> ndarray:
+        if self._steps is None:
+            self._steps = stepFunctionVectorized(self._vals, self._vals)
+        return self._steps
+
+    @property
+    def spacings(self) -> ndarray:
+        return self.vals[1:] - self.vals[:-1]
+
+    def step_function(self, x: ndarray) -> ndarray:
+        return stepFunctionVectorized(eigs=self.vals, x=x)
+
+    def plot_sorted(self, *args, **kwargs):
+        return rawEigSorted(eigs=self.values, *args, **kwargs)
+
+    def plot_distribution(self, *args, **kwargs):
+        return rawEigDist(eigs=self.values, *args, **kwargs)
+
+    def plot_steps(self, *args, **kwargs):
+        return stepFunction(eigs=self.values, *args, **kwargs)
+
+    def plot_spacings(self, *args, **kwargs):
+        return plotSpacings(unfolded=self.values, *args, **kwargs)
+
