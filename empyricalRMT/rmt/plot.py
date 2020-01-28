@@ -7,27 +7,25 @@ import seaborn as sbn
 from colorama import Fore, Style
 from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
+from warnings import warn
 
 from empyricalRMT.rmt._eigvals import stepFunctionVectorized, trim_largest
 from empyricalRMT.rmt.observables.spacings import computeSpacings
 from empyricalRMT.utils import make_parent_directories
 
 RESET = Style.RESET_ALL
+PLOTTING_READY = False
 
 
-def setup_plotting(check_linux=False):
+def setup_plotting():
+    global PLOTTING_READY
+    if PLOTTING_READY:
+        return
     PALETTE = sbn.color_palette("dark").copy()
     PALETTE.insert(0, (0.0, 0.0, 0.0))
     sbn.set()
     sbn.set_palette(PALETTE)
-
-    # hack to make text larger on Ubuntu high DPI screen
-    if check_linux:
-        if platform.system() == "Linux":
-            sbn.set_context("poster")
-
-
-setup_plotting(False)
+    PLOTTING_READY = True
 
 
 def validate_bin_sizes(vals, bins):
@@ -44,9 +42,7 @@ def validate_bin_sizes(vals, bins):
             print(
                 f"{Fore.YELLOW}Overfull bin {i}: {Fore.RED}{np.round(counts[i]/L, 2)}% {RESET} of values."
             )
-            raise Exception(
-                "Distribution too skewed to generate interpretable histogram"
-            )
+            warn("Distribution likely too skewed to generate interpretable histogram")
 
 
 def rawEigDist(
@@ -57,6 +53,7 @@ def rawEigDist(
     block=False,
     xlims=None,
 ):
+    setup_plotting()
     axes = sbn.distplot(eigs, bins=bins, kde=kde, axlabel="Eigenvalue", color="black")
     plt.ylabel("Density")
     plt.title(title)
@@ -68,6 +65,7 @@ def rawEigDist(
 
 
 def stepFunction(eigs: np.array, trim=True, percentile=97.5, block=False, xlims=None):
+    setup_plotting()
     if trim:
         eigs = trim_largest(eigs, percentile)
     grid = np.linspace(eigs.min(), eigs.max(), 100000)
@@ -82,6 +80,7 @@ def stepFunction(eigs: np.array, trim=True, percentile=97.5, block=False, xlims=
 
 
 def rawEigSorted(eigs: np.array, block=False):
+    setup_plotting()
     sbn.scatterplot(data=eigs)
     plt.xlabel("Eigenvalue index")
     plt.ylabel("Eigenvalue")
@@ -90,6 +89,7 @@ def rawEigSorted(eigs: np.array, block=False):
 
 
 def unfoldedDist(unfolded: np.array, method="Spline", block=False):
+    setup_plotting()
     sbn.distplot(unfolded, bins="doane", axlabel="Unfolded Eigenvalues", color="black")
     plt.ylabel("Density")
     plt.title(f"{method} Unfolded Eigenvalue Distribution")
@@ -97,6 +97,7 @@ def unfoldedDist(unfolded: np.array, method="Spline", block=False):
 
 
 def unfoldedFit(unfolded: np.array, title="Spline Fit (Default)", block=False):
+    setup_plotting()
     N = len(unfolded)
     df = pd.DataFrame({"Cumulative Value": np.arange(1, N + 1), "Unfolded λ": unfolded})
     sbn.lineplot(data=df)
@@ -135,6 +136,7 @@ def spacings(
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
     """
+    setup_plotting()
     spacings = np.sort(unfolded[1:] - unfolded[:-1])
     # Generate expected distributions for classical ensembles
     pi = np.pi
@@ -209,6 +211,7 @@ def spectralRigidity(
     `data` argument is such that:
         df = pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
     """
+    setup_plotting()
     # L = pd.DataFrame({"L", L})
     # delta3 = pd.DataFrame({"∆3(L)", delta3})
     df = pd.DataFrame(data, columns=["L", "∆3(L)"])
@@ -265,6 +268,7 @@ def spectralRigidity(
 def levelNumberVariance(
     unfolded, data, title="Default", mode="block", outfile=Path("plots/levelnumber")
 ):
+    setup_plotting()
     df = pd.DataFrame(data, columns=["L", "∑²(L)"])
     sbn.relplot(x="L", y="∑²(L)", data=df)
 
