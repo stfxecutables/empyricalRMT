@@ -30,7 +30,7 @@ from warnings import warn
 
 from ..rmt.construct import generateGOEMatrix
 from ..rmt.detrend import emd_detrend
-from ..rmt.eigenvalues import getEigs, stepFunctionVectorized
+from ..rmt.eigenvalues import stepFunctionVectorized
 from ..rmt.exponentials import gompertz
 from ..rmt.observables.spacings import computeSpacings
 from ..rmt.plot import setup_plotting
@@ -59,7 +59,7 @@ def test(
     M = np.corrcoef(generateGOEMatrix(400))  # get corr matrix
     if not is_symmetric(M):
         raise ValueError("Non-symmetric matrix generated")
-    eigs = getEigs(M)  # already sorted ascending
+    eigs = np.linalg.eigvalsh(M)  # already sorted ascending
 
     # TODO: update this
     if method == "spline":

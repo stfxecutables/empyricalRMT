@@ -20,7 +20,7 @@ def newEigs(matsize, mean=0, sd=1, kind="goe"):
         kinds = ["goe", "gue", "poisson", "uniform"]
         raise ValueError(f"`kind` must be one of {kinds}")
 
-    eigs = getEigs(M)
+    eigs = np.linalg.eigvalsh(M)
     return eigs
 
 

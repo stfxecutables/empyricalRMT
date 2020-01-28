@@ -6,7 +6,7 @@ from pathlib import Path
 import empyricalRMT.rmt.unfold as unfold
 
 from ..rmt.construct import generateGOEMatrix
-from ..rmt.eigenvalues import getEigs, trim_iteratively
+from ..rmt.eigenvalues import trim_iteratively
 from ..rmt.observables.levelvariance import sigmaSquared
 from ..rmt.plot import levelNumberVariance
 from ..utils import eprint
@@ -27,7 +27,7 @@ def load_eigs(matsize=10000):
     except IOError as e:
         M = generateGOEMatrix(matsize)
         eprint(e)
-        eigs = getEigs(M)
+        eigs = np.linalg.eigvalsh(M)
         np.save(filename, res(eigs_out))
 
     return eigs
@@ -35,7 +35,7 @@ def load_eigs(matsize=10000):
 
 def newEigs(matsize):
     M = generateGOEMatrix(matsize)
-    eigs = getEigs(M)
+    eigs = np.linalg.eigvalsh(M)
     return eigs
 
 

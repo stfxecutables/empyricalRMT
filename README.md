@@ -28,7 +28,6 @@ import empyricalRMT.rmt.plot as plot
 from empyricalRMT.observables.levelvariance import sigmaSquared
 from empyricalRMT.observables.rigidty import spectralRigidity
 from empyricalRMT.rmt.construct import generateGOEMatrix, newEigs
-from empyricalRMT.rmt.eigenvalues import getEigs
 
 # generate a new matrix from the Gaussian Orthogonal Ensemble and extract
 # its eigenvalues

@@ -1,7 +1,6 @@
 import numpy as np
 
 from ..rmt.construct import generateGOEMatrix, generatePoisson
-from ..rmt.eigenvalues import getEigs
 from ..tests.test_levelvar import test_levelvariance
 from ..tests.test_spectral import test_spectral_rigidity
 from ..tests.test_nnsd import test_nnsd, test_semicircle
@@ -27,7 +26,7 @@ def newEigs(matsize, mean=0, sd=1, kind="goe"):
         kinds = ["goe", "gue", "poisson", "uniform"]
         raise ValueError(f"`kind` must be one of {kinds}")
 
-    eigs = getEigs(M)
+    eigs = np.linalg.eigvalsh(M)
     return eigs
 
 
