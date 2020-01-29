@@ -33,7 +33,7 @@ def load_eigs(matsize=10000):
     return eigs
 
 
-def newEigs(matsize):
+def generate_eigs(matsize):
     M = generateGOEMatrix(matsize)
     eigs = np.linalg.eigvalsh(M)
     return eigs
@@ -41,7 +41,7 @@ def newEigs(matsize):
 
 @pytest.mark.fast
 def test_levelvariance(matsize=1000, kind="goe"):
-    eigs = newEigs(matsize)
+    eigs = generate_eigs(matsize)
     unfolded = unfold.Unfolder(eigs).unfold(degree=11)
 
     L_grid, sigma_sq = sigmaSquared(

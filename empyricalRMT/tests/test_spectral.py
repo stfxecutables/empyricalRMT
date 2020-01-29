@@ -35,7 +35,7 @@ def load_eigs(matsize=10000):
     return eigs
 
 
-def newEigs(matsize):
+def generate_eigs(matsize):
     M = generateGOEMatrix(matsize)
     eigs = np.linalg.eigvalsh(M)
     return eigs
@@ -45,7 +45,7 @@ def newEigs(matsize):
 def test_spectral_rigidity(
     matsize=1000, plot_step=False, unfold_degree=None, kind="goe"
 ):
-    eigs = newEigs(matsize)
+    eigs = generate_eigs(matsize)
     unfolded = unfold.Unfolder(eigs).unfold(trim=False)
 
     if plot_step:

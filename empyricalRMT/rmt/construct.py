@@ -3,7 +3,7 @@ import numpy as np
 from empyricalRMT.utils import eprint
 
 
-def newEigs(matsize, mean=0, sd=1, kind="goe"):
+def generate_eigs(matsize, mean=0, sd=1, kind="goe"):
     if kind == "poisson":
         M = generatePoisson(matsize)
     elif kind == "uniform":
@@ -35,7 +35,7 @@ def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100):
         the size of the smaller matrices to use to speed eigenvalue calculation
     """
     if matsize < 100:
-        return newEigs(matsize, kind="goe")
+        return generate_eigs(matsize, kind="goe")
     if sub_matsize >= matsize:
         raise ValueError("Submatrices must be smaller in order to speed calculation.")
     n_submats = int(matsize / sub_matsize)

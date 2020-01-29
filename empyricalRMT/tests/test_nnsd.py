@@ -28,16 +28,18 @@ def load_eigs(matsize=10000):
     return eigs
 
 
-def newEigs(matsize):
+def generate_eigs(matsize):
     M = generateGOEMatrix(matsize)
     eigs = np.linalg.eigvalsh(M)
     return eigs
 
 
 @pytest.mark.fast
-def test_semicircle(matsize=1000, neweigs=False, eigs=None):
+def test_semicircle(matsize=1000, generate_eigs=False, eigs=None):
     if eigs is not None:
         pass  # use passed in eigenvalues
     else:
-        eigs = newEigs(matsize) if neweigs else load_eigs(matsize)
-    rawEigDist(eigs, bins=100, title="Wigner Semicircle PLotting Test", kde=False, mode="block")
+        eigs = generate_eigs(matsize) if generate_eigs else load_eigs(matsize)
+    rawEigDist(
+        eigs, bins=100, title="Wigner Semicircle PLotting Test", kde=False, mode="block"
+    )

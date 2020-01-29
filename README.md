@@ -27,13 +27,13 @@ import empyricalRMT.rmt.plot as plot
 
 from empyricalRMT.observables.levelvariance import sigmaSquared
 from empyricalRMT.observables.rigidty import spectralRigidity
-from empyricalRMT.rmt.construct import generateGOEMatrix, newEigs
+from empyricalRMT.rmt.construct import generateGOEMatrix, generate_eigs
 
 # generate a new matrix from the Gaussian Orthogonal Ensemble and extract
 # its eigenvalues
-eigs = newEigs(matsize=1000, kind="goe")
-# eigs = newEigs(matsize=1000, kind="gue")
-# eigs = newEigs(matsize=1000, kind="poisson")
+eigs = generate_eigs(matsize=1000, kind="goe")
+# eigs = generate_eigs(matsize=1000, kind="gue")
+# eigs = generate_eigs(matsize=1000, kind="poisson")
 
 # plot the eigenvalue distribution to confirm Wigner's Semicircle law
 plot.rawEigDist(eigs, bins=100, title="Wigner Semicircle", block=True)
