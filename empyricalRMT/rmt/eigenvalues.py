@@ -6,21 +6,21 @@ from pandas import DataFrame
 from pyod.models.hbos import HBOS
 from warnings import warn
 
+from empyricalRMT.rmt._constants import (
+    EXPECTED_GOE_MEAN,
+    EXPECTED_GOE_VARIANCE,
+    DEFAULT_POLY_DEGREE,
+    DEFAULT_SPLINE_SMOOTH,
+    DEFAULT_SPLINE_DEGREE,
+    DEFAULT_POLY_DEGREES,
+    DEFAULT_SPLINE_SMOOTHS,
+    DEFAULT_SPLINE_DEGREES,
+)
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 from empyricalRMT.rmt.smoother import Smoother
 from empyricalRMT.utils import find_first, find_last, is_symmetric, mkdirp
 
-EXPECTED_GOE_VARIANCE = 0.286
-EXPECTED_GOE_MEAN = 1.000
-
-DEFAULT_POLY_DEGREE = 9
-DEFAULT_SPLINE_SMOOTH = 1.4
-DEFAULT_SPLINE_DEGREE = 3
-
-DEFAULT_POLY_DEGREES = [3, 4, 5, 6, 7, 8, 9, 10, 11]
-DEFAULT_SPLINE_SMOOTHS = np.linspace(1, 2, num=11)
-DEFAULT_SPLINE_DEGREES = [3]
 
 _WARNED_SMALL = False
 
