@@ -25,19 +25,6 @@ from empyricalRMT.utils import find_first, find_last, is_symmetric, mkdirp
 _WARNED_SMALL = False
 
 
-class Unfolded(EigVals):
-    def __init__(self, eigenvalues):
-        super().__init__(eigenvalues)
-
-    @property
-    def values(self) -> ndarray:
-        return self._vals
-
-    @property
-    def vals(self) -> ndarray:
-        return self._vals
-
-
 class Trimmed(EigVals):
     def __init__(self, eigenvalues: ndarray, trimmed: ndarray):
         super().__init__(eigenvalues)
