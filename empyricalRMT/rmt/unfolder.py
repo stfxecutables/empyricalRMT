@@ -605,7 +605,7 @@ class Unfolder:
             return "gompertz"
         raise ValueError("Arguments to __column_name_from_args cannot all be None")
 
-    def __collect_outliers(self, eigs, steps, tolerance=0.1, max_trim=0.5):
+    def __get_trim_iters(self, eigs, steps, tolerance=0.1, max_trim=0.5):
         # zeroth iteration is just the full set of values, none considered outliers
         iter_results = [
             pd.DataFrame(

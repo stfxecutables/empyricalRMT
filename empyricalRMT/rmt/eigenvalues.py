@@ -18,7 +18,7 @@ from empyricalRMT.rmt._constants import (
 )
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.smoother import Smoother
-from empyricalRMT.rmt.trim import _collect_outliers, Trimmed
+from empyricalRMT.rmt.trim import _get_trim_iters, Trimmed
 from empyricalRMT.rmt.unfold import Unfolded
 from empyricalRMT.utils import find_first, find_last, is_symmetric, mkdirp
 
@@ -80,7 +80,7 @@ class Eigenvalues(EigVals):
         print("Trimming to central eigenvalues.")
 
         eigs = self.vals
-        trimmed_steps = _collect_outliers(eigs, outlier_tol, max_trim)
+        trimmed_steps = _get_trim_iters(eigs, outlier_tol, max_trim)
         raise NotImplementedError("Still need to implement `Trimmed` constructor")
         return Trimmed.from_steps(trimmed_steps)
 

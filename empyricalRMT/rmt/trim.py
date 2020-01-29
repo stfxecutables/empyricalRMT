@@ -64,7 +64,7 @@ class Trimmed(EigVals):
         return
 
 
-def _collect_outliers(eigs, tolerance=0.1, max_trim=0.5, max_iters=5) -> [DataFrame]:
+def _get_trim_iters(eigs, tolerance=0.1, max_trim=0.5, max_iters=5) -> [DataFrame]:
     """Iteratively perform histogram-based outlier detection until reaching
     either max_trim or max_iters, saving outliers identified at each step.
 
