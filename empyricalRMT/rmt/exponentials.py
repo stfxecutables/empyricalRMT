@@ -5,13 +5,7 @@ import seaborn as sbn
 from numba import jit
 from scipy.optimize import curve_fit
 
-from empyricalRMT.rmt._eigvals import stepFunctionVectorized
-
-
-@jit(nopython=True, fastmath=True)
-def slope(arr: np.array) -> np.float64:
-    x = np.arange(0, len(arr))
-    return fullSlope(x, arr)
+from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 
 
 @jit(nopython=True, fastmath=True)
