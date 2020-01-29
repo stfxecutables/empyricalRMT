@@ -49,7 +49,6 @@ class Smoother:
         degree=None,
         spline_smooth=DEFAULT_SPLINE_SMOOTH,
         emd_detrend=False,
-        steps_only=False,
     ) -> ndarray:
         """Computer the specified smoothing function values for a set of eigenvalues.
 
@@ -74,8 +73,6 @@ class Smoother:
         """
         eigs = self._eigs
         steps = stepFunctionVectorized(eigs, eigs)
-        if steps_only:
-            return eigs, steps
         __validate_args(smoother=smoother, degree=degree, spline_smooth=spline_smooth)
 
         if smoother == "poly":
