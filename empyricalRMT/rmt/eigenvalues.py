@@ -19,43 +19,11 @@ from empyricalRMT.rmt._constants import (
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 from empyricalRMT.rmt.smoother import Smoother
+from empyricalRMT.rmt.trim import _collect_outliers, Trimmed
 from empyricalRMT.utils import find_first, find_last, is_symmetric, mkdirp
 
 
 _WARNED_SMALL = False
-
-
-class Trimmed(EigVals):
-    def __init__(self, eigenvalues: ndarray, trimmed: ndarray):
-        super().__init__(eigenvalues)
-        self._trim_indices = None
-        self._trim_report = None
-        self._vals = trimmed
-
-    @property
-    def values(self) -> ndarray:
-        return self._vals
-
-    @property
-    def vals(self) -> ndarray:
-        return self._vals
-
-    @property
-    def trim_indices(self) -> (int, int):
-        raise NotImplementedError
-        return self._trim_indices
-
-    @property
-    def trim_report(self) -> DataFrame:
-        raise NotImplementedError
-        return self._trim_report
-
-    def plot_trimmed(self):
-        raise NotImplementedError
-
-    def unfold(self) -> Unfolded:
-        raise NotImplementedError
-        return
 
 
 class Eigenvalues(EigVals):
@@ -112,98 +80,41 @@ class Eigenvalues(EigVals):
         print("Trimming to central eigenvalues.")
 
         eigs = self.vals
-        trimmed_steps = self.__collect_outliers(eigs, outlier_tol, max_trim)
-        raise NotImplementedError
-        return trimmed_steps
+        trimmed_steps = self._collect_outliers(eigs, outlier_tol, max_trim)
+        raise NotImplementedError("Still need to implement `Trimmed` constructor")
+        return Trimmed.from_steps(trimmed_steps)
 
-    def trim_manually(self, start, end) -> Trimmed:
-        raise NotImplementedError
+    def trim_manually(self, start: int, end: int) -> Trimmed:
+        """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]]"""
+        trimmed_eigs = self.eigs[start:end]
+        raise NotImplementedError("Still need to implement `Trimmed` constructor")
+        return Trimmed(trimmed_eigs)
 
     def trim_interactively(self) -> Trimmed:
         raise NotImplementedError
 
-    def trim_unfold(self) -> Unfolded:
+    def trim_unfold_best(
+        self,
+        poly_degrees=DEFAULT_POLY_DEGREES,
+        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees=DEFAULT_SPLINE_DEGREES,
+    ) -> Unfolded:
+        """Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
+        percent and smoother according to GOE score.
+
+        Parameters
+        ----------
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
+        """
         raise NotImplementedError
 
     def unfold(self) -> Unfolded:
         raise NotImplementedError
 
-    def __collect_outliers(
-        self, tolerance=0.1, max_trim=0.5, max_iters=5
-    ) -> [DataFrame]:
-        """Iteratively perform histogram-based outlier detection until reaching
-        either max_trim or max_iters, saving outliers identified at each step.
-
-        Paramaters
-        ----------
-        tolerance: float
-            tolerance level for HBOS
-        max_trim: float
-            Value in (0,1) representing the maximum allowable proportion of eigenvalues
-            trimmed.
-        max_iters: int
-            Maximum number of iterations (times) to perform HBOS outlier detection.
-
-        Returns
-        -------
-        trim_iterations: [DataFrame]
-            A list of pandas DataFrames with structure:
-            ```
-            {
-                "eigs": np.array,
-                "steps": np.array,
-                "unfolded": np.array,
-                "cluster": ["inlier" | "outlier"]
-            }
-            ```
-            such that trim_iterations[0] is the original values without trimming, and
-            trim_iterations[i] is a DataFrame of the eigenvalues, step function values,
-            unfolded values, and inlier/outlier labels at iteration `i`.
-        """
-        # zeroth iteration is just the full set of values, none considered outliers
-        eigs = self.vals
-        steps = stepFunctionVectorized(eigs, eigs)
-        iter_results = [
-            pd.DataFrame(
-                {
-                    "eigs": eigs,
-                    "steps": steps,
-                    "unfolded": self.__fit(eigs, degree=DEFAULT_POLY_DEGREE)[0],
-                    "cluster": ["inlier" for _ in eigs],
-                }
-            )
-        ]
-        # terminate if we have trimmed max_trim
-        iters = 0
-        while (len(iter_results[-1]) / len(eigs)) > max_trim and (iters < max_iters):
-            iters += 1
-            # because eigs are sorted, HBOS will always identify outliers at one of the
-            # two ends of the eigenvalues, which is what we want
-            df = iter_results[-1].copy(deep=True)
-            df = df[df["cluster"] == "inlier"]
-            hb = HBOS(tol=tolerance)
-            is_outlier = np.array(
-                hb.fit(df[["eigs", "steps"]]).labels_, dtype=bool
-            )  # outliers get "1"
-
-            # check we haven't removed middle values:
-            if is_outlier[0]:
-                start = find_first(is_outlier, False)
-                for i in range(start, len(is_outlier)):
-                    is_outlier[i] = False
-            if is_outlier[-1]:
-                stop = find_last(is_outlier, False)
-                for i in range(stop):
-                    is_outlier[i] = False
-            if not is_outlier[0] and not is_outlier[-1]:  # force a break later
-                is_outlier = np.zeros(is_outlier.shape, dtype=bool)
-
-            df["cluster"] = ["outlier" if label else "inlier" for label in is_outlier]
-            df["unfolded"], _ = self.__fit(
-                np.array(df["eigs"]), degree=DEFAULT_POLY_DEGREE
-            )
-            iter_results.append(df)
-            if np.alltrue(~is_outlier):
-                break
-
-        return iter_results
