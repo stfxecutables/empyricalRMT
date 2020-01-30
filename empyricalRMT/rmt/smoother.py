@@ -8,16 +8,17 @@ from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import curve_fit
 from warnings import warn
 
+from empyricalRMT.rmt._constants import (
+    DEFAULT_POLY_DEGREE,
+    DEFAULT_POLY_DEGREES,
+    DEFAULT_SPLINE_DEGREE,
+    DEFAULT_SPLINE_DEGREES,
+    DEFAULT_SPLINE_SMOOTH,
+    DEFAULT_SPLINE_SMOOTHS,
+)
 from empyricalRMT.rmt.exponentials import gompertz
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 
-DEFAULT_POLY_DEGREE = 9
-DEFAULT_SPLINE_SMOOTH = 1.4
-DEFAULT_SPLINE_DEGREE = 3
-
-DEFAULT_POLY_DEGREES = [3, 4, 5, 6, 7, 8, 9, 10, 11]
-DEFAULT_SPLINE_SMOOTHS = np.linspace(1, 2, num=11)
-DEFAULT_SPLINE_DEGREES = [3]
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}
 
@@ -46,7 +47,7 @@ class Smoother:
     def fit(
         self,
         smoother="poly",
-        degree=None,
+        degree=DEFAULT_POLY_DEGREE,
         spline_smooth=DEFAULT_SPLINE_SMOOTH,
         emd_detrend=False,
     ) -> ndarray:
@@ -73,7 +74,9 @@ class Smoother:
         """
         eigs = self._eigs
         steps = stepFunctionVectorized(eigs, eigs)
-        __validate_args(smoother=smoother, degree=degree, spline_smooth=spline_smooth)
+        self.__validate_args(
+            smoother=smoother, degree=degree, spline_smooth=spline_smooth
+        )
 
         if smoother == "poly":
             if degree is None:
@@ -115,6 +118,7 @@ class Smoother:
         poly_degrees=DEFAULT_POLY_DEGREES,
         spline_smooths=DEFAULT_SPLINE_SMOOTHS,
         spline_degrees=DEFAULT_SPLINE_DEGREES,
+        gompertz=True,
         dry_run=False,
     ) -> DataFrame:
         """unfold eigenvalues for all specified smoothers
@@ -146,8 +150,8 @@ class Smoother:
         col_names = self.__get_column_names(
             poly_degrees=poly_degrees,
             spline_smooths=spline_smooths,
-            gompertz=True,
             spline_degrees=spline_degrees,
+            gompertz=gompertz,
         )
         if dry_run:  # early return strings of colums names
             return col_names
@@ -155,20 +159,19 @@ class Smoother:
         eigs = self._eigs
         for d in poly_degrees:
             col_name = f"poly_{d}"
-            unfolded, _ = self.__fit(eigs, smoother="poly", degree=d)
+            unfolded, _ = self.fit(smoother="poly", degree=d)
             df[col_name] = unfolded
         for s in spline_smooths:
             for d in spline_degrees:
                 col_name = f"{_spline_name(d)}-spline_" "{:1.1f}".format(s)
-                unfolded, _ = self.__fit(
-                    eigs, smoother="spline", spline_smooth=s, degree=d
-                )
+                unfolded, _ = self.fit(smoother="spline", spline_smooth=s, degree=d)
                 df[col_name] = unfolded
-        df["gompertz"], _ = self.__fit(eigs, smoother="gompertz")
+        if gompertz:
+            df["gompertz"], _ = self.fit(smoother="gompertz")
         return df
 
     def __get_column_names(
-        self, poly_degrees, spline_smooths, gompertz=True, spline_degrees=[3]
+        self, poly_degrees, spline_smooths, spline_degrees=[3], gompertz=True
     ) -> str:
         """If arguments are arrays, generate names for all columns of report. Otherwise,
         just return the name for indexing into the report.
@@ -212,50 +215,49 @@ class Smoother:
             return "gompertz"
         raise ValueError("Arguments to __column_name_from_args cannot all be None")
 
+    def __validate_args(self, **kwargs):
+        """throw an error if smoother args are in any way invalid"""
+        smoother = kwargs.get("smoother")
+        degree = kwargs.get("degree")
+        spline_smooth = kwargs.get("spline_smooth")
+        emd = kwargs.get("emd_detrend")  # TODO: implement
+        method = kwargs.get("method")
 
-def __validate_args(**kwargs):
-    """throw an error if smoother args are in any way invalid"""
-    smoother = kwargs.get("smoother")
-    degree = kwargs.get("degree")
-    spline_smooth = kwargs.get("spline_smooth")
-    emd = kwargs.get("emd_detrend")  # TODO: implement
-    method = kwargs.get("method")
+        if smoother == "poly":
+            if degree is None:
+                warn(
+                    "No degree set for polynomial unfolding."
+                    f"Will default to polynomial of degree {DEFAULT_POLY_DEGREE}.",
+                    category=UserWarning,
+                )
+            if not isinstance(degree, int):
+                raise ValueError("Polynomial degree must be of type `int`")
+            if degree < 3:
+                raise ValueError("Unfolding polynomial must have minimum degree 3.")
+        elif smoother == "spline":
+            spline_degree = degree
+            if degree is None:
+                warn(
+                    f"No degree set for spline unfolding. Will default to spline of degree {DEFAULT_SPLINE_DEGREE}.",
+                    category=UserWarning,
+                )
+            if not isinstance(spline_degree, int) or spline_degree > 5:
+                raise ValueError("Degree of spline must be an int <= 5")
+            if spline_smooth is not None and spline_smooth != "heuristic":
+                spline_smooth = float(spline_smooth)
+        elif smoother == "gompertz":
+            pass  # just allow this for now
+        elif callable(smoother):
+            # NOTE: above is not a great check, but probably good enough for our purposes
+            # https://stackoverflow.com/questions/624926/how-do-i-detect-whether-a-python-variable-is-a-function#comment437753_624939
+            raise NotImplementedError("Custom fit functions not currently implemented.")
+        else:
+            raise ValueError("Unrecognized smoother argument.")
 
-    if smoother == "poly":
-        if degree is None:
-            warn(
-                "No degree set for polynomial unfolding."
-                f"Will default to polynomial of degree {DEFAULT_POLY_DEGREE}.",
-                category=UserWarning,
-            )
-        if not isinstance(degree, int):
-            raise ValueError("Polynomial degree must be of type `int`")
-        if degree < 3:
-            raise ValueError("Unfolding polynomial must have minimum degree 3.")
-    elif smoother == "spline":
-        spline_degree = degree
-        if degree is None:
-            warn(
-                f"No degree set for spline unfolding. Will default to spline of degree {DEFAULT_SPLINE_DEGREE}.",
-                category=UserWarning,
-            )
-        if not isinstance(spline_degree, int) or spline_degree > 5:
-            raise ValueError("Degree of spline must be an int <= 5")
-        if spline_smooth is not None and spline_smooth != "heuristic":
-            spline_smooth = float(spline_smooth)
-    elif smoother == "gompertz":
-        pass  # just allow this for now
-    elif callable(smoother):
-        # NOTE: above is not a great check, but probably good enough for our purposes
-        # https://stackoverflow.com/questions/624926/how-do-i-detect-whether-a-python-variable-is-a-function#comment437753_624939
-        raise NotImplementedError("Custom fit functions not currently implemented.")
-    else:
-        raise ValueError("Unrecognized smoother argument.")
+        if emd is not None and not isinstance(emd, bool):
+            raise ValueError("`emd_detrend` can be only a boolean or undefined (None).")
 
-    if emd is not None and not isinstance(emd, bool):
-        raise ValueError("`emd_detrend` can be only a boolean or undefined (None).")
-
-    if method is None or method == "auto" or method == "manual":
-        pass
-    else:
-        raise ValueError("`method` must be one of 'auto', 'manual', or 'None'")
+        if method is None or method == "auto" or method == "manual":
+            pass
+        else:
+            raise ValueError("`method` must be one of 'auto', 'manual', or 'None'")

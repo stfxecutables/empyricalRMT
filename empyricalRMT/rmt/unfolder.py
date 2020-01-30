@@ -290,7 +290,7 @@ class Unfolder:
             )
         self.__plot_outliers(show_plot, save_plot)
         report, unfolds = (
-            self.trim_report()
+            self.compute_trims()
         )  # unfolds can be used to get best unfolded eigs
         scores = report.filter(regex=".*score.*").abs()
 
@@ -336,7 +336,7 @@ class Unfolder:
 
         return report, best_smoothers, best_unfoldeds, consistent
 
-    def trim_report(
+    def compute_trims(
         self,
         poly_degrees=DEFAULT_POLY_DEGREES,
         spline_smooths=DEFAULT_SPLINE_SMOOTHS,

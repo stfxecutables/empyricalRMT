@@ -18,7 +18,7 @@ from empyricalRMT.rmt._constants import (
 )
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.smoother import Smoother
-from empyricalRMT.rmt.trim import _get_trim_iters, Trimmed
+from empyricalRMT.rmt.trim import TrimReport
 from empyricalRMT.rmt.unfold import Unfolded
 from empyricalRMT.utils import find_first, find_last, is_symmetric, mkdirp
 
@@ -64,7 +64,7 @@ class Eigenvalues(EigVals):
     def vals(self) -> ndarray:
         return self._vals
 
-    def trim(self, outlier_tol=0.1, max_trim=0.5) -> Trimmed:
+    def get_trimmed(self, max_trim=0.5, max_iters=7, outlier_tol=0.1) -> TrimReport:
         """compute the optimal trim regions iteratively via histogram-based outlier detection
 
         Parameters
@@ -76,21 +76,29 @@ class Eigenvalues(EigVals):
         max_trim: float
             A float between 0 and 1 of the maximum allowable proportion of eigenvalues
             that can be trimmed.
+
+        Returns
+        -------
+        trimmed: Trimmed
+            An object of class Trimmed, which contains various information and functions
+            for evaluating the different possible trim regions.
         """
         print("Trimming to central eigenvalues.")
 
         eigs = self.vals
-        trimmed_steps = _get_trim_iters(eigs, outlier_tol, max_trim)
-        raise NotImplementedError("Still need to implement `Trimmed` constructor")
-        return Trimmed.from_steps(trimmed_steps)
+        return TrimReport(eigs, max_trim, max_iters, outlier_tol)
 
-    def trim_manually(self, start: int, end: int) -> Trimmed:
+    def get_best_trim(
+        self, smoother="poly", degree=DEFAULT_POLY_DEGREE, outlier_tol=0.1, max_trim=0.5
+    ) -> TrimReport:
+        raise NotImplementedError
+
+    def trim_manually(self, start: int, end: int) -> TrimReport:
         """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]]"""
         trimmed_eigs = self.eigs[start:end]
         raise NotImplementedError("Still need to implement `Trimmed` constructor")
-        return Trimmed(trimmed_eigs)
 
-    def trim_interactively(self) -> Trimmed:
+    def trim_interactively(self) -> None:
         raise NotImplementedError
 
     def trim_unfold_best(
