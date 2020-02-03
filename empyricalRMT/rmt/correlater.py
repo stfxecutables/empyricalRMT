@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 
 from numba import jit, prange
 from pathlib import Path
@@ -11,10 +12,10 @@ OUT_DEFAULT = Path.home() / "Desktop" / "corrmat.npy"
 
 
 def compute_correlations(
-    arr: np.array, save: Path = OUT_DEFAULT, detrended=False, k=None, M=None
+    arr: ndarray, save: Path = OUT_DEFAULT, detrended=False, k=None, M=None
 ) -> Path:
     with TemporaryDirectory() as TEMPDIR:
-        TEMPCORRS = Path(TEMPDIR) / "corrstemp.dat"
+        TEMPCORRS = Path(str(TEMPDIR)) / "corrstemp.dat"
         if len(arr.shape) == 4:
             arr = flatten_4D(arr)
         elif len(arr.shape) == 2:
@@ -125,7 +126,7 @@ def compute_clean_column_corrs(corrs, reshaped, i):
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def fast_r_detrended(x: np.array, y: np.array) -> np.float64:
+def fast_r_detrended(x: ndarray, y: ndarray) -> np.float64:
     num = np.sum(x * y)
     denom = np.sqrt(np.sum(x * x)) * np.sqrt(np.sum(y * y))
     if denom == 0:
@@ -150,7 +151,7 @@ def compute_detrended_column_corrs(corrs, reshaped, i):
 
 
 @jit(nopython=True, fastmath=True)
-def fast_r(x: np.array, y: np.array) -> float:
+def fast_r(x: ndarray, y: ndarray) -> float:
     """i.e. s^2"""
     x2, y2 = x ** 2, y ** 2
     return x * y / np.sqrt(x2 * y2)
