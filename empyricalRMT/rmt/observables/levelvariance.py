@@ -1,19 +1,21 @@
 import numpy as np
+from numpy import ndarray
 
 from colorama import Fore
 from numba import jit, prange
 from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
+from typing import Tuple
 from ...utils import eprint
 
 
 def sigmaSquared(
-    eigs: np.array,
-    unfolded: np.array,
+    eigs: ndarray,
+    unfolded: ndarray,
     c_iters: int = 50,
     L_grid_size: int = 100,
     min_L=0.5,
     max_L=20,
-) -> [np.array, np.array]:
+) -> Tuple[ndarray, ndarray]:
     """Compute the level number variance for a particular unfolding.
 
     Computes the level number variance (sigma squared, ∑² [1]_) for a
@@ -21,9 +23,9 @@ def sigmaSquared(
 
     Parameters
     ----------
-    eigs : np.array
+    eigs : ndarray
         The sorted (ascending) eigenvalues.
-    unfolded : np.array
+    unfolded : ndarray
         The sorted (ascending) eigenvalues computed from eigs.
     L_grid_size : int = 100
         The number of values of L to generate betwen min_L and max_L.
@@ -41,10 +43,10 @@ def sigmaSquared(
 
     Returns
     -------
-    L : np.array
+    L : ndarray
         The L values generated based on the values of L_grid_size,
         min_L, and max_L.
-    sigma_sq : np.array
+    sigma_sq : ndarray
         The computed number level variance values for each of L.
 
     References
@@ -74,7 +76,9 @@ def sigmaSquared(
 
 
 @jit(nopython=True, parallel=True, cache=True, fastmath=True)
-def sigma_iter(eigs: np.array, unfolded: np.array, L: float, c_iters: int = 100):
+def sigma_iter(
+    eigs: ndarray, unfolded: ndarray, L: float, c_iters: int = 100
+) -> ndarray:
     levels = np.empty((c_iters), dtype=np.float64)
     levels_sq = np.empty((c_iters), dtype=np.float64)  # levels squared
     for i in prange(c_iters):
@@ -93,8 +97,8 @@ def sigma_iter(eigs: np.array, unfolded: np.array, L: float, c_iters: int = 100)
 
 
 def sigmaSquared_exhaustive(
-    unfolded: np.array, c_step=0.05, L_grid_size: int = 100, max_L=50
-):
+    unfolded: ndarray, c_step=0.05, L_grid_size: int = 100, max_L=50
+) -> ndarray:
     if max_L is None:
         max_L = 0.2 * unfolded[-1] - unfolded[0]
     L_grid = np.linspace(0.001, max_L, L_grid_size)  # don't want L==0
