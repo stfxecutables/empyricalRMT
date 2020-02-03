@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 
 from PyEMD import EMD
 
@@ -6,7 +7,7 @@ from empyricalRMT.rmt.observables.spacings import computeSpacings
 
 # detrended unfolding via the Empirical Mode Decomposition and first
 # intrinsic mode function
-def emd_detrend(unfolded: np.array) -> np.array:
+def emd_detrend(unfolded: ndarray) -> ndarray:
     spacings = computeSpacings(unfolded, trim=False)
     s_av = np.average(spacings)
     s_i = spacings - s_av
