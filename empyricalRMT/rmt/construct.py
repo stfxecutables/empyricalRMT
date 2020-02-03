@@ -1,9 +1,10 @@
 import numpy as np
+from numpy import ndarray
 
 from empyricalRMT.utils import eprint
 
 
-def generate_eigs(matsize, mean=0, sd=1, kind="goe"):
+def generate_eigs(matsize, mean=0, sd=1, kind="goe") -> ndarray:
     if kind == "poisson":
         M = generatePoisson(matsize)
     elif kind == "uniform":
@@ -23,7 +24,7 @@ def generate_eigs(matsize, mean=0, sd=1, kind="goe"):
     return eigs
 
 
-def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100):
+def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
     """Use independence and fact that eigvalsh is bottleneck to more quickly generate
     eigenvalues. E.g. if matsize == 1024, sub_matsize == 100, generate 10 (100x100)
     matrices and one (24x24) matrix, can concatenate the resultant eigenvalues.
@@ -55,19 +56,19 @@ def generateUniform(matsize=1000, lower=0, upper=1):
     pass
 
 
-def almostIdentity(size: int = 100):
+def almostIdentity(size: int = 100) -> ndarray:
     E = np.random.standard_normal(size * size).reshape(size, size)
     E = (E + E.T) / np.sqrt(2)
     M = np.ma.identity(size)
     return M + E
 
 
-def random_1vector(size: int = 100):
+def random_1vector(size: int = 100) -> ndarray:
     vals = np.random.standard_normal([size, 1])
     return vals * vals.T
 
 
-def generateGOEMatrix(size: int = 100, mean=0, sd=1):
+def generateGOEMatrix(size: int = 100, mean=0, sd=1) -> ndarray:
     if mean != 0 or sd != 1:
         M = np.random.normal(mean, sd, [size, size])
     else:
@@ -75,11 +76,11 @@ def generateGOEMatrix(size: int = 100, mean=0, sd=1):
     return (M + M.T) / np.sqrt(2)
 
 
-def generatePoisson(size: int = 100):
+def generatePoisson(size: int = 100) -> ndarray:
     return np.diag(np.random.standard_normal(size))
 
 
-def generateRandomMatrix(size: int = 100):
+def generateRandomMatrix(size: int = 100) -> ndarray:
     norm_means = np.abs(np.random.normal(10.0, 2.0, size=size * size))
     norm_sds = np.abs(np.random.normal(3.0, 0.5, size=size * size))
     # exp_rates = np.abs(np.random.normal(size=size*size))
