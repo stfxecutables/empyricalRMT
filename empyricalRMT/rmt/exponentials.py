@@ -1,15 +1,11 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sbn
+from numpy import ndarray
 
 from numba import jit
-from scipy.optimize import curve_fit
-
-from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 
 
 @jit(nopython=True, fastmath=True)
-def derivative(x: np.array, y=np.array) -> np.array:
+def derivative(x: ndarray, y=ndarray) -> ndarray:
     res = np.empty(x.shape, dtype=np.float64)
     # for i = 1 (i.e. y[1], we compute (y[0] - y[2]) / 2*spacing)
     # ...
@@ -23,7 +19,7 @@ def derivative(x: np.array, y=np.array) -> np.array:
 
 
 @jit(nopython=True, fastmath=True)
-def inverse_gompertz(x, a, b, c):
+def inverse_gompertz(x: ndarray, a: float, b: float, c: float) -> ndarray:
     """a - asymptote, should be close to max(eigs)
     b - center, must be greater than zero
     """
@@ -33,13 +29,12 @@ def inverse_gompertz(x, a, b, c):
 
 
 @jit(nopython=True, fastmath=True)
-def gompertz(x, a, b, c):
+def gompertz(x: ndarray, a: float, b: float, c: float) -> ndarray:
     return a * np.exp(-b * np.exp(-c * x))
 
 
 @jit(nopython=True, fastmath=True)
-def exponential(x, a, b, c, d):
+def exponential(x: ndarray, a: float, b: float, c: float, d: float):
     """b is intercept,
     """
     return b - a * np.exp(-c * x ** (1 / d))
-
