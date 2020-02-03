@@ -10,5 +10,6 @@
   "reportDuplicateImport": "warning",
   "reportPrivateUsage": "warning",
   "reportUnnecessaryIsInstance": "warning",
+  "reportUnknownVariableType": "warning",
   "reportConstantRedefinition": "error"
 }
