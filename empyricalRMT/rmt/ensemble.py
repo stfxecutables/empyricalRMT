@@ -1,25 +1,26 @@
 import numpy as np
+from numpy import ndarray
 
 
 class Poisson:
     @staticmethod
-    def spacing_distribution(unfolded: np.array) -> np.array:
+    def spacing_distribution(unfolded: ndarray) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         s = np.linspace(spacings.min(), spacings.max(), 10000)
         return np.exp(-s)
 
     @staticmethod
     def spectral_rigidity(
-        unfolded: np.array, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
-    ) -> np.array:
+        unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+    ) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         return L / 15 / 2
 
     @staticmethod
     def level_variance(
-        unfolded: np.array, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
-    ) -> np.array:
+        unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+    ) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         s = L / np.mean(spacings)
@@ -28,7 +29,7 @@ class Poisson:
 
 class GOE:
     @staticmethod
-    def spacing_distribution(unfolded: np.array, n_points: int = 1000) -> np.array:
+    def spacing_distribution(unfolded: ndarray, n_points: int = 1000) -> ndarray:
         """return expected spacings over the range [spacings.min(), spacings.max()], where
         `spacings` are the spacings calculated from `unfolded`
         """
@@ -39,8 +40,8 @@ class GOE:
 
     @staticmethod
     def spectral_rigidity(
-        unfolded: np.array, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
-    ) -> np.array:
+        unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+    ) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         s = L / np.mean(spacings)
@@ -49,8 +50,8 @@ class GOE:
 
     @staticmethod
     def level_variance(
-        unfolded: np.array, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
-    ) -> np.array:
+        unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+    ) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         s = L / np.mean(spacings)
@@ -60,7 +61,7 @@ class GOE:
 
 class GUE:
     @staticmethod
-    def spacing_distribution(unfolded: np.array) -> np.array:
+    def spacing_distribution(unfolded: ndarray) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         s = np.linspace(spacings.min(), spacings.max(), 10000)
         p = np.pi
@@ -68,8 +69,8 @@ class GUE:
 
     @staticmethod
     def spectral_rigidity(
-        unfolded: np.array, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
-    ) -> np.array:
+        unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+    ) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         s = L / np.mean(spacings)
@@ -78,8 +79,8 @@ class GUE:
 
     @staticmethod
     def level_variance(
-        unfolded: np.array, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
-    ) -> np.array:
+        unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+    ) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         s = L / np.mean(spacings)
@@ -89,7 +90,7 @@ class GUE:
 
 class GSE:
     @staticmethod
-    def spacing_distribution(unfolded: np.array) -> np.array:
+    def spacing_distribution(unfolded: ndarray) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         s = np.linspace(spacings.min(), spacings.max(), 10000)
         p = np.pi
@@ -100,8 +101,8 @@ class GSE:
 
     @staticmethod
     def spectral_rigidity(
-        unfolded: np.array, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
-    ) -> np.array:
+        unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+    ) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         s = L / np.mean(spacings)
@@ -110,8 +111,8 @@ class GSE:
 
     @staticmethod
     def level_variance(
-        unfolded: np.array, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
-    ) -> np.array:
+        unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+    ) -> ndarray:
         spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         s = L / np.mean(spacings)
