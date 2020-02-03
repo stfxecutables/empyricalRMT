@@ -6,6 +6,7 @@ from numpy.polynomial.polynomial import polyfit, polyval
 from pandas import DataFrame
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import curve_fit
+from typing import List
 from warnings import warn
 
 from empyricalRMT.rmt._constants import (
@@ -33,7 +34,7 @@ class Smoother:
 
         Parameters
         ----------
-        eigenvalues: np.array
+        eigenvalues: ndarray
             Eigenvalues for fitting the step function.
         """
         try:
@@ -55,7 +56,7 @@ class Smoother:
 
         Parameters
         ----------
-        eigs: np.array
+        eigs: ndarray
             sorted eigenvalues
         smoother: "poly" | "spline" | "gompertz" | lambda
             the type of smoothing function used to fit the step function
@@ -66,10 +67,10 @@ class Smoother:
 
         Returns
         -------
-        unfolded: np.array
+        unfolded: ndarray
             the unfolded eigenvalues
 
-        steps: np.array
+        steps: ndarray
             the step-function values
         """
         eigs = self._eigs
@@ -86,6 +87,7 @@ class Smoother:
             return unfolded, steps
 
         if smoother == "spline":
+            k = DEFAULT_SPLINE_DEGREE
             if degree is None:
                 degree = DEFAULT_SPLINE_DEGREE
             else:
@@ -172,7 +174,7 @@ class Smoother:
 
     def __get_column_names(
         self, poly_degrees, spline_smooths, spline_degrees=[3], gompertz=True
-    ) -> str:
+    ) -> List[str]:
         """If arguments are arrays, generate names for all columns of report. Otherwise,
         just return the name for indexing into the report.
         """
