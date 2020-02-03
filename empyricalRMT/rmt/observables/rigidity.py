@@ -1,8 +1,10 @@
 import numpy as np
+from numpy import ndarray
 
 from colorama import Fore
 from numba import jit, prange
 from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
+from typing import Tuple
 
 from empyricalRMT.rmt.observables.step import stepFunctionG, stepFunctionVectorized
 
@@ -37,13 +39,13 @@ from empyricalRMT.rmt.observables.step import stepFunctionG, stepFunctionVectori
 #    appropriate number of times to generate a dataset consisting of
 #    datapoints (L, ∆3(L)).
 def spectralRigidity(
-    eigs: np.array,
-    unfolded: np.array,
+    eigs: ndarray,
+    unfolded: ndarray,
     c_iters: int = 1000,
     L_grid_size: int = 50,
     min_L=2,
     max_L=25,
-) -> [np.array, np.array]:
+) -> Tuple[ndarray, ndarray]:
     """Compute the spectral rigidity for a particular unfolding.
 
     Computes the spectral rigidity (delta_3, ∆₃ [1]_) for a
@@ -51,9 +53,9 @@ def spectralRigidity(
 
     Parameters
     ----------
-    eigs : np.array
+    eigs : ndarray
         The sorted (ascending) eigenvalues.
-    unfolded : np.array
+    unfolded : ndarray
         The sorted (ascending) eigenvalues computed from eigs.
     L_grid_size : int = 100
         The number of values of L to generate betwen min_L and max_L.
@@ -71,10 +73,10 @@ def spectralRigidity(
 
     Returns
     -------
-    L : np.array
+    L : ndarray
         The L values generated based on the values of L_grid_size,
         min_L, and max_L.
-    delta3 : np.array
+    delta3 : ndarray
         The computed spectral rigidity values for each of L.
 
     References
@@ -108,9 +110,9 @@ def spectralRigidity(
 
 @jit(nopython=True, fastmath=True, cache=True)
 def spectralIter(
-    eigs: np.array,
-    unfolded: np.array,
-    delta3_L_vals: np.array,
+    eigs: ndarray,
+    unfolded: ndarray,
+    delta3_L_vals: ndarray,
     L: float,
     c_iters: int = 100,
     interval_gridsize: int = 100,
@@ -129,7 +131,7 @@ def spectralIter(
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def slope(x: np.array, y: np.array) -> np.float64:
+def slope(x: ndarray, y: ndarray) -> np.float64:
     x_mean = np.mean(x)
     y_mean = np.mean(y)
     x_dev = x - x_mean
@@ -142,12 +144,12 @@ def slope(x: np.array, y: np.array) -> np.float64:
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def intercept(x: np.array, y: np.array, slope: np.float64) -> np.float64:
+def intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
     return np.mean(y) - slope * np.mean(x)
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def integrateFast(grid: np.array, values: np.array) -> np.float64:
+def integrateFast(grid: ndarray, values: ndarray) -> np.float64:
     """https://en.wikipedia.org/wiki/Trapezoidal_rule#Uniform_grid"""
     delta_x = (grid[-1] - grid[0]) / len(grid)
     scale = delta_x / 2
@@ -163,7 +165,7 @@ def sq_lin_deviation(eigs, K, w, l) -> np.float64:
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def sq_lin_deviation_all(eigs, K, w, x: np.array) -> np.array:
+def sq_lin_deviation_all(eigs, K, w, x: ndarray) -> ndarray:
     ret = np.empty(len(x))
     for i in prange(len(x)):
         ret[i] = sq_lin_deviation(eigs, K, w, x[i])
