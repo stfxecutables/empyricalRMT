@@ -4,26 +4,30 @@ import pandas as pd
 import seaborn as sbn
 
 from colorama import Fore, Style
+from numpy import ndarray
 from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
+from typing import Optional, Tuple
 from warnings import warn
 
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 from empyricalRMT.rmt.observables.spacings import computeSpacings
 from empyricalRMT.utils import make_parent_directories
 
+PlotResult = Optional[Tuple[plt.Figure, plt.Axes]]
+
 RESET = Style.RESET_ALL
 PLOTTING_READY = False
 
 
 def rawEigDist(
-    eigs: np.array,
+    eigs: ndarray,
     bins=50,
     title="Raw Eigenvalue Distribution",
     kde=True,
     mode="block",
     outfile: Path = None,
-):
+) -> PlotResult:
     """Plot a histogram of the raw eigenvalues.
 
     Parameters
@@ -73,12 +77,12 @@ def rawEigDist(
 
 
 def stepFunction(
-    eigs: np.array,
+    eigs: ndarray,
     gridsize=100000,
     title="Eigenvalue Step Function",
     mode="block",
     outfile: Path = None,
-):
+) -> PlotResult:
     """Compute the step function vaues over a grid, and plot the resulting curve.
 
     Parameters
@@ -114,12 +118,12 @@ def stepFunction(
 
 
 def rawEigSorted(
-    eigs: np.array,
+    eigs: ndarray,
     title="Raw Eigenvalues",
     mode="block",
     outfile: Path = None,
     kind="scatter",
-):
+) -> PlotResult:
     """Plot a curve or scatterplot of the raw eigenvalues.
 
     Parameters
@@ -158,13 +162,13 @@ def rawEigSorted(
 
 
 def unfoldedDist(
-    unfolded: np.array,
+    unfolded: ndarray,
     bins=50,
     kde=True,
     title="Unfolded Eigenvalues",
     mode="block",
     outfile=None,
-):
+) -> PlotResult:
     """Plot a histogram of the unfolded eigenvalues.
 
     Parameters
@@ -214,8 +218,8 @@ def unfoldedDist(
 
 
 def unfoldedFit(
-    unfolded: np.array, title="Unfolding Fit", mode="block", outfile: Path = None
-):
+    unfolded: ndarray, title="Unfolding Fit", mode="block", outfile: Path = None
+) -> PlotResult:
     """Plot the unfolding fit against the step function.
 
     Parameters
@@ -250,18 +254,18 @@ def unfoldedFit(
 
 # this essentially plots the nearest-neighbors spacing distribution
 def spacings(
-    unfolded: np.array,
+    unfolded: ndarray,
     bins=50,
     kde=True,
     title="Unfolded Spacing Distribution",
     mode="block",
     outfile: Path = None,
-):
+) -> PlotResult:
     """Plots a histogram of the Nearest-Neighbors Spacing Distribution
 
     Parameters
     ----------
-    unfolded: np.array
+    unfolded: ndarray
         the unfolded eigenvalues
     bins: int
         the number of (equal-sized) bins to display and use for the histogram
@@ -328,13 +332,13 @@ def spacings(
 
 
 def spectralRigidity(
-    unfolded: np.array,
+    unfolded: ndarray,
     data: pd.DataFrame,
     title="Spectral Rigidity",
     mode="block",
     outfile: Path = None,
     ensembles=["poisson", "goe", "gue", "gse"],
-):
+) -> PlotResult:
     """Plot the computed spectral rigidity against the various expected spectral
     rigidity curves for the classical ensembles.
 
@@ -402,13 +406,13 @@ def spectralRigidity(
 
 
 def levelNumberVariance(
-    unfolded: np.array,
+    unfolded: ndarray,
     data: pd.DataFrame,
     title="Level Number Variance",
     mode="block",
     outfile: Path = None,
     ensembles=["poisson", "goe", "gue", "gse"],
-):
+) -> PlotResult:
     """Plot the computed level number variance against the various expected number
     level variance curves for the classical ensembles.
 
@@ -484,7 +488,7 @@ def _setup_plotting():
     PLOTTING_READY = True
 
 
-def _kde_plot(values: np.array, grid: np.array, axes):
+def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes):
     """
     calculate KDE for observed spacings
     we are doing this manually because we want to ensure consistency of the KDE
@@ -494,9 +498,9 @@ def _kde_plot(values: np.array, grid: np.array, axes):
 
     Parameters
     ----------
-    values: np.array
+    values: ndarray
         the values used to compute the kernel density estimate
-    grid: np.array
+    grid: ndarray
         the grid of values over which to evaluate the computed KDE curve
     axes: pyplot.Axes
         the current axes object to be modified
@@ -510,7 +514,7 @@ def _kde_plot(values: np.array, grid: np.array, axes):
     plt.setp(kde_curve, color="black")
 
 
-def _handle_plot_mode(mode, axes, outfile):
+def _handle_plot_mode(mode: str, axes: plt.Axes, outfile: Path = None) -> PlotResult:
     if mode == "block":
         plt.show(block=True)
     elif mode == "noblock":
