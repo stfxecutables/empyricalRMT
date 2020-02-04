@@ -27,6 +27,7 @@ build
 dist
 env
 main.py
+.mypy_cache
 *.egg-info
 **/__pycache__
 
