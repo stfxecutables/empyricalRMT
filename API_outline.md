@@ -47,15 +47,6 @@ class TrimReport:
     .unfold()                    -> Unfolded
 ```
 
-
-
-```python
-class TrimReport:
-    ._trim_iters                -> [DataFrame]
-    ._best_iters                -> int
-
-
-
 ## Smoother
 
 ```python
