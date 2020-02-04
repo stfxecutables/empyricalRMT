@@ -93,6 +93,40 @@ class Eigenvalues(EigVals):
     ) -> TrimReport:
         raise NotImplementedError
 
+    def trim_marcenko_pastur(self, series_length: int, n_series: int) -> ndarray:
+        """Trim to noise eigenvalues under assumption that eigenvalues come from
+        correlation matrix.
+
+        See https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6513117/#sec008title,
+
+        A second and related improvement takes into account the effects of common
+        (nonstationary) trends for a system with N cells, and in particular the largest
+        eigenvalue eig_max. We realize that the effects of noise are inseparably coupled
+        to those of the global trend [51], as the presence of the latter modifies and
+        left-shifts the density of eigenvalues that we would otherwise observe in presence
+        of noise only. So we do not simply superimpose the two effects as in [15]; on the
+        contrary, we calculate the modification of the random bulk exactly, given the
+        system’s empirical eig_max. In particular, we calculate the shifted value of an
+        original Wishart matrix [15] to find
+
+        eig_+- = (1 − eig_max/N)(1 +- 1/(sqrt(Q)))**2
+
+        where Q = T/N is the ratio between the number of time steps in the data T and the
+        number of cells N. Fig 2 shows both the modified and unmodified spectral
+        densities. It also shows that taking the left-shift of the random bulk into
+        account is very important, as it unveils informative empirical eigenvalues that
+        would otherwise be classified as consistent with the random spectrum and hence
+        discarded.
+        """
+        # https://en.wikipedia.org/wiki/Marchenko%E2%80%93Pastur_distribution
+        if len(self.vals) != n_series:
+            raise ValueError("There should be as many eigenvalues as series.")
+        N, T = n_series, series_length
+        eig_max = self.vals.max()
+        trim_max = (1 - eig_max / N) * (1 + np.sqrt(N / T)) ** 2
+        trim_min = (1 - eig_max / N) * (1 - np.sqrt(N / T)) ** 2
+        return self.vals[(self.vals > trim_min) & (self.vals < trim_max)]
+
     def trim_manually(self, start: int, end: int) -> TrimReport:
         """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]]"""
         trimmed_eigs = self.eigs[start:end]
