@@ -77,21 +77,26 @@ class TrimReport:
 
     def summarize_trim_unfoldings(
         self
-    ) -> Tuple[Dict[Union[str, int], str], DataFrame, Tuple[int, int], List[str]]:
+    ) -> Tuple[Dict[Union[str, int], str], DataFrame, List[Tuple[int, int]], List[str]]:
         """Computes GOE fit scores for the unfoldings performed, and returns various "best" fits.
 
         Parameters
         ----------
         show_plot: boolean
             if True, shows a plot of the automated outlier detection results
+
         save_plot: Path
             if save_plot is a pathlib file Path, save the outlier detection plot to that
             location. Should be a .png, e.g. "save_plot = Path.home() / outlier_plot.png".
+
         poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8,
+            9, 10, 11]
+
         spline_smooths: List[float]
             the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
             Default np.linspace(1, 2, num=11)
+
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
@@ -101,16 +106,30 @@ class TrimReport:
         best_smoothers: Dict
             A dict with keys "best", "second", "third", (or equivalently "0", "1", "2",
             respectively) and the GOE fit scores
+
         best_unfoldeds: DataFrame
             a DataFrame with column names identifying the fit method, and columns
             corresponding to the unfolded eigenvalues using those methods. The first
             column has the "best" unfolded values, the second column the second best, and
             etc, up to the third best
-        consistent: List
-            a list of the "generally" best overall smoothers, across various possible
-            trimmings. I.e. returns the smoothers with the best mean and median GOE fit
-            scores across all trimmings. Useful for deciding on a single smoothing method
-            to use across a dataset.
+
+        best_trim_indices: List[Tuple[int, int]]
+            Compares the GOE scores of each of the possible trim regions across all
+            smoothers, and finds the three best trim regions with the best (lowest)
+            score, averaging across smoothers. So e.g. if you fit polynomials of
+            degree 4, 5, 6, and splines with smoothing parameters 1.0, 1.2, 1.4, then
+            `best_trim_indices[0]` will contain values `(start, end)`, such that the
+            original eigenvalues trimmed to [start, end) have the lowest average score
+            (compared to other possible trim regions identified by the histogram-based
+            outlier detection method) across those polynomial and spline fits. Likewise,
+            `best_trim_indices[1]` contains the second best overall trim indices across
+            smoothers, and `best_trim_indices[2]` contains the third best.
+
+        consistent_smoothers: List[str]
+            a list of names of the "generally" best overall smoothers, across various
+            possible trimmings. I.e. returns the smoothers with the best mean and median
+            GOE fit scores across all trimmings. Useful for deciding on a single smoothing
+            method to use across a dataset.
         """
         report, unfolds = self._unfold_info, self._all_unfolds
         if report is None or unfolds is None:
@@ -130,13 +149,23 @@ class TrimReport:
             map(lambda s: s.replace("--score", ""), best_smoother_cols)  # type: ignore
         ]
 
-        best_overall_row_id = report.filter(regex="score").abs().mean(axis=1).idxmin()
-        best_trim_eigs = self._trim_steps[best_overall_row_id]["eigs"]
-        best_start, best_end = best_trim_eigs[0], best_trim_eigs[-1]
-        best_trim_indices = (
-            list(self._untrimmed).index(best_start),
-            list(self._untrimmed).index(best_end),
+        # take the mean GOE score across smoothers for each trimming, find the row
+        # with the lowest mean score, and call this the "best overall" trim
+        sorted_row_mean_scores = (
+            report.filter(regex="score").abs().mean(axis=1).sort_values()
         )
+        best_three = list(
+            sorted_row_mean_scores[:3].index
+        )  # get indices of best three rows
+        best_trim_indices = []
+        for i, row_id in enumerate(best_three):
+            best_trim_eigs = np.array(self._trim_steps[row_id]["eigs"])
+            best_start, best_end = best_trim_eigs[0], best_trim_eigs[-1]
+            best_indices = (
+                list(self._untrimmed).index(best_start),
+                list(self._untrimmed).index(best_end) + 1,
+            )
+            best_trim_indices.append(best_indices)
 
         # construct dict with trim amounts of best overall scoring smoothers
         best_smoothers: Dict[Union[str, int], str] = {}
@@ -167,9 +196,11 @@ class TrimReport:
         top_smoothers_median = set(score_cols[best_median_col_idx])
         top_smoothers_mean = set(score_cols[best_mean_col_idx])
         consistent = list(top_smoothers_mean.intersection(top_smoothers_median))
-        consistent = list(map(lambda s: str(s.replace("--score", "")), consistent))
+        consistent_smoothers = list(
+            map(lambda s: str(s.replace("--score", "")), consistent)
+        )
 
-        return best_smoothers, best_unfoldeds, best_trim_indices, consistent
+        return best_smoothers, best_unfoldeds, best_trim_indices, consistent_smoothers
 
     def unfold_trimmed(self) -> Unfolded:
         raise NotImplementedError
@@ -381,7 +412,8 @@ class TrimReport:
         gompertz: bool = True,
     ) -> None:
         """Generate a dataframe showing the unfoldings that results from different
-        trim percentages, and different choices of smoothing functions.
+        trim percentages, and different choices of smoothing functions. This should be run
+        in the constructor.
 
         Parameters
         ----------
