@@ -130,7 +130,7 @@ class TrimReport:
             a list of names of the "generally" best overall smoothers, across various
             possible trimmings. I.e. returns the smoothers with the best mean and median
             GOE fit scores across all trimmings. Useful for deciding on a single smoothing
-            method to use across a dataset.
+            method to use across a dataset. Consistent smoothers are *not* ordered.
         """
         report, unfolds = self._unfold_info, self._all_unfolds
         if report is None or unfolds is None:
