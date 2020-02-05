@@ -69,7 +69,11 @@ def random_1vector(size: int = 100) -> ndarray:
     return vals * vals.T
 
 
-def generateGOEMatrix(size: int = 100, mean: float = 0, sd: float = 1) -> ndarray:
+def generateGOEMatrix(
+    size: int = 100, mean: float = 0, sd: float = 1, seed: int = None
+) -> ndarray:
+    if seed is not None:
+        np.random.seed(seed)
     if mean != 0 or sd != 1:
         M = np.random.normal(mean, sd, [size, size])
     else:
