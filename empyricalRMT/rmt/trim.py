@@ -17,6 +17,7 @@ from empyricalRMT.rmt._constants import (
     DEFAULT_SPLINE_SMOOTHS,
     DEFAULT_SPLINE_DEGREES,
 )
+from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 from empyricalRMT.rmt.plot import _setup_plotting, PlotMode, PlotResult
 from empyricalRMT.rmt.smoother import Smoother
@@ -496,3 +497,16 @@ class TrimReport:
         var_norm = (var - EXPECTED_GOE_VARIANCE) / EXPECTED_GOE_VARIANCE
         score = var_norm + mean_weight * mean_norm
         return mean, var, score
+
+
+class Trimmed(EigVals):
+    def __init__(self, trimmed: ndarray):
+        super().__init__(trimmed)
+
+    @property
+    def values(self) -> ndarray:
+        return self._vals
+
+    @property
+    def vals(self) -> ndarray:
+        return self._vals

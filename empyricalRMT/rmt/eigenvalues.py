@@ -19,7 +19,7 @@ from empyricalRMT.rmt._constants import (
 )
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.smoother import Smoother, SmoothMethod
-from empyricalRMT.rmt.trim import TrimReport
+from empyricalRMT.rmt.trim import Trimmed, TrimReport
 from empyricalRMT.rmt.unfold import Unfolded
 from empyricalRMT.utils import find_first, find_last, is_symmetric, mkdirp
 
@@ -134,10 +134,10 @@ class Eigenvalues(EigVals):
         trim_min = (1 - eig_max / N) * (1 - np.sqrt(N / T)) ** 2
         return self.vals[(self.vals > trim_min) & (self.vals < trim_max)]
 
-    def trim_manually(self, start: int, end: int) -> TrimReport:
+    def trim_manually(self, start: int, end: int) -> Trimmed:
         """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]]"""
         trimmed_eigs = self.vals[start:end]
-        raise NotImplementedError("Still need to implement `Trimmed` constructor")
+        return Trimmed(trimmed_eigs)
 
     def trim_interactively(self) -> None:
         raise NotImplementedError
