@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 import pytest
 
 from empyricalRMT.rmt.construct import generateGOEMatrix, generatePoisson
@@ -7,16 +8,17 @@ from empyricalRMT.tests.test_spectral import test_spectral_rigidity
 from empyricalRMT.tests.test_nnsd import test_semicircle
 
 
-def generateUniform(matsize=1000, lower=0, upper=1):
-    pass
+def generateUniform(matsize: int = 1000, lower: float = 0, upper: float = 1) -> ndarray:
+    raise NotImplementedError
 
 
-def generate_eigs(matsize, mean=0, sd=1, kind="goe"):
+def generate_eigs(
+    matsize: int, mean: float = 0, sd: float = 1, kind: str = "goe"
+) -> ndarray:
     if kind == "poisson":
         M = generatePoisson(matsize)
     elif kind == "uniform":
         raise Exception("UNIMPLEMENTED!")
-        M = generateUniform(matsize)
     elif kind == "gue":
         size = [matsize, matsize]
         A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
@@ -33,8 +35,13 @@ def generate_eigs(matsize, mean=0, sd=1, kind="goe"):
 
 @pytest.mark.old
 def test_observables(
-    matsize=1000, iters=1, semicircle=True, rigidity=True, levelvar=True, kind="goe"
-):
+    matsize: int = 1000,
+    iters: int = 1,
+    semicircle: bool = True,
+    rigidity: bool = True,
+    levelvar: bool = True,
+    kind: str = "goe",
+) -> None:
     if not semicircle and not rigidity and not levelvar:
         raise ValueError("Must test at least one observable")
     for _ in range(iters):
@@ -49,8 +56,12 @@ def test_observables(
 
 @pytest.mark.old
 def test_poisson_observables(
-    matsize=1000, iters=1, semicircle=True, rigidity=True, levelvar=True
-):
+    matsize: int = 1000,
+    iters: int = 1,
+    semicircle: bool = True,
+    rigidity: bool = True,
+    levelvar: bool = True,
+) -> None:
     if not semicircle and not rigidity and not levelvar:
         raise ValueError("Must test at least one observable")
     for _ in range(iters):
@@ -65,12 +76,16 @@ def test_poisson_observables(
 
 @pytest.mark.old
 def test_uniform_observables(
-    matsize=1000, iters=1, semicircle=True, rigidity=True, levelvar=True
-):
+    matsize: int = 1000,
+    iters: int = 1,
+    semicircle: bool = True,
+    rigidity: bool = True,
+    levelvar: bool = True,
+) -> None:
     if not semicircle and not rigidity and not levelvar:
         raise ValueError("Must test at least one observable")
     for _ in range(iters):
-        eigs = generate_eigs(matsize, poisson=True)
+        eigs = generate_eigs(matsize)
         if semicircle:
             test_semicircle(1000, eigs=eigs)
         if rigidity:

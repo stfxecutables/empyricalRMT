@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 import pytest
 
 from pathlib import Path
@@ -10,11 +11,11 @@ from empyricalRMT.utils import eprint
 CUR_DIR = Path(__file__).parent
 
 
-def res(path) -> str:
+def res(path: Path) -> str:
     return str(path.absolute().resolve())
 
 
-def load_eigs(matsize=10000):
+def load_eigs(matsize: int = 10000) -> ndarray:
     eigs = None
     eigs_out = CUR_DIR / f"test_eigs{matsize}.npy"
     try:
@@ -28,18 +29,20 @@ def load_eigs(matsize=10000):
     return eigs
 
 
-def generate_eigs(matsize):
+def generate_eigs(matsize: int) -> ndarray:
     M = generateGOEMatrix(matsize)
     eigs = np.linalg.eigvalsh(M)
     return eigs
 
 
 @pytest.mark.fast
-def test_semicircle(matsize=1000, generate_eigs=False, eigs=None):
+def test_semicircle(
+    matsize: int = 1000, new_eigs: bool = False, eigs: ndarray = None
+) -> None:
     if eigs is not None:
         pass  # use passed in eigenvalues
     else:
-        eigs = generate_eigs(matsize) if generate_eigs else load_eigs(matsize)
+        eigs = generate_eigs(matsize) if new_eigs else load_eigs(matsize)
     rawEigDist(
         eigs, bins=100, title="Wigner Semicircle PLotting Test", kde=False, mode="block"
     )

@@ -5,12 +5,12 @@ import pytest
 from pathlib import Path
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
-from empyricalRMT.rmt.unfold import Unfolder
+from empyricalRMT.rmt.unfolder import Unfolder
 
 
 @pytest.mark.fast
 @pytest.mark.unfolder
-def test_unfold_init():
+def test_unfold_init() -> None:
     M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
     unfolder = Unfolder(eigs)
@@ -20,7 +20,7 @@ def test_unfold_init():
 
 @pytest.mark.fast
 @pytest.mark.trim
-def test_trim_manual():
+def test_trim_manual() -> None:
     M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
     for i in range(20):
@@ -36,7 +36,7 @@ def test_trim_manual():
 @pytest.mark.fast
 @pytest.mark.trim
 @pytest.mark.unfolder
-def test_trim_reports():
+def test_trim_reports() -> None:
     M = generateGOEMatrix(2000)
     eigs = np.linalg.eigvalsh(M)
     unfolder = Unfolder(eigs)

@@ -4,6 +4,7 @@ import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame
 from pyod.models.hbos import HBOS
+from typing import Iterable, List, Sized
 from warnings import warn
 
 from empyricalRMT.rmt._constants import (
@@ -17,7 +18,7 @@ from empyricalRMT.rmt._constants import (
     DEFAULT_SPLINE_DEGREES,
 )
 from empyricalRMT.rmt._eigvals import EigVals
-from empyricalRMT.rmt.smoother import Smoother
+from empyricalRMT.rmt.smoother import Smoother, SmoothMethod
 from empyricalRMT.rmt.trim import TrimReport
 from empyricalRMT.rmt.unfold import Unfolded
 from empyricalRMT.utils import find_first, find_last, is_symmetric, mkdirp
@@ -27,7 +28,7 @@ _WARNED_SMALL = False
 
 
 class Eigenvalues(EigVals):
-    def __init__(self, eigenvalues):
+    def __init__(self, eigenvalues: Sized):
         """Construct an Eigenvalues object.
 
         Parameters
@@ -64,7 +65,9 @@ class Eigenvalues(EigVals):
     def vals(self) -> ndarray:
         return self._vals
 
-    def get_trimmed(self, max_trim=0.5, max_iters=7, outlier_tol=0.1) -> TrimReport:
+    def get_trimmed(
+        self, max_trim: float = 0.5, max_iters: int = 7, outlier_tol: float = 0.1
+    ) -> TrimReport:
         """compute the optimal trim regions iteratively via histogram-based outlier detection
 
         Parameters
@@ -89,7 +92,11 @@ class Eigenvalues(EigVals):
         return TrimReport(eigs, max_trim, max_iters, outlier_tol)
 
     def get_best_trim(
-        self, smoother="poly", degree=DEFAULT_POLY_DEGREE, outlier_tol=0.1, max_trim=0.5
+        self,
+        smoother: SmoothMethod = "poly",
+        degree: int = DEFAULT_POLY_DEGREE,
+        outlier_tol: float = 0.1,
+        max_trim: float = 0.5,
     ) -> TrimReport:
         raise NotImplementedError
 
@@ -129,7 +136,7 @@ class Eigenvalues(EigVals):
 
     def trim_manually(self, start: int, end: int) -> TrimReport:
         """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]]"""
-        trimmed_eigs = self.eigs[start:end]
+        trimmed_eigs = self.vals[start:end]
         raise NotImplementedError("Still need to implement `Trimmed` constructor")
 
     def trim_interactively(self) -> None:
@@ -137,9 +144,9 @@ class Eigenvalues(EigVals):
 
     def trim_unfold_best(
         self,
-        poly_degrees=DEFAULT_POLY_DEGREES,
-        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
-        spline_degrees=DEFAULT_SPLINE_DEGREES,
+        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
+        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
     ) -> Unfolded:
         """Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
         percent and smoother according to GOE score.

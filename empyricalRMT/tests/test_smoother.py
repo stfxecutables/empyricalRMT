@@ -7,7 +7,7 @@ from empyricalRMT.rmt.construct import generate_eigs
 
 
 @pytest.mark.fast
-def test_smoother_class():
+def test_smoother_class() -> None:
     # sanity
     eigs = np.sort(generate_eigs(200))
     smoother = Smoother(eigs)

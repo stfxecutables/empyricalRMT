@@ -5,7 +5,7 @@ from numba import jit
 
 
 @jit(nopython=True, fastmath=True)
-def derivative(x: ndarray, y=ndarray) -> ndarray:
+def derivative(x: ndarray, y: ndarray) -> ndarray:
     res = np.empty(x.shape, dtype=np.float64)
     # for i = 1 (i.e. y[1], we compute (y[0] - y[2]) / 2*spacing)
     # ...
@@ -34,7 +34,7 @@ def gompertz(x: ndarray, a: float, b: float, c: float) -> ndarray:
 
 
 @jit(nopython=True, fastmath=True)
-def exponential(x: ndarray, a: float, b: float, c: float, d: float):
+def exponential(x: ndarray, a: float, b: float, c: float, d: float) -> ndarray:
     """b is intercept,
     """
     return b - a * np.exp(-c * x ** (1 / d))

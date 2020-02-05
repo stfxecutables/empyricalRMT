@@ -6,7 +6,8 @@ from numpy.polynomial.polynomial import polyfit, polyval
 from pandas import DataFrame
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import curve_fit
-from typing import List
+from typing import Any, List, Union
+from typing_extensions import Literal
 from warnings import warn
 
 from empyricalRMT.rmt._constants import (
@@ -22,6 +23,8 @@ from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}
+
+SmoothMethod = Union[Literal["poly"], Literal["spline"], Literal["gompertz"]]
 
 
 def _spline_name(i: int) -> str:
@@ -47,10 +50,10 @@ class Smoother:
 
     def fit(
         self,
-        smoother="poly",
-        degree=DEFAULT_POLY_DEGREE,
-        spline_smooth=DEFAULT_SPLINE_SMOOTH,
-        emd_detrend=False,
+        smoother: SmoothMethod = "poly",
+        degree: int = DEFAULT_POLY_DEGREE,
+        spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
+        emd_detrend: bool = False,
     ) -> ndarray:
         """Computer the specified smoothing function values for a set of eigenvalues.
 
@@ -80,22 +83,17 @@ class Smoother:
         )
 
         if smoother == "poly":
-            if degree is None:
-                degree = DEFAULT_POLY_DEGREE
             poly_coef = polyfit(eigs, steps, degree)
             unfolded = polyval(eigs, poly_coef)
             return unfolded, steps
 
         if smoother == "spline":
             k = DEFAULT_SPLINE_DEGREE
-            if degree is None:
-                degree = DEFAULT_SPLINE_DEGREE
-            else:
-                try:
-                    k = int(degree)
-                except BaseException as e:
-                    print(ValueError("Cannot convert spline degree to int."))
-                    raise e
+            try:
+                k = int(degree)
+            except BaseException as e:
+                print(ValueError("Cannot convert spline degree to int."))
+                raise e
             if spline_smooth == "heuristic":
                 spline = USpline(eigs, steps, k=k, s=len(eigs) ** 1.4)
             elif spline_smooth is not None:
@@ -117,11 +115,11 @@ class Smoother:
 
     def fit_all(
         self,
-        poly_degrees=DEFAULT_POLY_DEGREES,
-        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
-        spline_degrees=DEFAULT_SPLINE_DEGREES,
-        gompertz=True,
-        dry_run=False,
+        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
+        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        gompertz: bool = True,
+        dry_run: bool = False,
     ) -> DataFrame:
         """unfold eigenvalues for all specified smoothers
 
@@ -173,7 +171,11 @@ class Smoother:
         return df
 
     def __get_column_names(
-        self, poly_degrees, spline_smooths, spline_degrees=[3], gompertz=True
+        self,
+        poly_degrees: List[int],
+        spline_smooths: List[float],
+        spline_degrees: List[int] = [3],
+        gompertz: bool = True,
     ) -> List[str]:
         """If arguments are arrays, generate names for all columns of report. Otherwise,
         just return the name for indexing into the report.
@@ -204,7 +206,11 @@ class Smoother:
         return col_names
 
     def __column_name_from_args(
-        self, poly_degree=None, spline_smooth=None, gompertz=None, spline_degree=3
+        self,
+        poly_degree: int = None,
+        spline_smooth: float = None,
+        gompertz: bool = None,
+        spline_degree: int = 3,
     ) -> str:
         if isinstance(poly_degree, int):
             return f"poly_{poly_degree}"
@@ -217,7 +223,7 @@ class Smoother:
             return "gompertz"
         raise ValueError("Arguments to __column_name_from_args cannot all be None")
 
-    def __validate_args(self, **kwargs):
+    def __validate_args(self, **kwargs: Any) -> None:
         """throw an error if smoother args are in any way invalid"""
         smoother = kwargs.get("smoother")
         degree = kwargs.get("degree")

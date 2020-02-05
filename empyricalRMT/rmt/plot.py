@@ -7,7 +7,8 @@ from colorama import Fore, Style
 from numpy import ndarray
 from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
+from typing_extensions import Literal
 from warnings import warn
 
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
@@ -15,6 +16,9 @@ from empyricalRMT.rmt.observables.spacings import computeSpacings
 from empyricalRMT.utils import make_parent_directories
 
 PlotResult = Optional[Tuple[plt.Figure, plt.Axes]]
+PlotMode = Union[
+    Literal["block"], Literal["noblock"], Literal["save"], Literal["return"]
+]
 
 RESET = Style.RESET_ALL
 PLOTTING_READY = False
@@ -22,10 +26,10 @@ PLOTTING_READY = False
 
 def rawEigDist(
     eigs: ndarray,
-    bins=50,
-    title="Raw Eigenvalue Distribution",
-    kde=True,
-    mode="block",
+    bins: int = 50,
+    title: str = "Raw Eigenvalue Distribution",
+    kde: bool = True,
+    mode: PlotMode = "block",
     outfile: Path = None,
 ) -> PlotResult:
     """Plot a histogram of the raw eigenvalues.
@@ -78,9 +82,9 @@ def rawEigDist(
 
 def stepFunction(
     eigs: ndarray,
-    gridsize=100000,
-    title="Eigenvalue Step Function",
-    mode="block",
+    gridsize: int = 100000,
+    title: str = "Eigenvalue Step Function",
+    mode: PlotMode = "block",
     outfile: Path = None,
 ) -> PlotResult:
     """Compute the step function vaues over a grid, and plot the resulting curve.
@@ -119,10 +123,10 @@ def stepFunction(
 
 def rawEigSorted(
     eigs: ndarray,
-    title="Raw Eigenvalues",
-    mode="block",
+    title: str = "Raw Eigenvalues",
+    mode: PlotMode = "block",
     outfile: Path = None,
-    kind="scatter",
+    kind: Union[Literal["scatter"], Literal["line"]] = "scatter",
 ) -> PlotResult:
     """Plot a curve or scatterplot of the raw eigenvalues.
 
@@ -163,11 +167,11 @@ def rawEigSorted(
 
 def unfoldedDist(
     unfolded: ndarray,
-    bins=50,
-    kde=True,
-    title="Unfolded Eigenvalues",
-    mode="block",
-    outfile=None,
+    bins: int = 50,
+    kde: bool = True,
+    title: str = "Unfolded Eigenvalues",
+    mode: PlotMode = "block",
+    outfile: Path = None,
 ) -> PlotResult:
     """Plot a histogram of the unfolded eigenvalues.
 
@@ -218,7 +222,10 @@ def unfoldedDist(
 
 
 def unfoldedFit(
-    unfolded: ndarray, title="Unfolding Fit", mode="block", outfile: Path = None
+    unfolded: ndarray,
+    title: str = "Unfolding Fit",
+    mode: PlotMode = "block",
+    outfile: Path = None,
 ) -> PlotResult:
     """Plot the unfolding fit against the step function.
 
@@ -255,10 +262,10 @@ def unfoldedFit(
 # this essentially plots the nearest-neighbors spacing distribution
 def spacings(
     unfolded: ndarray,
-    bins=50,
-    kde=True,
-    title="Unfolded Spacing Distribution",
-    mode="block",
+    bins: int = 50,
+    kde: bool = True,
+    title: str = "Unfolded Spacing Distribution",
+    mode: PlotMode = "block",
     outfile: Path = None,
 ) -> PlotResult:
     """Plots a histogram of the Nearest-Neighbors Spacing Distribution
@@ -334,10 +341,10 @@ def spacings(
 def spectralRigidity(
     unfolded: ndarray,
     data: pd.DataFrame,
-    title="Spectral Rigidity",
-    mode="block",
+    title: str = "Spectral Rigidity",
+    mode: PlotMode = "block",
     outfile: Path = None,
-    ensembles=["poisson", "goe", "gue", "gse"],
+    ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
 ) -> PlotResult:
     """Plot the computed spectral rigidity against the various expected spectral
     rigidity curves for the classical ensembles.
@@ -370,7 +377,7 @@ def spectralRigidity(
     _setup_plotting()
     df = pd.DataFrame(data, columns=["L", "∆3(L)"])
     axes = sbn.relplot(x="L", y="∆3(L)", data=df)
-    ensembles = set(ensembles)
+    ensembles = set(ensembles)  # type: ignore
 
     _, right = plt.xlim()
 
@@ -402,16 +409,16 @@ def spectralRigidity(
     plt.title(title)
     plt.legend()
 
-    _handle_plot_mode(mode, axes, outfile)
+    return _handle_plot_mode(mode, axes, outfile)
 
 
 def levelNumberVariance(
     unfolded: ndarray,
     data: pd.DataFrame,
-    title="Level Number Variance",
-    mode="block",
+    title: str = "Level Number Variance",
+    mode: PlotMode = "block",
     outfile: Path = None,
-    ensembles=["poisson", "goe", "gue", "gse"],
+    ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
 ) -> PlotResult:
     """Plot the computed level number variance against the various expected number
     level variance curves for the classical ensembles.
@@ -444,7 +451,7 @@ def levelNumberVariance(
     _setup_plotting()
     df = pd.DataFrame(data, columns=["L", "∑²(L)"])
     axes = sbn.relplot(x="L", y="∑²(L)", data=df)
-    ensembles = set(ensembles)
+    ensembles = set(ensembles)  # type: ignore
 
     _, right = plt.xlim()
 
@@ -474,10 +481,10 @@ def levelNumberVariance(
     plt.title(f"Level Number Variance - {title} unfolding")
     plt.legend()
 
-    _handle_plot_mode(mode, axes, outfile)
+    return _handle_plot_mode(mode, axes, outfile)
 
 
-def _setup_plotting():
+def _setup_plotting() -> None:
     global PLOTTING_READY
     if PLOTTING_READY:
         return
@@ -488,7 +495,7 @@ def _setup_plotting():
     PLOTTING_READY = True
 
 
-def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes):
+def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes) -> None:
     """
     calculate KDE for observed spacings
     we are doing this manually because we want to ensure consistency of the KDE
@@ -514,7 +521,9 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes):
     plt.setp(kde_curve, color="black")
 
 
-def _handle_plot_mode(mode: str, axes: plt.Axes, outfile: Path = None) -> PlotResult:
+def _handle_plot_mode(
+    mode: str, axes: plt.Axes, outfile: Path = None
+) -> Optional[PlotResult]:
     if mode == "block":
         plt.show(block=True)
     elif mode == "noblock":
@@ -534,9 +543,10 @@ def _handle_plot_mode(mode: str, axes: plt.Axes, outfile: Path = None) -> PlotRe
         return fig, axes
     else:
         raise ValueError("Invalid plotting mode.")
+    return None
 
 
-def _validate_bin_sizes(vals, bins):
+def _validate_bin_sizes(vals: ndarray, bins: int) -> None:
     vals = np.sort(vals)
     L = len(vals)
     bin_ends = np.linspace(vals[0], vals[-1], bins, endpoint=True)[1:]

@@ -7,19 +7,18 @@ from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
 from pyod.models.hbos import HBOS
+from typing import Dict, List, Optional, Tuple, Union
 
 from empyricalRMT.rmt._constants import (
     EXPECTED_GOE_MEAN,
     EXPECTED_GOE_VARIANCE,
     DEFAULT_POLY_DEGREE,
-    DEFAULT_SPLINE_SMOOTH,
-    DEFAULT_SPLINE_DEGREE,
     DEFAULT_POLY_DEGREES,
     DEFAULT_SPLINE_SMOOTHS,
     DEFAULT_SPLINE_DEGREES,
 )
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
-from empyricalRMT.rmt.plot import _setup_plotting
+from empyricalRMT.rmt.plot import _setup_plotting, PlotMode, PlotResult
 from empyricalRMT.rmt.smoother import Smoother
 from empyricalRMT.rmt.unfold import Unfolded
 from empyricalRMT.utils import find_first, find_last, mkdirp
@@ -27,12 +26,16 @@ from empyricalRMT.utils import find_first, find_last, mkdirp
 
 class TrimReport:
     def __init__(
-        self, eigenvalues: ndarray, max_trim=0.5, max_iters=7, outlier_tol=0.1
+        self,
+        eigenvalues: ndarray,
+        max_trim: float = 0.5,
+        max_iters: int = 7,
+        outlier_tol: float = 0.1,
     ):
         eigenvalues = np.sort(eigenvalues)
-        self._untrimmed = eigenvalues
-        self._unfold_info = None
-        self._all_unfolds = None
+        self._untrimmed: ndarray = eigenvalues
+        self._unfold_info: Optional[DataFrame] = None
+        self._all_unfolds: Optional[DataFrame] = None
 
         self._trim_steps = self.__get_trim_iters(
             tolerance=outlier_tol, max_trim=max_trim, max_iters=max_iters
@@ -53,11 +56,11 @@ class TrimReport:
 
     def compare_trim_unfolds(
         self,
-        poly_degrees=DEFAULT_POLY_DEGREES,
-        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
-        spline_degrees=DEFAULT_SPLINE_DEGREES,
-        gompertz=True,
-    ):
+        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
+        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        gompertz: bool = True,
+    ) -> DataFrame:
         """Computes unfoldings for the smoothing parameters specified in the arguments, across the
         multiple trim regions.
 
@@ -72,7 +75,9 @@ class TrimReport:
         )
         return self.unfold_info
 
-    def summarize_trim_unfoldings(self) -> (dict, pd.DataFrame, list):
+    def summarize_trim_unfoldings(
+        self
+    ) -> Tuple[Dict[Union[str, int], str], DataFrame, Tuple[int, int], List[str]]:
         """Computes GOE fit scores for the unfoldings performed, and returns various "best" fits.
 
         Parameters
@@ -108,6 +113,10 @@ class TrimReport:
             to use across a dataset.
         """
         report, unfolds = self._unfold_info, self._all_unfolds
+        if report is None or unfolds is None:
+            raise RuntimeError(
+                "Eigenvalues have not yet been unfolded. This should be impossible."
+            )
         scores = report.filter(regex=".*score.*").abs()
 
         # get column names so we don't have to deal with terrible Pandas return types
@@ -118,11 +127,19 @@ class TrimReport:
         best_smoother_rows = report[best_smoother_cols].abs().idxmin().to_list()
         # best unfolded eigenvalues
         best_unfoldeds = unfolds[
-            map(lambda s: s.replace("--score", ""), best_smoother_cols)
+            map(lambda s: s.replace("--score", ""), best_smoother_cols)  # type: ignore
         ]
 
+        best_overall_row_id = report.filter(regex="score").abs().mean(axis=1).idxmin()
+        best_trim_eigs = self._trim_steps[best_overall_row_id]["eigs"]
+        best_start, best_end = best_trim_eigs[0], best_trim_eigs[-1]
+        best_trim_indices = (
+            list(self._untrimmed).index(best_start),
+            list(self._untrimmed).index(best_end),
+        )
+
         # construct dict with trim amounts of best overall scoring smoothers
-        best_smoothers = {}
+        best_smoothers: Dict[Union[str, int], str] = {}
         trim_cols = ["trim_percent", "trim_low", "trim_high"]
         for i, col in enumerate(best_smoother_cols):
             min_score_i = best_smoother_rows[i]
@@ -139,6 +156,8 @@ class TrimReport:
                 best_smoothers["third"] = report[cols].iloc[min_score_i, :]
             best_smoothers[i] = report[cols].iloc[min_score_i, :]
 
+        # TODO: implement "best" trim
+
         median_scores = np.array(scores.median())
         mean_scores = np.array(scores.mean())
 
@@ -147,18 +166,21 @@ class TrimReport:
         best_mean_col_idx = np.argsort(mean_scores)[:3]
         top_smoothers_median = set(score_cols[best_median_col_idx])
         top_smoothers_mean = set(score_cols[best_mean_col_idx])
-        consistent = top_smoothers_mean.intersection(top_smoothers_median)
-        consistent = list(map(lambda s: s.replace("--score", ""), consistent))
+        consistent = list(top_smoothers_mean.intersection(top_smoothers_median))
+        consistent = list(map(lambda s: str(s.replace("--score", "")), consistent))
 
-        return best_smoothers, best_unfoldeds, consistent
+        return best_smoothers, best_unfoldeds, best_trim_indices, consistent
 
-    def unfold(self) -> "Unfolded":
+    def unfold_trimmed(self) -> Unfolded:
         raise NotImplementedError
-        return
 
     def plot_trim_steps(
-        self, title="Trim fits", mode="block", outfile: Path = None, log_info=True
-    ):
+        self,
+        title: str = "Trim fits",
+        mode: PlotMode = "block",
+        outfile: Path = None,
+        log_info: bool = True,
+    ) -> PlotResult:
         """Show which eigenvalues are trimmed at each iteration.
 
         Parameters
@@ -195,7 +217,7 @@ class TrimReport:
                 eigs_list = list(untrimmed)
                 unfolded = df["unfolded"].to_numpy()
                 spacings = unfolded[1:] - unfolded[:-1]
-                info = "Iteration {:d}: {:4.1f}% trimmed. <s> = {:6.6f}, var(s) = {:04.5f} MSQE: {:5.5f}. Trim indices: ({:d},{:d})".format(
+                info = "Iteration {:d}: {:4.1f}% trimmed. <s> = {:6.6f}, var(s) = {:04.5f} MSQE: {:5.5f}. Trim indices: ({:d},{:d})".format(  # noqa E501
                     i,
                     trim_percent,
                     np.mean(spacings),
@@ -264,8 +286,11 @@ class TrimReport:
             return plt.gca(), plt.gcf()
         else:
             raise ValueError("Invalid plotting mode.")
+        return None
 
-    def __get_trim_iters(self, tolerance=0.1, max_trim=0.5, max_iters=7) -> [DataFrame]:
+    def __get_trim_iters(
+        self, tolerance: float = 0.1, max_trim: float = 0.5, max_iters: int = 7
+    ) -> List[DataFrame]:
         """Helper function to iteratively perform histogram-based outlier detection
         until reaching either max_trim or max_iters, saving outliers identified at
         each step.
@@ -348,14 +373,13 @@ class TrimReport:
 
         return iter_results
 
-    # TODO: make work with new layout
     def __unfold_across_trims(
         self,
-        poly_degrees=DEFAULT_POLY_DEGREES,
-        spline_smooths=DEFAULT_SPLINE_SMOOTHS,
-        spline_degrees=DEFAULT_SPLINE_DEGREES,
-        gompertz=True,
-    ):
+        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
+        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        gompertz: bool = True,
+    ) -> None:
         """Generate a dataframe showing the unfoldings that results from different
         trim percentages, and different choices of smoothing functions.
 
@@ -426,7 +450,7 @@ class TrimReport:
         self._all_unfolds = all_unfolds
 
     @staticmethod
-    def __evaluate_unfolding(unfolded) -> [float, float, float]:
+    def __evaluate_unfolding(unfolded: ndarray) -> Tuple[float, float, float]:
         """Calculate a naive unfolding score via comparison to the expected mean and
         variance of the level spacings of GOE matrices. Positive scores indicate
         there is too much variability in the unfolded eigenvalue spacings, negative
@@ -440,4 +464,3 @@ class TrimReport:
         var_norm = (var - EXPECTED_GOE_VARIANCE) / EXPECTED_GOE_VARIANCE
         score = var_norm + mean_weight * mean_norm
         return mean, var, score
-

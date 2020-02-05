@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 
 
 EXPECTED_GOE_VARIANCE = 0.286
@@ -9,5 +10,5 @@ DEFAULT_SPLINE_SMOOTH = 1.4
 DEFAULT_SPLINE_DEGREE = 3
 
 DEFAULT_POLY_DEGREES = [3, 4, 5, 6, 7, 8, 9, 10, 11]
-DEFAULT_SPLINE_SMOOTHS = np.linspace(1, 2, num=11)
+DEFAULT_SPLINE_SMOOTHS: ndarray = np.linspace(1, 2, num=11)
 DEFAULT_SPLINE_DEGREES = [3]

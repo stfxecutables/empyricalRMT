@@ -1,21 +1,23 @@
 import numpy as np
+from numpy import ndarray
 import matplotlib.pyplot as plt
 import pytest
 import seaborn as sbn
 
 from scipy.stats import ks_2samp, kstest
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
+from typing import Any, List, Tuple
 
 import empyricalRMT.rmt.ensemble as ensemble
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.plot import spacings as plotSpacings
-from empyricalRMT.rmt.unfold import Unfolder
+from empyricalRMT.rmt.unfolder import Unfolder
 
 
 @pytest.mark.plot
 @pytest.mark.fast
-def test_GOE():
+def test_GOE() -> None:
     for i in range(1):
         M = generateGOEMatrix(1000)
         eigs = np.sort(np.linalg.eigvals(M))
@@ -31,7 +33,7 @@ def test_GOE():
 
 @pytest.mark.expected
 @pytest.mark.slow
-def test_nnsd_mad_msd(capsys):
+def test_nnsd_mad_msd(capsys) -> None:  # type: ignore
     def _get_kde_values(spacings: np.array, n_points: int = 1000) -> np.array:
         spacings = np.sort(spacings)
         kde = KDE(spacings)
@@ -42,15 +44,17 @@ def test_nnsd_mad_msd(capsys):
             evaluated[i] = kde.evaluate(s[i])
         return evaluated
 
-    def _mad(arr1, arr2):
+    def _mad(arr1: ndarray, arr2: ndarray) -> Any:
         return np.mean(np.abs(arr1 - arr2))
 
-    def _msd(arr1, arr2):
+    def _msd(arr1: ndarray, arr2: ndarray) -> Any:
         return np.mean((arr1 - arr2) ** 2)
 
     def _evaluate_distances(
-        sizes=[50, 100, 200, 500, 1000, 2000, 4000], reps=10, **kwargs
-    ):
+        sizes: List[int] = [50, 100, 200, 500, 1000, 2000, 4000],
+        reps: int = 10,
+        **kwargs: Any,
+    ) -> List[str]:
         log = []
         all_msqds = []
         for size in sizes:
@@ -63,7 +67,9 @@ def test_nnsd_mad_msd(capsys):
                 obs = _get_kde_values(spacings, 10000)
                 exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
-                mads.append(mad), msqds.append(msd), all_msqds.append(msd)
+                mads.append(mad), msqds.append(msd), all_msqds.append(  # type: ignore
+                    msd
+                )
 
             mean_mad, mean_msqd = np.mean(mads), np.mean(msqds)
 
@@ -72,7 +78,9 @@ def test_nnsd_mad_msd(capsys):
             mad_perc = np.percentile(mads, [5, 95])
             msqd_perc = np.percentile(msqds, [5, 95])
             msqds = np.array(msqds)
-            msqds_below_threshold = len(msqds[msqds <= 0.01]) / len(msqds)
+            msqds_below_threshold = len(msqds[msqds <= 0.01]) / len(  # type: ignore
+                msqds
+            )
 
             log.append(f"\nDeviations for {size}x{size} GOE matrices:")
             log.append(
@@ -91,7 +99,9 @@ def test_nnsd_mad_msd(capsys):
                 )
             )
         all_msqds = np.array(all_msqds)
-        all_msqds_below_threshold = len(all_msqds[all_msqds <= 0.01]) / len(all_msqds)
+        all_msqds_below_threshold = len(
+            all_msqds[all_msqds <= 0.01]  # type: ignore
+        ) / len(all_msqds)
         log.append(f"{'-'*80}")
         log.append(
             "Percent identified as GOE across sizes: {:03.1f}".format(
@@ -111,7 +121,9 @@ def test_nnsd_mad_msd(capsys):
                 obs = _get_kde_values(spacings, 10000)
                 exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
-                mads.append(mad), msqds.append(msd), all_msqds.append(msd)
+                mads.append(mad), msqds.append(msd), all_msqds.append(  # type: ignore
+                    msd
+                )
             mean_mad, mean_msqd = np.mean(mads), np.mean(msqds)
 
             mad_z = mean_mad / np.std(mads, ddof=1)
@@ -119,7 +131,9 @@ def test_nnsd_mad_msd(capsys):
             mad_perc = np.percentile(mads, [5, 95])
             msqd_perc = np.percentile(msqds, [5, 95])
             msqds = np.array(msqds)
-            msqds_below_threshold = len(msqds[msqds <= 0.01]) / len(msqds)
+            msqds_below_threshold = len(msqds[msqds <= 0.01]) / len(  # type: ignore
+                msqds
+            )
 
             log.append(f"\nDeviations for {size} eigenvalues from U(-1, 1):")
             log.append(
@@ -138,7 +152,9 @@ def test_nnsd_mad_msd(capsys):
                 )
             )
         all_msqds = np.array(all_msqds)
-        all_msqds_below_threshold = len(all_msqds[all_msqds <= 0.01]) / len(all_msqds)
+        all_msqds_below_threshold = len(
+            all_msqds[all_msqds <= 0.01]  # type: ignore
+        ) / len(all_msqds)
         log.append(f"{'-'*80}")
         log.append(
             "Percent random uniform eigenvalues identified as from GOE across sizes: {:03.1f}".format(
@@ -158,7 +174,9 @@ def test_nnsd_mad_msd(capsys):
                 obs = _get_kde_values(spacings, 10000)
                 exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
-                mads.append(mad), msqds.append(msd), all_msqds.append(msd)
+                mads.append(mad), msqds.append(msd), all_msqds.append(  # type: ignore
+                    msd
+                )
             mean_mad, mean_msqd = np.mean(mads), np.mean(msqds)
 
             mad_z = mean_mad / np.std(mads, ddof=1)
@@ -166,7 +184,11 @@ def test_nnsd_mad_msd(capsys):
             mad_perc = np.percentile(mads, [5, 95])
             msqd_perc = np.percentile(msqds, [5, 95])
             msqds = np.array(msqds)
-            msqds_below_threshold = len(msqds[msqds <= 0.01]) / len(msqds)
+            msqds_below_threshold = len(
+                msqds[msqds <= 0.01]  # type: ignore
+            ) / len(
+                msqds
+            )
 
             log.append(f"\nDeviations for {size} eigenvalues from N(0, 1):")
             log.append(
@@ -185,7 +207,9 @@ def test_nnsd_mad_msd(capsys):
                 )
             )
         all_msqds = np.array(all_msqds)
-        all_msqds_below_threshold = len(all_msqds[all_msqds <= 0.01]) / len(all_msqds)
+        all_msqds_below_threshold = len(
+            all_msqds[all_msqds <= 0.01]  # type: ignore
+        ) / len(all_msqds)
         log.append(f"{'-'*80}")
         log.append(
             "Percent random standard normal eigenvalues identified as from GOE across sizes: {:03.1f}".format(
@@ -223,7 +247,7 @@ def test_nnsd_mad_msd(capsys):
 
 
 @pytest.mark.slow
-def test_nnsd_kolmogorov(capsys):
+def test_nnsd_kolmogorov(capsys: Any) -> None:
     """To compare an observed NNSD to the expected NNSDs, we should not only
     perform a two-sample Kolmogorov-Smirnov test, but also simply measure the distances
     between the observed and expected distribution values.
@@ -240,7 +264,7 @@ def test_nnsd_kolmogorov(capsys):
     goe_unfolded = [Unfolder(eigs).unfold(trim=False) for eigs in goe_eigs]
     goe_spacings = np.array([unfolded[1:] - unfolded[:-1] for unfolded in goe_unfolded])
 
-    def _compute_ks(reps=10, **unfold_kwargs) -> [str]:
+    def _compute_ks(reps: int = 10, **unfold_kwargs: Any) -> List[str]:
         log = []
         for i, size in enumerate(sizes):
             # compare to uniformly distributed eigenvalues
@@ -251,7 +275,7 @@ def test_nnsd_kolmogorov(capsys):
                 compare_spacings = unfolded[1:] - unfolded[:-1]
                 goe = goe_spacings[i]
                 D, p_val = ks_2samp(compare_spacings, goe)
-                stats.append(D), p_vals.append(1000 * p_val)
+                stats.append(D), p_vals.append(1000 * p_val)  # type: ignore
                 plotSpacings(
                     unfolded,
                     bins=20,
@@ -284,7 +308,7 @@ def test_nnsd_kolmogorov(capsys):
                 compare_spacings = unfolded[1:] - unfolded[:-1]
                 goe = goe_spacings[i]
                 D, p_val = ks_2samp(compare_spacings, goe)
-                stats.append(D), p_vals.append(p_val * 1000)
+                stats.append(D), p_vals.append(p_val * 1000)  # type: ignore
                 plotSpacings(
                     unfolded,
                     bins=20,

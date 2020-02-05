@@ -1,16 +1,17 @@
 import numpy as np
 
 from numpy import ndarray
+from typing import Iterable, Sized
 
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 from empyricalRMT.rmt.plot import spacings as plotSpacings
-from empyricalRMT.rmt.plot import rawEigDist, rawEigSorted, stepFunction
+from empyricalRMT.rmt.plot import rawEigDist, rawEigSorted, stepFunction, PlotResult
 
 
 class EigVals:
-    def __init__(self, eigenvalues):
+    def __init__(self, eigenvalues: Sized):
         try:
-            self.__construct_vals = np.array(eigenvalues, dtype=np.float)
+            self.__construct_vals: ndarray = np.array(eigenvalues, dtype=np.float64)
         except ValueError as e:
             raise ValueError(
                 "Must pass in eigenvalues that can be coerced to numpy.float type"
@@ -34,13 +35,11 @@ class EigVals:
     @property
     def values(self) -> ndarray:
         raise NotImplementedError(".values() should be implemented in derived classes.")
-        return self._vals
 
     # NOTE: This *must* be overridden
     @property
     def vals(self) -> ndarray:
         raise NotImplementedError(".vals() should be implemented in derived classes.")
-        return self._vals
 
     @property
     def steps(self) -> ndarray:
@@ -55,15 +54,15 @@ class EigVals:
     def step_function(self, x: ndarray) -> ndarray:
         return stepFunctionVectorized(eigs=self.vals, x=x)
 
-    def plot_sorted(self, *args, **kwargs):
-        return rawEigSorted(eigs=self.values, *args, **kwargs)
+    def plot_sorted(self, *args, **kwargs) -> PlotResult:  # type: ignore
+        return rawEigSorted(eigs=self.values, *args, **kwargs)  # type: ignore
 
-    def plot_distribution(self, *args, **kwargs):
-        return rawEigDist(eigs=self.values, *args, **kwargs)
+    def plot_distribution(self, *args, **kwargs) -> PlotResult:  # type: ignore
+        return rawEigDist(eigs=self.values, *args, **kwargs)  # type: ignore
 
-    def plot_steps(self, *args, **kwargs):
-        return stepFunction(eigs=self.values, *args, **kwargs)
+    def plot_steps(self, *args, **kwargs) -> PlotResult:  # type: ignore
+        return stepFunction(eigs=self.values, *args, **kwargs)  # type: ignore
 
-    def plot_spacings(self, *args, **kwargs):
-        return plotSpacings(unfolded=self.values, *args, **kwargs)
+    def plot_spacings(self, *args, **kwargs) -> PlotResult:  # type: ignore
+        return plotSpacings(unfolded=self.values, *args, **kwargs)  # type: ignore
 

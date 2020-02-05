@@ -4,12 +4,13 @@ from numpy import ndarray
 from empyricalRMT.utils import eprint
 
 
-def generate_eigs(matsize, mean=0, sd=1, kind="goe") -> ndarray:
+def generate_eigs(
+    matsize: int, mean: float = 0, sd: float = 1, kind: str = "goe"
+) -> ndarray:
     if kind == "poisson":
         M = generatePoisson(matsize)
     elif kind == "uniform":
         raise Exception("UNIMPLEMENTED!")
-        M = generateUniform(matsize)
     elif kind == "gue":
         size = [matsize, matsize]
         A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
@@ -52,8 +53,8 @@ def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
     return eigs
 
 
-def generateUniform(matsize=1000, lower=0, upper=1):
-    pass
+def generateUniform(matsize: int = 1000, lower: float = 0, upper: float = 1) -> ndarray:
+    raise NotImplementedError
 
 
 def almostIdentity(size: int = 100) -> ndarray:
@@ -68,7 +69,7 @@ def random_1vector(size: int = 100) -> ndarray:
     return vals * vals.T
 
 
-def generateGOEMatrix(size: int = 100, mean=0, sd=1) -> ndarray:
+def generateGOEMatrix(size: int = 100, mean: float = 0, sd: float = 1) -> ndarray:
     if mean != 0 or sd != 1:
         M = np.random.normal(mean, sd, [size, size])
     else:

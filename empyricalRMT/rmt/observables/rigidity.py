@@ -43,8 +43,8 @@ def spectralRigidity(
     unfolded: ndarray,
     c_iters: int = 1000,
     L_grid_size: int = 50,
-    min_L=2,
-    max_L=25,
+    min_L: float = 2,
+    max_L: float = 25,
 ) -> Tuple[ndarray, ndarray]:
     """Compute the spectral rigidity for a particular unfolding.
 
@@ -116,7 +116,7 @@ def spectralIter(
     L: float,
     c_iters: int = 100,
     interval_gridsize: int = 100,
-) -> float:
+) -> ndarray:
     c_starts = np.random.uniform(eigs[0], eigs[-1], c_iters)
     for i in prange(len(c_starts)):
         # c_start is in space of eigs, not unfolded
@@ -158,14 +158,14 @@ def integrateFast(grid: ndarray, values: ndarray) -> np.float64:
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def sq_lin_deviation(eigs, K, w, l) -> np.float64:
+def sq_lin_deviation(eigs: ndarray, K: float, w: float, l: float) -> np.float64:
     n = stepFunctionG(eigs, l)
     deviation = n - K * l - w
     return deviation * deviation
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def sq_lin_deviation_all(eigs, K, w, x: ndarray) -> ndarray:
+def sq_lin_deviation_all(eigs: ndarray, K: float, w: float, x: ndarray) -> ndarray:
     ret = np.empty(len(x))
     for i in prange(len(x)):
         ret[i] = sq_lin_deviation(eigs, K, w, x[i])

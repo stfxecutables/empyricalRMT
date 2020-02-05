@@ -13,12 +13,12 @@ def sigmaSquared(
     unfolded: ndarray,
     c_iters: int = 50,
     L_grid_size: int = 100,
-    min_L=0.5,
-    max_L=20,
+    min_L: float = 0.5,
+    max_L: float = 20,
 ) -> Tuple[ndarray, ndarray]:
     """Compute the level number variance for a particular unfolding.
 
-    Computes the level number variance (sigma squared, ∑² [1]_) for a
+    Computes the level number variance (sigma squared, [1]_) for a
     particular set of eigenvalues and their unfolding.
 
     Parameters
@@ -56,7 +56,7 @@ def sigmaSquared(
     L_grid = np.linspace(min_L, max_L, L_grid_size)
     sigma_sq = np.empty([L_grid_size])
     pbar_widgets = [
-        f"{Fore.GREEN}Computing ∑²: {Fore.RESET}",
+        f"{Fore.GREEN}Computing level variance: {Fore.RESET}",
         f"{Fore.BLUE}",
         Percentage(),
         f" {Fore.RESET}",
@@ -97,14 +97,12 @@ def sigma_iter(
 
 
 def sigmaSquared_exhaustive(
-    unfolded: ndarray, c_step=0.05, L_grid_size: int = 100, max_L=50
+    unfolded: ndarray, c_step: float = 0.05, L_grid_size: int = 100, max_L: float = 50
 ) -> ndarray:
-    if max_L is None:
-        max_L = 0.2 * unfolded[-1] - unfolded[0]
     L_grid = np.linspace(0.001, max_L, L_grid_size)  # don't want L==0
     sigma_sq = np.empty([L_grid_size])
     for i, L in enumerate(L_grid):
-        eprint(f"Beginning ∑² iterations for L value #{i} ({L})")
+        eprint(f"Beginning level variance iterations for L value #{i} ({L})")
         c_start = unfolded[0]
         c_end = unfolded[0] + L
         levels, levels_sq = [], []

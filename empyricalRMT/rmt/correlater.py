@@ -12,7 +12,11 @@ OUT_DEFAULT = Path.home() / "Desktop" / "corrmat.npy"
 
 
 def compute_correlations(
-    arr: ndarray, save: Path = OUT_DEFAULT, detrended=False, k=None, M=None
+    arr: ndarray,
+    save: Path = OUT_DEFAULT,
+    detrended: bool = False,
+    k: int = None,
+    M: int = None,
 ) -> Path:
     with TemporaryDirectory() as TEMPDIR:
         TEMPCORRS = Path(str(TEMPDIR)) / "corrstemp.dat"
@@ -47,7 +51,7 @@ def compute_correlations(
 
 # @jit(nopython=True, cache=False, parallel=True, fastmath=True)
 @jit(nopython=True, cache=False, parallel=True)
-def compute_corrs(reshaped, iters):
+def compute_corrs(reshaped: ndarray, iters: int) -> ndarray:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
     corrs = np.empty((iters, iters), dtype=np.float64)
@@ -69,7 +73,7 @@ def compute_corrs(reshaped, iters):
 
 
 @jit(nopython=True, parallel=True, cache=True, fastmath=True)
-def compute_column_corrs(corrs, reshaped, i):
+def compute_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
     voxel_count = reshaped.shape[0]
@@ -98,10 +102,10 @@ def compute_column_corrs(corrs, reshaped, i):
 
 
 @jit(nopython=True, parallel=True, fastmath=True)
-def compute_clean_column_corrs(corrs, reshaped, i):
+def compute_clean_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
-    def clean_correlate(x, y):
+    def clean_correlate(x: ndarray, y: ndarray) -> float:
         x_norm = x - x.mean()
         y_norm = y - y.mean()
         x_mag = np.linalg.norm(x_norm)
@@ -111,7 +115,7 @@ def compute_clean_column_corrs(corrs, reshaped, i):
         if np.abs(denom) == 0:
             return 0.0
         else:
-            return numerator / denom
+            return float(numerator / denom)
 
     voxel_count = reshaped.shape[0]
     for j in prange(voxel_count):
@@ -135,7 +139,7 @@ def fast_r_detrended(x: ndarray, y: ndarray) -> np.float64:
 
 
 @jit(nopython=True, parallel=True, fastmath=True)
-def compute_detrended_column_corrs(corrs, reshaped, i):
+def compute_detrended_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
     voxel_count = reshaped.shape[0]
@@ -154,4 +158,4 @@ def compute_detrended_column_corrs(corrs, reshaped, i):
 def fast_r(x: ndarray, y: ndarray) -> float:
     """i.e. s^2"""
     x2, y2 = x ** 2, y ** 2
-    return x * y / np.sqrt(x2 * y2)
+    return float((x * y) / np.sqrt(x2 * y2))

@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 
 from numba import jit, prange
 
@@ -10,7 +11,7 @@ from numba import jit, prange
 # this function could be improved with binary search and memoization if
 # necessary or if it becomes a bottleneck
 @jit(nopython=True, fastmath=True, cache=True)
-def stepFunctionG(eigs: np.array, x: float):
+def stepFunctionG(eigs: ndarray, x: float) -> float:
     cumulative = 0
     for eig in eigs:
         if x <= eig:
@@ -21,7 +22,7 @@ def stepFunctionG(eigs: np.array, x: float):
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def stepFunctionVectorized(eigs: np.array, x: np.array):
+def stepFunctionVectorized(eigs: ndarray, x: ndarray) -> ndarray:
     ret = np.empty((len(x)), dtype=np.float64)
     for i in prange(len(x)):
         ret[i] = stepFunctionG(eigs, x[i])

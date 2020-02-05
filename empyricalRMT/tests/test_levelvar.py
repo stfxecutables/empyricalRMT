@@ -1,10 +1,11 @@
 import numpy as np
+from numpy import ndarray
 import pandas as pd
 import pytest
 
 from pathlib import Path
 
-import empyricalRMT.rmt.unfold as unfold
+import empyricalRMT.rmt.unfolder as unfold
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.observables.levelvariance import sigmaSquared
@@ -14,11 +15,11 @@ from empyricalRMT.utils import eprint
 CUR_DIR = Path(__file__).parent
 
 
-def res(path) -> str:
+def res(path: Path) -> str:
     return str(path.absolute().resolve())
 
 
-def load_eigs(matsize=10000):
+def load_eigs(matsize: int = 10000) -> ndarray:
     eigs = None
     filename = f"test_eigs{matsize}.npy"
     eigs_out = CUR_DIR / filename
@@ -33,14 +34,14 @@ def load_eigs(matsize=10000):
     return eigs
 
 
-def generate_eigs(matsize):
+def generate_eigs(matsize: int) -> ndarray:
     M = generateGOEMatrix(matsize)
     eigs = np.linalg.eigvalsh(M)
     return eigs
 
 
 @pytest.mark.fast
-def test_levelvariance(matsize=1000, kind="goe"):
+def test_levelvariance(matsize: int = 1000, kind: str = "goe") -> None:
     eigs = generate_eigs(matsize)
     unfolded = unfold.Unfolder(eigs).unfold(degree=11)
 

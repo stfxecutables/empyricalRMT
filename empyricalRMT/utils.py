@@ -2,6 +2,7 @@ import curses
 import multiprocess as mp
 import nibabel as nib
 import numpy as np
+from numpy import ndarray
 import os
 import shutil
 import sys
@@ -12,28 +13,29 @@ from numba import jit
 from pathlib import Path
 from progressbar import Bar, AdaptiveETA, Percentage, ProgressBar, RotatingMarker, Timer
 from sys import stderr
+from typing import Any, Callable, List, Optional
 
 RESET = Style.RESET_ALL
 
 
-def res(path: Path):
+def res(path: Path) -> str:
     return str(path.absolute().resolve())
 
 
-def eprint(*args, **kwargs):
+def eprint(*args: Any, **kwargs: Any) -> None:
     print(*args, file=stderr, **kwargs)
 
 
-def log(label, var):
+def log(label: str, var: Any) -> None:
     eprint(f"{label}: {var}")
 
 
 # https://stackoverflow.com/a/42913743
-def is_symmetric(a, rtol=1e-05, atol=1e-08) -> bool:
-    return np.allclose(a, a.T, rtol=rtol, atol=atol)
+def is_symmetric(a: ndarray, rtol: float = 1e-05, atol: float = 1e-08) -> bool:
+    return bool(np.allclose(a, a.T, rtol=rtol, atol=atol))
 
 
-def array_map(array: np.array, f, x):
+def array_map(array: np.array, f: Callable, x: ndarray) -> None:
     it = np.nditer(array, flags=["f_index"], op_flags=["readwrite"])
     while not it.finished:
         i = it.index
@@ -51,7 +53,7 @@ def make_cheaty_nii(orig: Nifti1Image, array: np.array) -> Nifti1Image:
     return nib.Nifti1Image(dataobj=array, affine=affine, header=header)
 
 
-def mkdirp(path: Path):
+def mkdirp(path: Path) -> None:
     try:
         os.makedirs(path, exist_ok=True)
     except Exception as e:
@@ -64,7 +66,7 @@ def mkdirp(path: Path):
         raise e
 
 
-def make_directory(path: Path):
+def make_directory(path: Path) -> Path:
     if not os.path.exists(path):
         try:
             os.makedirs(path)
@@ -80,7 +82,7 @@ def make_directory(path: Path):
         return path
 
 
-def make_parent_directories(path: Path):
+def make_parent_directories(path: Path) -> None:
     path = path.absolute()
     paths = []
     for folder in path.parents:
@@ -94,11 +96,11 @@ def make_parent_directories(path: Path):
         make_directory(path)
 
 
-def parallel_map(func, data: list, cpus: int or None = None):
+def parallel_map(func: Callable, data: list, cpus: int = None) -> List[Any]:
     """func: function that takes one parameter
     data: the array of values that func will take
     """
-    result = None
+    result = []
     if cpus is None:
         with mp.Pool(
             mp.cpu_count()
@@ -112,32 +114,32 @@ def parallel_map(func, data: list, cpus: int or None = None):
 
 
 @jit(nopython=True, cache=True, fastmath=True)
-def nd_find(arr: np.array, value) -> int:
+def nd_find(arr: np.array, value: Any) -> Optional[int]:
     for i, val in np.ndenumerate(arr):
         if val == value:
-            return i
+            return i  # type: ignore
     return None
 
 
 @jit(nopython=True)
-def find_first(arr: np.array, value) -> int:
+def find_first(arr: np.array, value: Any) -> int:
     for i, val in enumerate(arr):
         if val == value:
-            return i
+            return i  # type: ignore
     return -1
 
 
 @jit(nopython=True)
-def find_last(arr: np.array, value) -> int:
+def find_last(arr: np.array, value: Any) -> int:
     for i in range(len(arr)):
         j = len(arr) - i - 1
         if arr[j] == value:
-            return j
+            return j  # type: ignore
     return -1
 
 
 # clear all
-def tty_clear(COLS, ROWS):
+def tty_clear(COLS: int, ROWS: int) -> None:
     sys.stdout.write(Cursor.POS(1, 1))
     for row in range(ROWS):
         sys.stdout.write(Cursor.POS(1, row + 1))
@@ -145,7 +147,7 @@ def tty_clear(COLS, ROWS):
     sys.stdout.write(Cursor.POS(1, 1))
 
 
-def write_in_place(message: str, value: str, value_color):
+def write_in_place(message: str, value: str, value_color: Any) -> None:
     init()
     COLS, ROWS = shutil.get_terminal_size((80, 40))
     tty_clear(COLS, ROWS)
@@ -154,7 +156,7 @@ def write_in_place(message: str, value: str, value_color):
     sys.stdout.flush()
 
 
-def write_block(messages: [str], border=None):
+def write_block(messages: List[str], border: str = None) -> None:
     init()
     COLS, ROWS = shutil.get_terminal_size((80, 40))
     tty_clear(COLS, ROWS)
@@ -176,14 +178,14 @@ def write_block(messages: [str], border=None):
     sys.stdout.flush()
 
 
-def end_curses(screen):
+def end_curses(screen: Any) -> None:
     curses.nocbreak()
     screen.keypad(False)
     curses.echo()
     curses.endwin()
 
 
-def setup_progressbar(desc: str, max_count: int, marker=False) -> ProgressBar:
+def setup_progressbar(desc: str, max_count: int, marker: bool = False) -> ProgressBar:
     bar = Bar(marker=RotatingMarker()) if marker else ""
     bar_space = " " if marker else ""
     pbar_widgets = [
@@ -233,7 +235,7 @@ def variance(arr: np.array) -> float:
     diffs = arr - mean
     squares = diffs ** 2
     summed = np.sum(squares)
-    return scale * summed
+    return scale * summed  # type: ignore
 
 
 @jit(nopython=True, fastmath=True, cache=True)
