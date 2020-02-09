@@ -4,7 +4,7 @@ import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame
 from pyod.models.hbos import HBOS
-from typing import Iterable, List, Sized
+from typing import Iterable, List, Sized, Tuple
 from warnings import warn
 
 from empyricalRMT.rmt._constants import (
@@ -33,9 +33,9 @@ class Eigenvalues(EigVals):
 
         Parameters
         ----------
-        eigs: array_like
-            a list, numpy array, or other iterable of the computed eigenvalues
-            of some matrix
+        eigs: Sized
+            An object for which np.array(eigs) will return a sensible, one-dimensional
+            array of floats which are the computed eigenvalues of some matrix.
         """
         global _WARNED_SMALL
         if eigenvalues is None:
@@ -59,48 +59,155 @@ class Eigenvalues(EigVals):
 
     @property
     def values(self) -> ndarray:
+        """Return the stored eigenvalues."""
         return self._vals
 
     @property
     def vals(self) -> ndarray:
+        """Return the stored eigenvalues. Alternate for Eigenvalues.values"""
         return self._vals
 
-    def get_trimmed(
-        self, max_trim: float = 0.5, max_iters: int = 7, outlier_tol: float = 0.1
+    @property
+    def eigenvalues(self) -> ndarray:
+        """Return the stored eigenvalues. Alternate for Eigenvalues.values"""
+        return self._vals
+
+    @property
+    def eigs(self) -> ndarray:
+        """Return the stored eigenvalues. Alternate for Eigenvalues.values"""
+        return self._vals
+
+    def trim_report(
+        self,
+        max_trim: float = 0.5,
+        max_iters: int = 7,
+        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
+        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        gompertz: bool = True,
+        outlier_tol: float = 0.1,
     ) -> TrimReport:
-        """compute the optimal trim regions iteratively via histogram-based outlier detection
+        """Compute multiple trim regions iteratively via histogram-based outlier detection, perform
+        unfolding for each trim region, and summarize the resultant spacings and trimmings.
 
         Parameters
         ----------
+        max_trim: float
+            Float in (0, 1). The maximum allowable portion of eigenvalues to be trimmed.
+            E.g. `max_trim=0.8` means to allow up to 80% of the original eigenvalues to
+            be trimmed away.
+        max_iters: int
+            The maximum allowable number of iterations of outlier detection to run.
+            Setting `max_iters=0` will not allow any trimming / outlier detection, and so
+            will simply evaluate unfolding for different smoothers on the original raw
+            eigenvalues. Typically, you would want this to be >= 4, to allow for trimming
+            both some of the most extreme positive and negative eigenvalues.
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
+        gompertz: bool
+            Whether or not to use a gompertz curve as one of the smoothers.
         outlier_tol: float
-            A float between 0 and 1. Determines the tolerance paramater for
+            A float between 0 and 1, and which is passed as the tolerance paramater for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
-        max_trim: float
-            A float between 0 and 1 of the maximum allowable proportion of eigenvalues
-            that can be trimmed.
 
         Returns
         -------
-        trimmed: Trimmed
-            An object of class Trimmed, which contains various information and functions
+        trimmed: TrimReport
+            A TrimReport object, which contains various information and functions
             for evaluating the different possible trim regions.
         """
         print("Trimming to central eigenvalues.")
 
         eigs = self.vals
-        return TrimReport(eigs, max_trim, max_iters, outlier_tol)
+        return TrimReport(
+            eigs,
+            max_trim,
+            max_iters,
+            poly_degrees,
+            spline_smooths,
+            spline_degrees,
+            gompertz,
+            outlier_tol,
+        )
 
-    def get_best_trim(
+    def get_best_trimmed(
         self,
         smoother: SmoothMethod = "poly",
         degree: int = DEFAULT_POLY_DEGREE,
-        outlier_tol: float = 0.1,
+        spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
+        max_iters: int = 7,
         max_trim: float = 0.5,
-    ) -> TrimReport:
-        raise NotImplementedError
+        outlier_tol: float = 0.1,
+    ) -> Trimmed:
+        """For the given smoother and smmothing and trim options, compute
+        a up to `max_iters` different trim regions, and select the region
+        which has an unfolding that is most GOE-like in terms of its local
+        spacings.
 
-    def trim_marcenko_pastur(self, series_length: int, n_series: int) -> ndarray:
+        Parameters
+        ----------
+        max_trim: float
+            Float in (0, 1). The maximum allowable portion of eigenvalues to be trimmed.
+            E.g. `max_trim=0.8` means to allow up to 80% of the original eigenvalues to
+            be trimmed away.
+        max_iters: int
+            The maximum allowable number of iterations of outlier detection to run.
+            Setting `max_iters=0` will not allow any trimming / outlier detection, and so
+            will simply evaluate unfolding for different smoothers on the original raw
+            eigenvalues. Typically, you would want this to be >= 4, to allow for trimming
+            both some of the most extreme positive and negative eigenvalues.
+        smoother: "poly" | "spline" | "gompertz" | lambda
+            the type of smoothing function used to fit the step function
+        degree: int
+            the degree of the polynomial or spline
+        spline_smooth: float
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline
+        outlier_tol: float
+            A float between 0 and 1, and which is passed as the tolerance paramater for
+            [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
+            histogram-based outlier detection
+
+        Returns
+        -------
+        best_indices: Tuple[int, int]
+            The indices (start, end) such that eigenvalues[start:end] is the trimmed
+            region that is "most GOE" in terms of its nearest-neighbour level spacings.
+        """
+        report = None
+        if smoother == "poly":
+            report = TrimReport(
+                self.vals, max_trim, max_iters, [degree], [], [], False, outlier_tol
+            )
+        elif smoother == "spline":
+            report = TrimReport(
+                self.vals,
+                max_trim,
+                max_iters,
+                [],
+                [spline_smooth],
+                [degree],
+                False,
+                outlier_tol,
+            )
+        elif smoother == "gompertz":
+            report = TrimReport(
+                self.vals, max_trim, max_iters, [], [], [], True, outlier_tol
+            )
+        else:
+            raise ValueError("Unknown smoother.")
+
+        _, _, best_indices, _ = report.summarize_trim_unfoldings()
+        start, end = best_indices[0][0], best_indices[0][1]
+        return self.trim_manually(start, end)
+
+    def trim_marcenko_pastur(self, series_length: int, n_series: int) -> Trimmed:
         """Trim to noise eigenvalues under assumption that eigenvalues come from
         correlation matrix.
 
@@ -132,7 +239,7 @@ class Eigenvalues(EigVals):
         eig_max = self.vals.max()
         trim_max = (1 - eig_max / N) * (1 + np.sqrt(N / T)) ** 2
         trim_min = (1 - eig_max / N) * (1 - np.sqrt(N / T)) ** 2
-        return self.vals[(self.vals > trim_min) & (self.vals < trim_max)]
+        return Trimmed(self.vals[(self.vals > trim_min) & (self.vals < trim_max)])
 
     def trim_manually(self, start: int, end: int) -> Trimmed:
         """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]]"""
@@ -142,13 +249,38 @@ class Eigenvalues(EigVals):
     def trim_interactively(self) -> None:
         raise NotImplementedError
 
-    def trim_unfold_best(
+    def trim_unfold_auto(
         self,
+        max_trim: float = 0.5,
+        max_iters: int = 7,
         poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
         spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
         spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        gompertz: bool = True,
+        outlier_tol: float = 0.1,
     ) -> Unfolded:
-        """Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
+        """Exhaustively compare mutliple trim regions and smoothers based on their "GOE score"
+        and unfold the eigenvalues, using the trim region and smoothing parameters
+        determined to be "most GOE" based on the exhaustive process.
+
+        Summary of the automatic trim-unfold process:
+
+        1. Compute multiple natural trim regions via histrogram-based outlier detection.
+        2. For each trim region, fit all possible smoothers (i.e., smoothers + smoother
+           parameters) and generate a set of unfolded eigenvalues.
+        3. For each set of unfolded eigenvalues, compute the GOE score. The GOE score
+           indexes how much the mean and variance of the spacings of the unfolded values
+           differ from the expected spacing variance and mean for the unfolding of a GOE
+           matrix.
+        4. Assume that the choice of smoother should determine the optimal trim region,
+           and not the converse. This is most consistent with the concern over smoothing
+           choices in the literature, and acknowledges that trimming is done *so that*
+           smoothers yield more accurate results.
+        5. Assume that the best smoother is the one which results in the most GOE-like
+           spacing distribution across all trims and all smoothers
+        6.
+
+        Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
         percent and smoother according to GOE score.
 
         Parameters

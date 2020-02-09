@@ -31,6 +31,10 @@ class TrimReport:
         eigenvalues: ndarray,
         max_trim: float = 0.5,
         max_iters: int = 7,
+        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
+        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
+        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        gompertz: bool = True,
         outlier_tol: float = 0.1,
     ):
         eigenvalues = np.sort(eigenvalues)
@@ -41,7 +45,10 @@ class TrimReport:
         self._trim_steps = self.__get_trim_iters(
             tolerance=outlier_tol, max_trim=max_trim, max_iters=max_iters
         )
-        self.__unfold_across_trims()  # sets self._unfold_info, self._all_unfolds
+        # set self._unfold_info, self._all_unfolds
+        self.__unfold_across_trims(
+            poly_degrees, spline_smooths, spline_degrees, gompertz
+        )
 
     @property
     def untrimmed(self) -> ndarray:
@@ -80,27 +87,6 @@ class TrimReport:
         self
     ) -> Tuple[Dict[Union[str, int], str], DataFrame, List[Tuple[int, int]], List[str]]:
         """Computes GOE fit scores for the unfoldings performed, and returns various "best" fits.
-
-        Parameters
-        ----------
-        show_plot: boolean
-            if True, shows a plot of the automated outlier detection results
-
-        save_plot: Path
-            if save_plot is a pathlib file Path, save the outlier detection plot to that
-            location. Should be a .png, e.g. "save_plot = Path.home() / outlier_plot.png".
-
-        poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8,
-            9, 10, 11]
-
-        spline_smooths: List[float]
-            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
-            Default np.linspace(1, 2, num=11)
-
-        spline_degrees: List[int]
-            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
-            fits. Default [3]
 
         Returns
         -------
@@ -343,13 +329,22 @@ class TrimReport:
             A list of pandas DataFrames with structure:
             ```
             {
-                "eigs": np.array,
-                "steps": np.array,
-                "unfolded": np.array,
+                "eigs": ndarray,
+                "steps": ndarray,
+                "unfolded": ndarray,
+                "sqe": ndarray,
                 "cluster": ["inlier" | "outlier"]
             }
             ```
-            such that trim_iters[0] is the original values without trimming, and
+            where:
+                * `eigs` are the remaining eigs at this indexed trimming,
+                * `steps` are the step-function values for `eigs`,
+                * `unfolded` are the unfolded eigenvalues corresponding to the
+                  smoother specified in the arguments,
+                * `sqe` are the squared residuals of the unfolding smoother fit,
+                * `cluster` indicates whether HBOS identifies a value as outlier
+
+            and such that trim_iters[0] is the original values without trimming, and
             trim_iters[i] is a DataFrame of the eigenvalues, step function values,
             unfolded values, and inlier/outlier labels at iteration `i`.
         """
