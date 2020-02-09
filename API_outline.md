@@ -27,11 +27,17 @@ class EigVals:
 
 ```python
 class Eigenvalues(EigVals):
-    .trim()                     -> Trimmed
+    .eigs                      -> ndarray
+    .eigenvalues               -> ndarray
+    .trim_report()              -> TrimReport
+    .get_best_trimmed()         -> Trimmed
+    .trim_marcenko_pastur()     -> Trimmed
     .trim_manually()            -> Trimmed
-    .trim_interactively()       -> Trimmed
+    .trim_interactively()       -> NotImplementedError
     .trim_unfold()              -> Unfolded
+    .trim_unfold_auto()         -> TrimReport, Unfolded
     .unfold(smoother: Smoother) -> Unfolded
+    .unfold_auto()              -> TrimReport, Unfolded
 ```
 
 ## Trimmed
