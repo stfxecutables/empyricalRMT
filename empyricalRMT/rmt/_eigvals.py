@@ -3,6 +3,7 @@ import numpy as np
 from numpy import ndarray
 from typing import Iterable, Sized
 
+from empyricalRMT._validate import make_1d_array
 from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 from empyricalRMT.rmt.plot import spacings as plotSpacings
 from empyricalRMT.rmt.plot import rawEigDist, rawEigSorted, stepFunction, PlotResult
@@ -10,12 +11,7 @@ from empyricalRMT.rmt.plot import rawEigDist, rawEigSorted, stepFunction, PlotRe
 
 class EigVals:
     def __init__(self, eigenvalues: Sized):
-        try:
-            self.__construct_vals: ndarray = np.array(eigenvalues, dtype=np.float64)
-        except ValueError as e:
-            raise ValueError(
-                "Must pass in eigenvalues that can be coerced to numpy.float type"
-            ) from e
+        self.__construct_vals: ndarray = make_1d_array(eigenvalues)
         self._steps = None
         self._vals = np.sort(eigenvalues)  # to be overridden in actual classes
 
