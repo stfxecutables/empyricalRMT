@@ -57,8 +57,8 @@ class TrimReport:
 
 ```python
 class Smoother():
-    .fit(eigs: Eigenvalues, smoother="poly"|"spline"|"gompertz"|"emd", emd_detrend: boolean) -> Unfolded:
-    .fit_all(eigs: Eigenvalues, *args)
+    .fit(eigs: Eigenvalues, smoother="poly"|"spline"|"gompertz"|"emd", emd_detrend: boolean) -> Tuple[Unfolded, Steps]:
+    .fit_all(eigs: Eigenvalues, *args) -> Tuple[DataFrame, DataFrame]
 ```
 
 ## Unfolded

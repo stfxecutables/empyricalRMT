@@ -6,7 +6,7 @@ from numpy.polynomial.polynomial import polyfit, polyval
 from pandas import DataFrame
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import curve_fit
-from typing import Any, List, Union
+from typing import Any, List, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
@@ -25,6 +25,7 @@ from empyricalRMT.rmt.observables.step import stepFunctionVectorized
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}
 
 SmoothMethod = Union[Literal["poly"], Literal["spline"], Literal["gompertz"]]
+SmoothArg = Union[List[float], Literal["heuristic"]]
 
 
 def _spline_name(i: int) -> str:
@@ -95,11 +96,12 @@ class Smoother:
                 print(ValueError("Cannot convert spline degree to int."))
                 raise e
             if spline_smooth == "heuristic":
-                spline = USpline(eigs, steps, k=k, s=len(eigs) ** 1.4)
+                s = len(eigs) * np.var(eigs, ddof=1)
+                spline = USpline(eigs, steps, k=k, s=s)
             elif spline_smooth is not None:
                 if not isinstance(spline_smooth, float):
                     raise ValueError("Spline smoothing factor must be a float")
-                spline = USpline(eigs, steps, k=k, s=len(eigs) ** spline_smooth)
+                spline = USpline(eigs, steps, k=k, s=spline_smooth)
             else:
                 raise ValueError(
                     "Unreachable: All possible spline_smooth arguments should have been handled."
@@ -115,21 +117,28 @@ class Smoother:
 
     def fit_all(
         self,
-        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
-        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
+        poly_degrees: List[int] = [],
+        spline_smooths: SmoothArg = [],
         spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
-        gompertz: bool = True,
+        gompertz: bool = False,
         dry_run: bool = False,
-    ) -> DataFrame:
+    ) -> Union[List[str], Tuple[DataFrame, DataFrame]]:
         """unfold eigenvalues for all specified smoothers
 
         Parameters
         ----------
         poly_degrees: List[int]
             the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
-        spline_smooths: List[float]
-            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
-            Default np.linspace(1, 2, num=11)
+        spline_smooths: List[float] | "heuristic"
+            If a list of floats, the smoothing factors, s, passed into
+            scipy.interpolate.UnivariateSpline.
+            If "heuristic", choose a set of smoothing factors scaled to the length of the
+            eigenvalues, that, on GOE eigenvalues, tend to result in a range of fits
+            varying from highly flexible (nearly interpolated) to about the flexibility of
+            a cubic or quartic. As the number of eigenvalues starts to go below about 300,
+            an increasing number of practically-identical, redundant splines will be fit
+            with this option, and manual inspection or non-heuristic specification of
+            spline smoothing factors is strongly recommended.
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
@@ -138,16 +147,18 @@ class Smoother:
 
         Returns:
         --------
-        df: DataFrame
+        unfoldeds: DataFrame
             DataFrame of unfolded eigenvalues for each set of fit parameters, e.g. where
             each column contains a name indicating the fitting parameters, with the values
             of that column being the (sorted) unfolded eigenvalues.
+        sqes: DataFrame
+            DataFrame of mean-squared error of fits, where each column contains a name
+            indicating the fitting parameters and smoother, with the values of
+            the column being the squared residuals of the fit
         col_names: list
             If `dry_run` is True, return only the column names for the given arguments.
         """
-        # construct a dataframe to hold all info
-        df = pd.DataFrame()
-        col_names = self.__get_column_names(
+        col_names = self.__get_smoother_names(
             poly_degrees=poly_degrees,
             spline_smooths=spline_smooths,
             spline_degrees=spline_degrees,
@@ -156,29 +167,49 @@ class Smoother:
         if dry_run:  # early return strings of colums names
             return col_names
 
-        eigs = self._eigs
+        # construct dataframes to hold all info
+        unfoldeds, sqes = pd.DataFrame(), pd.DataFrame()
         for d in poly_degrees:
             col_name = f"poly_{d}"
-            unfolded, _ = self.fit(smoother="poly", degree=d)
-            df[col_name] = unfolded
-        for s in spline_smooths:
-            for d in spline_degrees:
-                col_name = f"{_spline_name(d)}-spline_" "{:1.1f}".format(s)
-                unfolded, _ = self.fit(smoother="spline", spline_smooth=s, degree=d)
-                df[col_name] = unfolded
-        if gompertz:
-            df["gompertz"], _ = self.fit(smoother="gompertz")
-        return df
+            unfolded, steps = self.fit(smoother="poly", degree=d)
+            unfoldeds[col_name] = unfolded
+            sqes[col_name] = (unfolded - steps) ** 2
 
-    def __get_column_names(
+        if spline_smooths == "heuristic":
+            for s in DEFAULT_SPLINE_SMOOTHS:
+                for d in spline_degrees:
+                    col_name = f"{_spline_name(d)}-spline_" "{:1.2f}_heuristic".format(
+                        s
+                    )
+                    unfolded, steps = self.fit(
+                        smoother="spline", spline_smooth=len(self._eigs) ** s, degree=d
+                    )
+                    unfoldeds[col_name] = unfolded
+                    sqes[col_name] = (unfolded - steps) ** 2
+        else:
+            for s in spline_smooths:
+                for d in spline_degrees:
+                    col_name = f"{_spline_name(d)}-spline_" "{:1.3f}".format(s)
+                    unfolded, steps = self.fit(
+                        smoother="spline", spline_smooth=s, degree=d
+                    )
+                    unfoldeds[col_name] = unfolded
+                    sqes[col_name] = (unfolded - steps) ** 2
+
+        if gompertz:
+            unfoldeds["gompertz"], steps = self.fit(smoother="gompertz")
+            sqes["gompertz"] = (unfolded - steps) ** 2
+        return unfoldeds, sqes
+
+    def __get_smoother_names(
         self,
         poly_degrees: List[int],
-        spline_smooths: List[float],
+        spline_smooths: SmoothArg,
         spline_degrees: List[int] = [3],
         gompertz: bool = True,
     ) -> List[str]:
-        """If arguments are arrays, generate names for all columns of report. Otherwise,
-        just return the name for indexing into the report.
+        """If arguments are arrays, generate names (unique identifiers) for each smoother
+        + smoother parameters. Otherwise, just return the name for indexing into the report.
         """
 
         col_names = []
@@ -188,40 +219,35 @@ class Smoother:
         else:
             raise ValueError("poly_degrees must be a list of int values")
 
-        try:
-            spline_smooths = list(spline_smooths)
-        except Exception as e:
-            raise ValueError(f"Error converting `spline_smooths` to list: {e}")
-        if isinstance(spline_smooths, list):
-            for s in spline_smooths:
+        if spline_smooths == "heuristic":
+            for s in DEFAULT_SPLINE_SMOOTHS:
                 if not isinstance(spline_degrees, list):
                     raise ValueError("spline_degrees must be a list of integer values")
                 for deg in spline_degrees:
-                    col_name = f"{_spline_name(deg)}-spline_" "{:1.1f}".format(s)
+                    col_name = (
+                        f"{_spline_name(deg)}-spline_" "{:1.2f}_heuristic".format(s)
+                    )
                     col_names.append(col_name)
         else:
-            raise ValueError("spline_smooths must be a list of float values")
+            try:
+                spline_smooths = list(spline_smooths)  # type: ignore
+            except Exception as e:
+                raise ValueError(f"Error converting `spline_smooths` to list: {e}")
+            if isinstance(spline_smooths, list):
+                for s in spline_smooths:
+                    if not isinstance(spline_degrees, list):
+                        raise ValueError(
+                            "spline_degrees must be a list of integer values"
+                        )
+                    for deg in spline_degrees:
+                        col_name = f"{_spline_name(deg)}-spline_" "{:1.3f}".format(s)
+                        col_names.append(col_name)
+            else:
+                raise ValueError("spline_smooths must be a list of float values")
+
         if gompertz is True:
             col_names.append("gompertz")
         return col_names
-
-    def __column_name_from_args(
-        self,
-        poly_degree: int = None,
-        spline_smooth: float = None,
-        gompertz: bool = None,
-        spline_degree: int = 3,
-    ) -> str:
-        if isinstance(poly_degree, int):
-            return f"poly_{poly_degree}"
-        if spline_smooth is not None:
-            spline_smooth = float(spline_smooth)  # if can't be converted, will throw
-            return f"{_spline_name(spline_degree)}-spline_" "{:1.1f}".format(
-                spline_smooth
-            )
-        if gompertz is True:
-            return "gompertz"
-        raise ValueError("Arguments to __column_name_from_args cannot all be None")
 
     def __validate_args(self, **kwargs: Any) -> None:
         """throw an error if smoother args are in any way invalid"""

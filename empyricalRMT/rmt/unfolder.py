@@ -527,7 +527,7 @@ class Unfolder:
 
         # construct a dataframe to hold all info
         df = pd.DataFrame()
-        col_names = self.__get_column_names(
+        col_names = self.__get_smoother_names(
             poly_degrees=poly_degrees,
             spline_smooths=spline_smooths,
             gompertz=True,
@@ -550,7 +550,7 @@ class Unfolder:
         df["gompertz"], _ = self.__fit(eigs, smoother="gompertz")
         return df
 
-    def __get_column_names(
+    def __get_smoother_names(
         self, poly_degrees, spline_smooths, gompertz=True, spline_degrees=[3]
     ) -> str:
         """If arguments are arrays, generate names for all columns of report. Otherwise,
