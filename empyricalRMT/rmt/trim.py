@@ -46,7 +46,7 @@ class TrimReport:
             tolerance=outlier_tol, max_trim=max_trim, max_iters=max_iters
         )
         # set self._unfold_info, self._all_unfolds
-        self.__unfold_across_trims(
+        self._unfold_info, self._all_unfolds = self.__unfold_across_trims(
             poly_degrees, spline_smooths, spline_degrees, gompertz
         )
 
@@ -78,10 +78,11 @@ class TrimReport:
             A pandas DataFrame with various summary information about the different trims
             and smoothing fits
         """
-        self.__unfold_across_trims(
+        self._unfold_info, self._all_unfolds = self.__unfold_across_trims(
             poly_degrees, spline_smooths, spline_degrees, gompertz
         )
-        return self.unfold_info
+
+        return self._unfold_info
 
     def summarize_trim_unfoldings(
         self
@@ -406,7 +407,7 @@ class TrimReport:
         spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
         spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
         gompertz: bool = True,
-    ) -> None:
+    ) -> Tuple[DataFrame, DataFrame]:
         """Generate a dataframe showing the unfoldings that results from different
         trim percentages, and different choices of smoothing functions. This should be run
         in the constructor.
@@ -440,19 +441,23 @@ class TrimReport:
         )
         height = len(trims)
         width = (
-            len(col_names_base) * 3 + 3
-        )  # entry for mean, var, score, plus trim_percent, trim_low, trim_high
+            len(col_names_base) * 4 + 3
+        )  # entry for [mean, var, msqe, score] x [trim_percent, trim_low, trim_high]
+
+        # arr will be converted into the final DataFrame
         arr = np.empty([height, width], dtype=np.float32)
         for i, trim in enumerate(trims):
             trimmed = np.array(trim["eigs"])
             lower_trim_length = find_first(eigs, trimmed[0])
             upper_trim_length = len(eigs) - 1 - find_last(eigs, trimmed[-1])
-            all_unfolds = Smoother(trimmed).fit_all(
+            all_unfolds, sqes = Smoother(trimmed).fit_all(
                 poly_degrees, spline_smooths, spline_degrees, gompertz
             )  # dataframe
             trim_percent = np.round(100 * (1 - len(trimmed) / len(eigs)), 3)
             lower_trim_percent = 100 * lower_trim_length / len(eigs)
             upper_trim_percent = 100 * upper_trim_length / len(eigs)
+
+            # 3 columns of values per trim
             arr[i, 0] = trim_percent
             arr[i, 1] = lower_trim_percent
             arr[i, 2] = upper_trim_percent
@@ -462,20 +467,23 @@ class TrimReport:
             ):  # get summary starts for each unfolding by smoother
                 unfolded = np.array(all_unfolds[col])
                 mean, var, score = self.__evaluate_unfolding(unfolded)
-                arr[
-                    i, 3 * j + 3
-                ] = mean  # arr[i, 0] is trim_percent, [i,1] is trim_min, etc
-                arr[i, 3 * j + 4] = var
-                arr[i, 3 * j + 5] = score
+                # arr[i, 0] is trim_percent, [i,1] is lower_trim_percent, etc, up tp
+                # arr[i, 2], which has the upper_trim_percent
+                # 4 additional columns of values per smoother:
+                arr[i, 4 * j + 3] = mean
+                arr[i, 4 * j + 4] = var
+                arr[i, 4 * j + 5] = np.mean(sqes[col])
+                arr[i, 4 * j + 6] = score
 
         col_names_final = ["trim_percent", "trim_low", "trim_high"]
+        # much match order added above
         for name in col_names_base:
             col_names_final.append(f"{name}--mean_spacing")
             col_names_final.append(f"{name}--var_spacing")
+            col_names_final.append(f"{name}--msqe")
             col_names_final.append(f"{name}--score")
         trim_report = pd.DataFrame(data=arr, columns=col_names_final)
-        self._unfold_info = trim_report
-        self._all_unfolds = all_unfolds
+        return trim_report, all_unfolds
 
     @staticmethod
     def __evaluate_unfolding(unfolded: ndarray) -> Tuple[float, float, float]:
@@ -487,7 +495,7 @@ class TrimReport:
         spacings = unfolded[1:] - unfolded[:-1]
         mean, var = np.mean(spacings), np.var(spacings, ddof=1)
         # variance gets weight 1, i.e. mean is 0.05 times as important
-        mean_weight = 0.05
+        mean_weight = 0.5
         mean_norm = (mean - EXPECTED_GOE_MEAN) / EXPECTED_GOE_MEAN
         var_norm = (var - EXPECTED_GOE_VARIANCE) / EXPECTED_GOE_VARIANCE
         score = var_norm + mean_weight * mean_norm
