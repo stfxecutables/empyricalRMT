@@ -247,7 +247,7 @@ class Eigenvalues(EigVals):
         return Trimmed(trimmed_eigs)
 
     def trim_interactively(self) -> None:
-        raise NotImplementedError
+        raise NotImplementedError("This feature will be in a later release.")
 
     def trim_unfold_auto(
         self,
@@ -265,15 +265,25 @@ class Eigenvalues(EigVals):
 
         Summary of the automatic trim-unfold process:
 
-        1. Compute multiple natural trim regions via histrogram-based outlier detection.
+        1. Compute multiple "natural" trim regions via histogram-based outlier detection.
+           Visually, histogram-based outlier detection on the sorted eigenvalues will
+           tend to find regions where there is a sudden change in the spacings between
+           adjacent eigenvalues.
         2. For each trim region, fit all possible smoothers (i.e., smoothers + smoother
-           parameters) and generate a set of unfolded eigenvalues.
-        3. For each set of unfolded eigenvalues, compute the GOE score. The GOE score
+           parameters) specified in the arguments, and generate a set of unfolded
+           eigenvalues for each.
+        3. For each set of unfolded eigenvalues, compute the *GOE score*. The GOE score
            indexes how much the mean and variance of the spacings of the unfolded values
            differ from the expected spacing variance and mean for the unfolding of a GOE
            matrix.
         4. Assume that the choice of smoother should determine the optimal trim region,
-           and not the converse. This is most consistent with the concern over smoothing
+           and not the converse. That is:
+              - the combination of smoothers and trim regions yields a grid of values
+              - thus for each trim region, there is a GOE score per smoother, and for each
+                smoother, there is a GOE score per trim region
+              -
+
+           This is most consistent with the concern over smoothing
            choices in the literature, and acknowledges that trimming is done *so that*
            smoothers yield more accurate results.
         5. Assume that the best smoother is the one which results in the most GOE-like
@@ -293,6 +303,13 @@ class Eigenvalues(EigVals):
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
+        gompertz: bool
+            Whether or not to use a gompertz curve as one of the smoothers.
+        outlier_tol: float
+            A float between 0 and 1, and which is passed as the tolerance paramater for
+            [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
+            histogram-based outlier detection
+
         """
         raise NotImplementedError
 
