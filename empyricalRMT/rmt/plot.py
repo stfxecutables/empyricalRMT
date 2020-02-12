@@ -354,7 +354,7 @@ def spectralRigidity(
     unfolded: ndarray
         The unfolded eigenvalues to plot.
     data: DataFrame
-        `data` argument is pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
+        `data` argument is pd.DataFrame({"L": L_vals, "delta": delta3})
         TODO: fix this
     title: string
         The plot title string
@@ -375,8 +375,8 @@ def spectralRigidity(
         The handles to the matplotlib objects, only if `mode` is "return".
     """
     _setup_plotting()
-    df = pd.DataFrame(data, columns=["L", "∆3(L)"])
-    axes = sbn.relplot(x="L", y="∆3(L)", data=df)
+    df = pd.DataFrame(data, columns=["L", "delta"])
+    axes = sbn.relplot(x="L", y="delta", data=df)
     ensembles = set(ensembles)  # type: ignore
 
     _, right = plt.xlim()
