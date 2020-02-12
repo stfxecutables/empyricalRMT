@@ -28,6 +28,7 @@ def test_slope() -> None:
 
 @pytest.mark.math
 def test_integrate() -> None:
+    """Just some extremely non-rigorous but basic sanity checks."""
     # linear functions
     for _ in range(100):
         m = np.random.uniform(-10, 10)
@@ -50,8 +51,11 @@ def test_integrate() -> None:
         c = np.random.uniform(-10, 10)
         grid = np.sort(np.random.uniform(-1000, 1000, 1000))
         y = a * grid ** 2 + b * grid + c
+        f = lambda x: a / 3 * x ** 3 + b / 2 * x ** 2 + c * x  # noqa E731
+        int_analytic = f(grid[-1]) - f(grid[0])
         int_comp = integrateFast(grid, y)
         int_exp = trapz(y, x=grid)
+        assert np.abs(int_analytic - int_comp) < 0.001 * np.abs(int_analytic)
         assert np.allclose(int_comp, int_exp)
 
 
@@ -77,7 +81,8 @@ def test_integrate_perf() -> None:
         trapz(y[i], x=grid)
     total_lib = time.time() - start
 
-    assert total_custom, total_lib
+    # just make sure we are at least doing better than scipy
+    assert total_custom < total_lib
     print("Custom integration time: ", total_custom)
     print("Scipy integration time: ", total_lib)
 
