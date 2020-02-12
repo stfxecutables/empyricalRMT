@@ -51,6 +51,22 @@ class TrimReport:
         )
 
     @property
+    def trim_indices(self) -> List[Tuple[int, int]]:
+        trim_steps = self._trim_steps
+        untrimmed = self._untrimmed
+
+        indices = []
+        for i, df in enumerate(trim_steps):
+            if i == 0:
+                indices.append((0, len(untrimmed)))
+                continue
+            eigs_list = list(untrimmed)
+            start = eigs_list.index(list(df["eigs"])[0])
+            end = eigs_list.index(list(df["eigs"])[-1])
+            indices.append((start, end))
+        return indices
+
+    @property
     def untrimmed(self) -> ndarray:
         return self._untrimmed
 
