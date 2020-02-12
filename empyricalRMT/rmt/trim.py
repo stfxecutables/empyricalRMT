@@ -383,7 +383,7 @@ class TrimReport:
             )
         ]
         # terminate if we have trimmed max_trim
-        iters_run = 0
+        iters_run = 1
         while ((len(iter_results[-1]) / len(eigs)) > max_trim) and (
             iters_run < max_iters
         ):
