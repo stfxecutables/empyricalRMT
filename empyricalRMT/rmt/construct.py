@@ -1,12 +1,35 @@
 import numpy as np
 from numpy import ndarray
+from typing import Tuple, Union
+from typing_extensions import Literal
 
 from empyricalRMT.utils import eprint
 
 
+MatrixKind = Union[
+    Literal["goe"], Literal["gue"], Literal["uniform"], Literal["poisson"]
+]
+
+
 def generate_eigs(
-    matsize: int, mean: float = 0, sd: float = 1, kind: str = "goe"
+    matsize: int, mean: float = 0, sd: float = 1, kind: MatrixKind = "goe"
 ) -> ndarray:
+    """Generate a random matrix as specified by arguments, and compute and return
+    the eigenvalues.
+
+    Parameters
+    ----------
+    matsize: int
+        The width (or height) of a the square matrix that will be generated.
+    mean: float
+        If `kind` is "goe", the mean of the normal distribution used to generate
+        the normally-distributed values.
+    sd: float
+        If `kind` is "goe", the s.d. of the normal distribution used to generate
+        the normally-distributed values.
+    kind: "goe" | "gue" | "poisson" | "uniform"
+        The kind of matrix to generate.
+    """
     if kind == "poisson":
         M = generatePoisson(matsize)
     elif kind == "uniform":
