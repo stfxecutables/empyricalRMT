@@ -132,6 +132,7 @@ def spectralIter(
 
 @jit(nopython=True, fastmath=True, cache=True)
 def slope(x: ndarray, y: ndarray) -> np.float64:
+    """Perform linear regression to compute the slope."""
     x_mean = np.mean(x)
     y_mean = np.mean(y)
     x_dev = x - x_mean
@@ -150,12 +151,13 @@ def intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
 
 @jit(nopython=True, fastmath=True, cache=True)
 def integrateFast(grid: ndarray, values: ndarray) -> np.float64:
-    """https://en.wikipedia.org/wiki/Trapezoidal_rule#Uniform_grid"""
+    """scipy.integrate.trapz is excruciatingly slow and unusable for our purposes.
+    This tiny rewrite seems to result in a near 20x speedup."""
     integral = 0
     for i in range(len(grid) - 1):
-        w = grid[i+1] - grid[i]
-        h = values[i] + values[i+1]
-        integral += w*h / 2
+        w = grid[i + 1] - grid[i]
+        h = values[i] + values[i + 1]
+        integral += w * h / 2
     return integral
 
 
