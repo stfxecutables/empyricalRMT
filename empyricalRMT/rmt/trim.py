@@ -442,10 +442,10 @@ class TrimReport:
         height = len(trims)
         width = (
             len(col_names_base) * 4 + 3
-        )  # entry for [mean, var, msqe, score] x [trim_percent, trim_low, trim_high]
+        )  # entry for [mean, var, msqe, score] + [trim_percent, trim_low, trim_high]
 
         # arr will be converted into the final DataFrame
-        arr = np.empty([height, width], dtype=np.float32)
+        arr = np.zeros([height, width], dtype=np.float32)
         for i, trim in enumerate(trims):
             trimmed = np.array(trim["eigs"])
             lower_trim_length = find_first(eigs, trimmed[0])
@@ -453,6 +453,7 @@ class TrimReport:
             all_unfolds, sqes = Smoother(trimmed).fit_all(
                 poly_degrees, spline_smooths, spline_degrees, gompertz
             )  # dataframe
+            msqes = sqes.mean()  # type: ignore
             trim_percent = np.round(100 * (1 - len(trimmed) / len(eigs)), 3)
             lower_trim_percent = 100 * lower_trim_length / len(eigs)
             upper_trim_percent = 100 * upper_trim_length / len(eigs)
@@ -472,7 +473,7 @@ class TrimReport:
                 # 4 additional columns of values per smoother:
                 arr[i, 4 * j + 3] = mean
                 arr[i, 4 * j + 4] = var
-                arr[i, 4 * j + 5] = np.mean(sqes[col])
+                arr[i, 4 * j + 5] = msqes[col]
                 arr[i, 4 * j + 6] = score
 
         col_names_final = ["trim_percent", "trim_low", "trim_high"]

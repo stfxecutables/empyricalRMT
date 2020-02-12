@@ -197,7 +197,8 @@ class Smoother:
                     sqes[col_name] = (unfolded - steps) ** 2
 
         if gompertz:
-            unfoldeds["gompertz"], steps = self.fit(smoother="gompertz")
+            unfolded, steps = self.fit(smoother="gompertz")
+            unfoldeds["gompertz"] = unfolded
             sqes["gompertz"] = (unfolded - steps) ** 2
         return unfoldeds, sqes
 
@@ -225,7 +226,7 @@ class Smoother:
                     raise ValueError("spline_degrees must be a list of integer values")
                 for deg in spline_degrees:
                     col_name = (
-                        f"{_spline_name(deg)}-spline_" "{:1.2f}_heuristic".format(s)
+                        f"{_spline_name(deg)}-spline_" "{:1.3f}_heuristic".format(s)
                     )
                     col_names.append(col_name)
         else:
