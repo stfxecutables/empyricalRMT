@@ -151,9 +151,11 @@ def intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
 @jit(nopython=True, fastmath=True, cache=True)
 def integrateFast(grid: ndarray, values: ndarray) -> np.float64:
     """https://en.wikipedia.org/wiki/Trapezoidal_rule#Uniform_grid"""
-    delta_x = (grid[-1] - grid[0]) / len(grid)
-    scale = delta_x / 2
-    integral = scale * (values[0] + values[-1] + 2 * np.sum(values[1:-1]))
+    integral = 0
+    for i in range(len(grid) - 1):
+        w = grid[i+1] - grid[i]
+        h = values[i] + values[i+1]
+        integral += w*h / 2
     return integral
 
 
