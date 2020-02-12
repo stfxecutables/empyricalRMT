@@ -32,8 +32,8 @@ class TrimReport:
         max_trim: float = 0.5,
         max_iters: int = 7,
         poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
-        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
-        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        spline_smooths: List[float] = [],
+        spline_degrees: List[int] = [],
         gompertz: bool = True,
         outlier_tol: float = 0.1,
     ):
@@ -307,6 +307,25 @@ class TrimReport:
             raise ValueError("Invalid plotting mode.")
         return None
 
+    def _get_autounfold_vals(self) -> Tuple[ndarray, ndarray]:
+        scores = self.unfold_info.filter(regex="score").abs()
+        mean_best = (
+            scores[scores < scores.quantile(0.9)]
+            .mean()
+            .sort_values()[:5]
+            .index.to_list()
+        )
+        best_trim_scores = self.unfold_info.filter(
+            regex=mean_best[0]  # e.g. regex="poly_3--score"
+        )
+        best_trim_id = int(best_trim_scores.abs().idxmin())
+        best_unfolded = self.unfoldings[best_trim_id][
+            mean_best[0].replace("--score", "")
+        ]
+        orig_trimmed = self._trim_steps[best_trim_id]["eigs"]
+        return np.array(orig_trimmed), np.array(best_unfolded)
+
+
     def __get_trim_iters(
         self, tolerance: float = 0.1, max_trim: float = 0.5, max_iters: int = 7
     ) -> List[DataFrame]:
@@ -446,13 +465,15 @@ class TrimReport:
 
         # arr will be converted into the final DataFrame
         arr = np.zeros([height, width], dtype=np.float32)
+        all_trim_unfolds = []
         for i, trim in enumerate(trims):
             trimmed = np.array(trim["eigs"])
             lower_trim_length = find_first(eigs, trimmed[0])
             upper_trim_length = len(eigs) - 1 - find_last(eigs, trimmed[-1])
-            all_unfolds, sqes = Smoother(trimmed).fit_all(
+            trim_unfolds, sqes = Smoother(trimmed).fit_all(
                 poly_degrees, spline_smooths, spline_degrees, gompertz
-            )  # dataframe
+            )
+            all_trim_unfolds.append(trim_unfolds)
             msqes = sqes.mean()  # type: ignore
             trim_percent = np.round(100 * (1 - len(trimmed) / len(eigs)), 3)
             lower_trim_percent = 100 * lower_trim_length / len(eigs)
@@ -464,9 +485,9 @@ class TrimReport:
             arr[i, 2] = upper_trim_percent
 
             for j, col in enumerate(
-                all_unfolds
+                trim_unfolds
             ):  # get summary starts for each unfolding by smoother
-                unfolded = np.array(all_unfolds[col])
+                unfolded = np.array(trim_unfolds[col])
                 mean, var, score = self.__evaluate_unfolding(unfolded)
                 # arr[i, 0] is trim_percent, [i,1] is lower_trim_percent, etc, up tp
                 # arr[i, 2], which has the upper_trim_percent
@@ -484,7 +505,7 @@ class TrimReport:
             col_names_final.append(f"{name}--msqe")
             col_names_final.append(f"{name}--score")
         trim_report = pd.DataFrame(data=arr, columns=col_names_final)
-        return trim_report, all_unfolds
+        return trim_report, all_trim_unfolds
 
     @staticmethod
     def __evaluate_unfolding(unfolded: ndarray) -> Tuple[float, float, float]:

@@ -254,47 +254,31 @@ class Eigenvalues(EigVals):
         max_trim: float = 0.5,
         max_iters: int = 7,
         poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
-        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
-        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        spline_smooths: List[float] = [],
+        spline_degrees: List[int] = [],
         gompertz: bool = True,
+        prioritize_smoother: bool = True,
         outlier_tol: float = 0.1,
     ) -> Unfolded:
         """Exhaustively compare mutliple trim regions and smoothers based on their "GOE score"
         and unfold the eigenvalues, using the trim region and smoothing parameters
         determined to be "most GOE" based on the exhaustive process.
 
-        Summary of the automatic trim-unfold process:
-
-        1. Compute multiple "natural" trim regions via histogram-based outlier detection.
-           Visually, histogram-based outlier detection on the sorted eigenvalues will
-           tend to find regions where there is a sudden change in the spacings between
-           adjacent eigenvalues.
-        2. For each trim region, fit all possible smoothers (i.e., smoothers + smoother
-           parameters) specified in the arguments, and generate a set of unfolded
-           eigenvalues for each.
-        3. For each set of unfolded eigenvalues, compute the *GOE score*. The GOE score
-           indexes how much the mean and variance of the spacings of the unfolded values
-           differ from the expected spacing variance and mean for the unfolding of a GOE
-           matrix.
-        4. Assume that the choice of smoother should determine the optimal trim region,
-           and not the converse. That is:
-              - the combination of smoothers and trim regions yields a grid of values
-              - thus for each trim region, there is a GOE score per smoother, and for each
-                smoother, there is a GOE score per trim region
-              -
-
-           This is most consistent with the concern over smoothing
-           choices in the literature, and acknowledges that trimming is done *so that*
-           smoothers yield more accurate results.
-        5. Assume that the best smoother is the one which results in the most GOE-like
-           spacing distribution across all trims and all smoothers
-        6.
-
         Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
         percent and smoother according to GOE score.
 
         Parameters
         ----------
+        max_trim: float
+            Float in (0, 1). The maximum allowable portion of eigenvalues to be trimmed.
+            E.g. `max_trim=0.8` means to allow up to 80% of the original eigenvalues to
+            be trimmed away.
+        max_iters: int
+            The maximum allowable number of iterations of outlier detection to run.
+            Setting `max_iters=0` will not allow any trimming / outlier detection, and so
+            will simply evaluate unfolding for different smoothers on the original raw
+            eigenvalues. Typically, you would want this to be >= 4, to allow for trimming
+            both some of the most extreme positive and negative eigenvalues.
         poly_degrees: List[int]
             the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
         spline_smooths: List[float]
@@ -305,13 +289,81 @@ class Eigenvalues(EigVals):
             fits. Default [3]
         gompertz: bool
             Whether or not to use a gompertz curve as one of the smoothers.
+        prioritize_smoother: bool
+            Whether or not to select the optimal smoother before selecting the optimal
+            trim region. See notes. Default: True.
         outlier_tol: float
             A float between 0 and 1, and which is passed as the tolerance paramater for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
 
+        Notes
+        -----
+        Summary of the automatic trim-unfold process:
+
+        1. Compute multiple "natural" trim regions via histogram-based outlier detection,
+           halting when trimming would reach `max_trim` and/or `max_iters`. Visually,
+           histogram-based outlier detection on the sorted eigenvalues will tend to find
+           regions where there is a sudden change in the spacings between adjacent
+           eigenvalues.
+
+        2. For each trim region, fit all possible smoothers (i.e., smoother family +
+           smoother parameters) specified in the arguments, and generate a set of unfolded
+           eigenvalues for each.
+
+        3. For each set of unfolded eigenvalues, compute the *GOE score*. The GOE score
+           indexes how much the mean and variance of the spacings of the unfolded values
+           differ from the expected spacing variance and mean for the unfolding of a GOE
+           matrix.
+
+        4. Assume that the choice of smoother should determine the optimal trim region,
+           and not the converse. That is, since the combination of smoothers and trim
+           regions yields a grid of scores:
+              - for each trim region, there is a GOE score per smoother
+              - for each smoother, there is a GOE score per trim region
+
+           then we might:
+                a. first choose the best trim, on average, across smoothers, and then, for
+                   that trim, choose the smoother that results in the best GOE score, OR
+                b. first choose the best smoother, on average, across trims, and then, for
+                   that smoother, choose the trim that results in the best GOE score
+
+            Choosing (a) might make sense, but in practice, the more eigenvalues that
+            are trimmed, the more clustered or "smooth" the remaining values. That is,
+            the more you trim, the more you can alter the nearest-neighbors' spacing distribution
+            simply by varying the flexibility of your smoother. Since the GOE score is
+            calculated based on the NNSD, this means can achieve more variable spacings by
+            increasing the smoother flexibility, and vice-versa. Presumably, with increased
+            flexibility, we also increase the number level variance, and decrease the spectral
+            rigidity. In short, it is not clear exactly *what* we are doing if we make a
+            particular trimming look most locally-GOE. It is also poorly motivated, since
+            the reason we trim in the first place is to remove anchor points that have
+            strong effects on the smoothing procedure.
+
+            However, choosing (b) amounts to something like "choose the best approximation
+            of the functional form of the eigenvalues, regardless of scale / outliers, and
+            then account for bad fits due to outliers". Here, the danger is that outliers
+            prior to trimming will badly effect flexible smoothers, making a naive summary
+            statistic, like the average score across trims, bad for determining what
+            smoother is overall. So instead, we use a trimmed mean.
+
+        5. Assume that the best smoother is the one which results in the most GOE-like
+           spacing distribution across all trims and all smoothers
+
+
         """
-        raise NotImplementedError
+        trimmed = TrimReport(
+            self.values,
+            max_trim=max_trim,
+            max_iters=max_iters,
+            poly_degrees=poly_degrees,
+            spline_smooths=spline_smooths,
+            spline_degrees=spline_degrees,
+            gompertz=gompertz,
+            outlier_tol=outlier_tol,
+        )
+        orig_trimmed, unfolded = trimmed._get_autounfold_vals()
+        return Unfolded(orig_trimmed, unfolded)
 
     def unfold(self) -> Unfolded:
         raise NotImplementedError
