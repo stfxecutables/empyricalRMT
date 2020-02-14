@@ -9,12 +9,12 @@ from ...utils import eprint
 
 
 def level_number_variance(
-    eigs: ndarray,
     unfolded: ndarray,
-    c_iters: int = 50,
-    L_grid_size: int = 100,
     min_L: float = 0.5,
     max_L: float = 20,
+    c_iters: int = 50,
+    L_grid_size: int = None,
+    show_progress: bool = True,
 ) -> Tuple[ndarray, ndarray]:
     """Compute the level number variance for a particular unfolding.
 
@@ -23,23 +23,23 @@ def level_number_variance(
 
     Parameters
     ----------
-    eigs : ndarray
-        The sorted (ascending) eigenvalues.
-    unfolded : ndarray
-        The sorted (ascending) eigenvalues computed from eigs.
-    L_grid_size : int = 100
+    unfolded: ndarray
+        The unfolded eigenvalues.
+    L_grid_size: int
         The number of values of L to generate betwen min_L and max_L.
-    min_L : int = 0.5
+    min_L: int
         The lowest possible L value for which to compute the spectral
         rigidity.
-    max_L : int = 20
+    max_L: int
         The largest possible L value for which to compute the spectral
         rigidity.
-    c_iters: int = 50
+    c_iters: int
         How many times the location of the center, c, of the interval
         [c - L/2, c + L/2] should be chosen uniformly at random for
         each L in order to compute the estimate of the number level
         variance.
+    show_progress: bool
+        Show a pretty progress bar while computing.
 
     Returns
     -------
@@ -53,32 +53,35 @@ def level_number_variance(
     ----------
     .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier.
     """
+    if L_grid_size is None:
+        L_grid_size = int(2 * np.abs((np.floor(max_L) - np.floor(min_L))))
     L_grid = np.linspace(min_L, max_L, L_grid_size)
     sigma_sq = np.empty([L_grid_size])
-    pbar_widgets = [
-        f"{Fore.GREEN}Computing level variance: {Fore.RESET}",
-        f"{Fore.BLUE}",
-        Percentage(),
-        f" {Fore.RESET}",
-        " ",
-        Timer(),
-        f" | {Fore.YELLOW}",
-        AdaptiveETA(),
-        f"{Fore.RESET}",
-    ]
-    pbar = ProgressBar(widgets=pbar_widgets, maxval=L_grid.shape[0]).start()
+    if show_progress:
+        pbar_widgets = [
+            f"{Fore.GREEN}Computing level variance: {Fore.RESET}",
+            f"{Fore.BLUE}",
+            Percentage(),
+            f" {Fore.RESET}",
+            " ",
+            Timer(),
+            f" | {Fore.YELLOW}",
+            AdaptiveETA(),
+            f"{Fore.RESET}",
+        ]
+        pbar = ProgressBar(widgets=pbar_widgets, maxval=L_grid.shape[0]).start()
     for i, L in enumerate(L_grid):
-        sigma_sq[i] = sigma_iter(eigs, unfolded, L, c_iters)
-        pbar.update(i)
-    pbar.finish()
+        sigma_sq[i] = sigma_iter(unfolded, L, c_iters)
+        if show_progress:
+            pbar.update(i)
+    if show_progress:
+        pbar.finish()
 
     return L_grid, sigma_sq
 
 
-@jit(nopython=True, parallel=True, cache=True, fastmath=True)
-def sigma_iter(
-    eigs: ndarray, unfolded: ndarray, L: float, c_iters: int = 100
-) -> ndarray:
+@jit(nopython=True, cache=True, fastmath=True, parallel=True)
+def sigma_iter(unfolded: ndarray, L: float, c_iters: int = 100) -> ndarray:
     levels = np.empty((c_iters), dtype=np.float64)
     levels_sq = np.empty((c_iters), dtype=np.float64)  # levels squared
     for i in prange(c_iters):

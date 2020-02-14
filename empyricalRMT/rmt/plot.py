@@ -412,7 +412,7 @@ def spectral_rigidity(
     return _handle_plot_mode(mode, axes, outfile)
 
 
-def levelNumberVariance(
+def level_number_variance(
     unfolded: ndarray,
     data: pd.DataFrame,
     title: str = "Level Number Variance",
@@ -428,8 +428,8 @@ def levelNumberVariance(
     unfolded: ndarray
         The unfolded eigenvalues to plot.
     data: DataFrame
-        `data` argument is pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
-        TODO: fix this
+        `data` argument is pd.DataFrame({"L": L_vals, "sigma": sigma}), where sigma
+        are the values computed from observables.levelvariance.level_number_variance
     title: string
         The plot title string
     mode: "block" (default) | "noblock" | "save" | "return"
@@ -449,8 +449,8 @@ def levelNumberVariance(
         The handles to the matplotlib objects, only if `mode` is "return".
     """
     _setup_plotting()
-    df = pd.DataFrame(data, columns=["L", "∑²(L)"])
-    axes = sbn.relplot(x="L", y="∑²(L)", data=df)
+    df = pd.DataFrame(data, columns=["L", "sigma"])
+    axes = sbn.relplot(x="L", y="sigma", data=df)
     ensembles = set(ensembles)  # type: ignore
 
     _, right = plt.xlim()
@@ -477,7 +477,7 @@ def levelNumberVariance(
         plt.setp(gse, color="#EA00FF")
 
     plt.xlabel("L")
-    plt.ylabel("∑²(L)")
+    plt.ylabel("Sigma^2(L)")
     plt.title(f"Level Number Variance - {title} unfolding")
     plt.legend()
 
