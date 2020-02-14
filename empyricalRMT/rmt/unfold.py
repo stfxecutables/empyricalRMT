@@ -94,7 +94,7 @@ class Unfolded(EigVals):
             max_L=max_L,
             show_progress=show_progress,
         )
-        return plot.spectralRigidity(
+        return plot.spectral_rigidity(
             unfolded,
             pd.DataFrame({"L": L, "delta": delta}),
             title,

@@ -11,7 +11,7 @@ import empyricalRMT.rmt as rmt
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
 from empyricalRMT.rmt.observables.rigidity import spectralRigidity
-from empyricalRMT.rmt.plot import spectralRigidity as plotSpectral
+from empyricalRMT.rmt.plot import spectralRigidity as spectral_rigidity
 from empyricalRMT.utils import eprint
 
 CUR_DIR = Path(__file__).parent
@@ -61,7 +61,7 @@ def test_spectral_rigidity(
         unfolded, eigs, c_iters=2000, L_grid_size=100, min_L=0.5, max_L=25
     )
     df = pd.DataFrame({"L": L_vals, "∆3(L)": delta3})
-    plotSpectral(
+    spectral_rigidity(
         unfolded,
         df,
         title=f"{kind.upper()} Matrix Spectral Rigidity Plot test",

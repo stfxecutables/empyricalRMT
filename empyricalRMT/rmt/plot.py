@@ -338,7 +338,7 @@ def spacings(
     return _handle_plot_mode(mode, axes, outfile)
 
 
-def spectralRigidity(
+def spectral_rigidity(
     unfolded: ndarray,
     data: pd.DataFrame,
     title: str = "Spectral Rigidity",
