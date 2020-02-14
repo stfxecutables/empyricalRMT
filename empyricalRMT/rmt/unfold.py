@@ -3,7 +3,7 @@ import pandas as pd
 
 from numpy import ndarray
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional, Tuple
 from warnings import warn
 
 import empyricalRMT.rmt.plot as plot
@@ -40,7 +40,7 @@ class Unfolded(EigVals):
         outfile: Path = None,
         ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
         show_progress: bool = True,
-    ) -> PlotResult:
+    ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
         """Compute and plot the spectral rigidity.
 
         Parameters
@@ -80,6 +80,9 @@ class Unfolded(EigVals):
             min_L, and max_L.
         delta3 : ndarray
             The computed spectral rigidity values for each of L.
+        figure, axes: Optional[PlotResult]
+            If mode is "return", the matplotlib figure and axes object for modification.
+            Otherwise, None.
 
         References
         ----------
@@ -94,7 +97,7 @@ class Unfolded(EigVals):
             max_L=max_L,
             show_progress=show_progress,
         )
-        return plot.spectral_rigidity(
+        plot_result = plot.spectral_rigidity(
             unfolded,
             pd.DataFrame({"L": L, "delta": delta}),
             title,
@@ -102,6 +105,7 @@ class Unfolded(EigVals):
             outfile,
             ensembles,
         )
+        return L, delta, plot_result
 
     def plot_number_level_variance(self) -> PlotResult:
         raise NotImplementedError()
