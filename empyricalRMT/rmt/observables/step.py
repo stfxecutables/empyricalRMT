@@ -2,7 +2,7 @@ import numpy as np
 from numpy import ndarray
 
 from numba import jit, prange
-from typing import Any, Tuple
+from typing import Any
 
 
 # slow, but guaranteed to be correct

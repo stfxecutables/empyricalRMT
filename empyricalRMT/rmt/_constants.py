@@ -1,5 +1,4 @@
 import numpy as np
-from numpy import ndarray
 
 
 EXPECTED_GOE_VARIANCE = 0.286

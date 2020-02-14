@@ -4,7 +4,6 @@ import pandas as pd
 from numpy import ndarray
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
-from warnings import warn
 
 import empyricalRMT.rmt.plot as plot
 

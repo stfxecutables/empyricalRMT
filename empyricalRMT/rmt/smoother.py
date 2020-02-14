@@ -12,7 +12,6 @@ from warnings import warn
 
 from empyricalRMT.rmt._constants import (
     DEFAULT_POLY_DEGREE,
-    DEFAULT_POLY_DEGREES,
     DEFAULT_SPLINE_DEGREE,
     DEFAULT_SPLINE_DEGREES,
     DEFAULT_SPLINE_SMOOTH,

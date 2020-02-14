@@ -1,18 +1,12 @@
 import numpy as np
-import pandas as pd
 
 from numpy import ndarray
-from pandas import DataFrame
-from pyod.models.hbos import HBOS
-from typing import Iterable, List, Sized, Tuple
+from typing import List, Sized
 from warnings import warn
 
 from empyricalRMT.rmt._constants import (
-    EXPECTED_GOE_MEAN,
-    EXPECTED_GOE_VARIANCE,
     DEFAULT_POLY_DEGREE,
     DEFAULT_SPLINE_SMOOTH,
-    DEFAULT_SPLINE_DEGREE,
     DEFAULT_POLY_DEGREES,
     DEFAULT_SPLINE_SMOOTHS,
     DEFAULT_SPLINE_DEGREES,
@@ -21,7 +15,6 @@ from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.smoother import Smoother, SmoothMethod
 from empyricalRMT.rmt.trim import Trimmed, TrimReport
 from empyricalRMT.rmt.unfold import Unfolded
-from empyricalRMT.utils import find_first, find_last, is_symmetric, mkdirp
 
 
 _WARNED_SMALL = False

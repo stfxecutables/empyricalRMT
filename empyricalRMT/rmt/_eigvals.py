@@ -1,7 +1,7 @@
 import numpy as np
 
 from numpy import ndarray
-from typing import Iterable, Sized
+from typing import Sized
 
 from empyricalRMT._validate import make_1d_array
 from empyricalRMT.rmt.observables.step import stepFunctionFast
