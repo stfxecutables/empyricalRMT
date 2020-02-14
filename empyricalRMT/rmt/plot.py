@@ -12,7 +12,6 @@ from typing_extensions import Literal
 from warnings import warn
 
 from empyricalRMT.rmt.observables.step import stepFunctionFast
-from empyricalRMT.rmt.observables.spacings import computeSpacings
 from empyricalRMT.utils import make_parent_directories
 
 PlotResult = Optional[Tuple[plt.Figure, plt.Axes]]
@@ -385,7 +384,7 @@ def spectral_rigidity(
     p, y = np.pi, np.euler_gamma
 
     # see pg 290 of Mehta (2004) for definition of s
-    s = L / np.mean(computeSpacings(unfolded, trim=False))
+    s = L / np.mean(unfolded[1:] - unfolded[:-1])
 
     if "poisson" in ensembles:
         poisson = L / 15 / 2
@@ -457,7 +456,7 @@ def level_number_variance(
 
     L = df["L"]
     p, y = np.pi, np.euler_gamma
-    s = L / np.mean(computeSpacings(unfolded, trim=False))
+    s = L / np.mean(unfolded[1:] - unfolded[:-1])
 
     if "poisson" in ensembles:
         poisson = L / 2  # waste of time, too large very often
