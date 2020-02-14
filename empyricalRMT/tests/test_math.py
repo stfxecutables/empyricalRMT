@@ -1,9 +1,131 @@
 import numpy as np
 import pytest
+import time
 
+from numpy import ndarray
 from scipy.integrate import trapz
+from typing import Any
 
 from empyricalRMT.rmt.observables.rigidity import slope, intercept, integrateFast
+from empyricalRMT.rmt.observables.step import (
+    stepFunctionCorrect,
+    stepFunctionFast,
+    stepFunctionVectorized,
+)
+
+
+@pytest.mark.math
+@pytest.mark.fast
+def test_step_fast() -> None:
+    def is_correct(eigs: ndarray, vals: ndarray) -> Any:
+        return np.allclose(
+            np.array(stepFunctionFast(eigs, vals), dtype=int),
+            np.array(stepFunctionCorrect(eigs, vals), dtype=int),
+            atol=1e-5,
+        )
+
+    def is_close(eigs: ndarray, vals: ndarray) -> bool:
+        computed = stepFunctionFast(eigs, vals)
+        correct = stepFunctionCorrect(eigs, vals)
+        diffs = np.sum(np.abs(computed - correct)) / len(vals)
+        return bool(diffs < 1e-5)
+
+    # readable cases
+    reigs = np.array([-2, -1, 0, 1, 2], dtype=float)
+    x = np.array([-3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0])
+    assert np.allclose(
+        np.array(stepFunctionFast(reigs, x), dtype=int),
+        np.array([0, 0, 1, 1, 2, 2, 3], dtype=int),
+    )
+    assert is_correct(reigs, x)
+    x = np.array([-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+    assert np.allclose(
+        np.array(stepFunctionFast(reigs, x), dtype=int),
+        np.array([1, 1, 2, 2, 3, 3, 4, 4, 5, 5], dtype=int),
+    )
+    assert is_correct(reigs, x)
+    x = np.array([-3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+    assert np.allclose(
+        np.array(stepFunctionFast(reigs, x), dtype=int),
+        np.array([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5], dtype=int),
+    )
+    assert is_correct(reigs, x)
+    # this input is causing a segfault
+    x = np.array([0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+    assert np.allclose(
+        np.array(stepFunctionFast(reigs, x), dtype=int),
+        np.array([3, 3, 4, 4, 5, 5], dtype=int),
+    )
+    assert is_correct(reigs, x)
+
+    for _ in range(1000):
+        eigs = np.sort(np.random.uniform(-1000, 1000, 1000))
+        # for i in range(len(eigs) - 1):
+        #     if np.allclose(eigs[i], eigs[i + 1]):
+        #         raise ValueError("Non-unique eigenvalues!")
+
+        # degenerate cases
+        x_0 = np.linspace(eigs[-1] + 1000, eigs[-1] + 2000, 10000)
+        x_1 = np.linspace(eigs[0] - 1000, eigs[0] - 2000, 10000)
+        assert is_close(eigs, x_0)
+        assert is_close(eigs, x_1)
+
+        # differing overlaps
+        x_2 = np.linspace(eigs[0], eigs[-1], 10000)
+        x_3 = np.linspace(eigs[0] - 500, eigs[-1], 10000)
+        x_4 = np.linspace(eigs[0] - 500, eigs[-1] + 500, 10000)
+        x_5 = np.linspace(eigs[0], eigs[-1] + 500, 10000)
+        assert is_close(eigs, x_2)
+        assert is_close(eigs, x_3)
+        assert is_close(eigs, x_4)
+        assert is_close(eigs, x_5)
+
+
+@pytest.mark.perf
+def test_step_fast_perf() -> None:
+    step_fasts, step_vecs, step_corrects = [], [], []
+    for _ in range(20):
+        eigs = np.sort(np.random.uniform(-10000, 10000, 10000))
+        x = np.linspace(eigs[0], eigs[-1], 50000)
+
+        start = time.time()
+        for _ in range(100):
+            stepFunctionFast(eigs, x)
+        step_fast = time.time() - start
+
+        start = time.time()
+        for _ in range(100):
+            stepFunctionVectorized(eigs, x)
+        step_vec = time.time() - start
+
+        start = time.time()
+        for _ in range(100):
+            stepFunctionCorrect(eigs, x)
+        step_correct = time.time() - start
+
+        step_fasts.append(step_fast)
+        step_vecs.append(step_vec)
+        step_corrects.append(step_correct)
+
+    print("Smaller values are better (seconds)")
+    print(
+        "stepFunctionFast:       ",
+        np.mean(step_fasts),
+        "+-",
+        3 * np.std(step_fasts, ddof=1),
+    )
+    print(
+        "stepFunctionVectorized: ",
+        np.mean(step_vecs),
+        "+-",
+        3 * np.std(step_vecs, ddof=1),
+    )
+    print(
+        "stepFunctionCorrect:    ",
+        np.mean(step_corrects),
+        "+-",
+        3 * np.std(step_corrects, ddof=1),
+    )
 
 
 @pytest.mark.math
@@ -79,4 +201,3 @@ def test_integrate_perf() -> None:
     assert total_custom < total_lib
     print("Custom integration time: ", total_custom)
     print("Scipy integration time: ", total_lib)
-
