@@ -7,7 +7,7 @@ import pytest
 from pathlib import Path
 
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.construct import generateGOEMatrix
+from empyricalRMT.rmt.construct import generateGOEMatrix, generate_eigs
 from empyricalRMT.rmt.trim import Trimmed, TrimReport
 from empyricalRMT.rmt.unfolder import Unfolder
 
@@ -54,4 +54,3 @@ def test_trim_reports() -> None:
     assert np.array_equal(best_indices, [(0, 1895), (367, 1769), (232, 1769)])
 
     report.plot_trim_steps(mode="noblock")
-

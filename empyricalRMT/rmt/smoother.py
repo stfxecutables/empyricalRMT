@@ -187,7 +187,7 @@ class Smoother:
                     unfoldeds[col_name] = unfolded
                     sqes[col_name] = (unfolded - steps) ** 2
         else:
-            for s in spline_smooths:
+            for s in spline_smooths:  # type: ignore
                 for d in spline_degrees:
                     col_name = f"{_spline_name(d)}-spline_" "{:1.3f}".format(s)
                     unfolded, steps = self.fit(

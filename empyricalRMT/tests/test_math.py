@@ -1,13 +1,7 @@
 import numpy as np
-from numpy import ndarray
-import matplotlib.pyplot as plt
 import pytest
-import seaborn as sbn
 
 from scipy.integrate import trapz
-from typing import Any, List, Tuple
-
-import empyricalRMT.rmt.ensemble as ensemble
 
 from empyricalRMT.rmt.observables.rigidity import slope, intercept, integrateFast
 
