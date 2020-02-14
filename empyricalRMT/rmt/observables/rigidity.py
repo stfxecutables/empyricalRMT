@@ -39,12 +39,12 @@ from empyricalRMT.rmt.observables.step import stepFunctionG, stepFunctionVectori
 #    appropriate number of times to generate a dataset consisting of
 #    datapoints (L, ∆3(L)).
 def spectralRigidity(
-    eigs: ndarray,
     unfolded: ndarray,
-    c_iters: int = 1000,
-    L_grid_size: int = 50,
+    c_iters: int = 50000,
+    L_grid_size: int = None,
     min_L: float = 2,
-    max_L: float = 25,
+    max_L: float = 50,
+    show_progress: bool = True,
 ) -> Tuple[ndarray, ndarray]:
     """Compute the spectral rigidity for a particular unfolding.
 
@@ -53,10 +53,8 @@ def spectralRigidity(
 
     Parameters
     ----------
-    eigs : ndarray
-        The sorted (ascending) eigenvalues.
     unfolded : ndarray
-        The sorted (ascending) eigenvalues computed from eigs.
+        The unfolded eigenvalues.
     L_grid_size : int = 100
         The number of values of L to generate betwen min_L and max_L.
     min_L : int = 0.5
@@ -83,49 +81,53 @@ def spectralRigidity(
     ----------
     .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier.
     """
+    if L_grid_size is None:
+        L_grid_size = int(2 * np.abs((np.floor(max_L) - np.floor(min_L))))
     L_vals = np.linspace(min_L, max_L, L_grid_size)
     delta3 = np.zeros(L_vals.shape)
-    pbar_widgets = [
-        f"{Fore.GREEN}Computing spectral rigidity: {Fore.RESET}",
-        f"{Fore.BLUE}",
-        Percentage(),
-        f" {Fore.RESET}",
-        " ",
-        Timer(),
-        f"|{Fore.YELLOW}",
-        AdaptiveETA(),
-        f"{Fore.RESET}",
-    ]
-    pbar = ProgressBar(widgets=pbar_widgets, maxval=L_vals.shape[0]).start()
+    if show_progress:
+        pbar_widgets = [
+            f"{Fore.GREEN}Computing spectral rigidity: {Fore.RESET}",
+            f"{Fore.BLUE}",
+            Percentage(),
+            f" {Fore.RESET}",
+            " ",
+            Timer(),
+            f"|{Fore.YELLOW}",
+            AdaptiveETA(),
+            f"{Fore.RESET}",
+        ]
+        pbar = ProgressBar(widgets=pbar_widgets, maxval=L_vals.shape[0]).start()
     for i, L in enumerate(L_vals):
         delta3_L_vals = np.empty((c_iters))
-        spectralIter(eigs, unfolded, delta3_L_vals, L, c_iters, 100)
+        spectralIter(unfolded, delta3_L_vals, L, c_iters, L_grid_size)
         if len(delta3_L_vals) != c_iters:
             raise Exception("We aren't computing enough L values")
         delta3[i] = np.mean(delta3_L_vals)
-        pbar.update(i)
-    pbar.finish()
+        if show_progress:
+            pbar.update(i)
+    if show_progress:
+        pbar.finish()
     return L_vals, delta3
 
 
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, fastmath=True, cache=True, parallel=True)
 def spectralIter(
-    eigs: ndarray,
     unfolded: ndarray,
     delta3_L_vals: ndarray,
     L: float,
-    c_iters: int = 100,
-    interval_gridsize: int = 100,
+    c_iters: int = 10000,
+    interval_gridsize: int = 10000,  # does not tend to effect performance significantly
 ) -> ndarray:
-    c_starts = np.random.uniform(eigs[0], eigs[-1], c_iters)
-    for i in prange(len(c_starts)):
-        # c_start is in space of eigs, not unfolded
-        grid = np.linspace(c_starts[i] - L / 2, c_starts[i] + L / 2, interval_gridsize)
-        step_vals = stepFunctionVectorized(eigs, grid)
+    starts = np.random.uniform(unfolded[0], unfolded[-1], c_iters)
+    for i in prange(len(starts)):
+        # c_start is in space of unfolded, not unfolded
+        grid = np.linspace(starts[i] - L / 2, starts[i] + L / 2, interval_gridsize)
+        step_vals = stepFunctionVectorized(unfolded, grid)  # performance bottleneck
         K = slope(grid, step_vals)
         w = intercept(grid, step_vals, K)
-        y_vals = sq_lin_deviation_all(eigs, K, w, grid)
-        delta3 = integrateFast(grid, y_vals)
+        y_vals = sq_lin_deviation_all(unfolded, K, w, grid)
+        delta3 = integrateFast(grid, y_vals)  # O(len(grid))
         delta3_L_vals[i] = delta3 / L
     return delta3_L_vals
 

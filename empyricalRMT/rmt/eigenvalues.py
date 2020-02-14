@@ -365,5 +365,38 @@ class Eigenvalues(EigVals):
         orig_trimmed, unfolded = trimmed._get_autounfold_vals()
         return Unfolded(orig_trimmed, unfolded)
 
-    def unfold(self) -> Unfolded:
-        raise NotImplementedError
+    def unfold(
+        self,
+        smoother: SmoothMethod = "poly",
+        degree: int = DEFAULT_POLY_DEGREE,
+        spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
+        emd_detrend: bool = False,
+    ) -> Unfolded:
+        """
+        Parameters
+        ----------
+        eigs: ndarray
+            sorted eigenvalues
+        smoother: "poly" | "spline" | "gompertz" | lambda
+            the type of smoothing function used to fit the step function
+        degree: int
+            the degree of the polynomial or spline
+        spline_smooth: float
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline
+
+        Returns
+        -------
+        unfolded: ndarray
+            the unfolded eigenvalues
+
+        steps: ndarray
+            the step-function values
+        """
+        eigs = self.eigs
+        unfolded, _ = Smoother(eigs).fit(
+            smoother=smoother,
+            degree=degree,
+            spline_smooth=spline_smooth,
+            emd_detrend=emd_detrend,
+        )
+        return Unfolded(originals=eigs, unfolded=unfolded)
