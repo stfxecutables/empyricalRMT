@@ -8,7 +8,7 @@ from typing import Tuple
 from ...utils import eprint
 
 
-def sigmaSquared(
+def level_number_variance(
     eigs: ndarray,
     unfolded: ndarray,
     c_iters: int = 50,

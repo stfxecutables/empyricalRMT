@@ -25,7 +25,7 @@ pip install empyricalRMT
 import empyricalRMT.observables.unfold as unfold
 import empyricalRMT.rmt.plot as plot
 
-from empyricalRMT.observables.levelvariance import sigmaSquared
+from empyricalRMT.observables.levelvariance import level_number_variance
 from empyricalRMT.observables.rigidty import spectralRigidity
 from empyricalRMT.rmt.construct import generateGOEMatrix, generate_eigs
 
@@ -55,7 +55,7 @@ df = pd.DataFrame({"L": L, "∆3(L)": delta3})
 plot.spectralRigidity(unfolded, df, title="GOE Matrix Spectral Rigidity", mode="block")
 
 # Compute the number level variance
-L, sigma_sq = sigmaSquared(eigs, unfolded, c_iters=1000, L_grid_size=100, min_L=0.5, max_L=20)
+L, sigma_sq = level_number_variance(eigs, unfolded, c_iters=1000, L_grid_size=100, min_L=0.5, max_L=20)
 # Plot the resultant values
 df = pd.DataFrame({"L": L_grid, "∑²(L)": sigma_sq})
 plot.levelNumberVariance(unfolded, df, title=f"{kind.upper()} Matrix", mode="block")

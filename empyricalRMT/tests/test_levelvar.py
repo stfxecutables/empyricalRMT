@@ -8,7 +8,7 @@ from pathlib import Path
 import empyricalRMT.rmt.unfolder as unfold
 
 from empyricalRMT.rmt.construct import generateGOEMatrix
-from empyricalRMT.rmt.observables.levelvariance import sigmaSquared
+from empyricalRMT.rmt.observables.levelvariance import level_number_variance
 from empyricalRMT.rmt.plot import levelNumberVariance
 from empyricalRMT.utils import eprint
 
@@ -45,7 +45,7 @@ def test_levelvariance(matsize: int = 1000, kind: str = "goe") -> None:
     eigs = generate_eigs(matsize)
     unfolded = unfold.Unfolder(eigs).unfold(degree=11)
 
-    L_grid, sigma_sq = sigmaSquared(
+    L_grid, sigma_sq = level_number_variance(
         eigs, unfolded, c_iters=1000, L_grid_size=100, min_L=0.5, max_L=20
     )
     df = pd.DataFrame({"L": L_grid, "∑²(L)": sigma_sq})
