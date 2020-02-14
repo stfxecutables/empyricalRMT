@@ -6,7 +6,7 @@ from numba import jit, prange
 from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
 from typing import Tuple
 
-from empyricalRMT.rmt.observables.step import stepFunctionG, stepFunctionVectorized
+from empyricalRMT.rmt.observables.step import stepFunctionFast
 
 
 # spectral rigidity ∆3
@@ -123,7 +123,7 @@ def spectralIter(
     for i in prange(len(starts)):
         # c_start is in space of unfolded, not unfolded
         grid = np.linspace(starts[i] - L / 2, starts[i] + L / 2, interval_gridsize)
-        step_vals = stepFunctionVectorized(unfolded, grid)  # performance bottleneck
+        step_vals = stepFunctionFast(unfolded, grid)  # performance bottleneck
         K = slope(grid, step_vals)
         w = intercept(grid, step_vals, K)
         y_vals = sq_lin_deviation_all(unfolded, K, w, grid)
@@ -165,7 +165,7 @@ def integrateFast(grid: ndarray, values: ndarray) -> np.float64:
 
 @jit(nopython=True, fastmath=True, cache=True)
 def sq_lin_deviation(eigs: ndarray, K: float, w: float, l: float) -> np.float64:
-    n = stepFunctionG(eigs, l)
+    n = stepFunctionFast(eigs, l)
     deviation = n - K * l - w
     return deviation * deviation
 

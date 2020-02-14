@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
-from empyricalRMT.rmt.observables.step import stepFunctionVectorized
+from empyricalRMT.rmt.observables.step import stepFunctionFast
 from empyricalRMT.rmt.observables.spacings import computeSpacings
 from empyricalRMT.utils import make_parent_directories
 
@@ -114,7 +114,7 @@ def stepFunction(
     """
     _setup_plotting()
     grid = np.linspace(eigs.min(), eigs.max(), gridsize)
-    steps = stepFunctionVectorized(eigs, grid)
+    steps = stepFunctionFast(eigs, grid)
     df = pd.DataFrame({"Cumulative Value": steps, "Raw eigenvalues λ": grid})
     axes = sbn.lineplot(data=df, x="Raw eigenvalues λ", y="Cumulative Value")
     plt.title(title)

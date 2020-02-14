@@ -4,6 +4,16 @@ from numpy import ndarray
 from numba import jit, prange
 from typing import Any, Tuple
 
+
+# slow, but guaranteed to be correct
+@jit(nopython=True, fastmath=True, cache=True, parallel=True)
+def stepFunctionCorrect(eigs: ndarray, x: ndarray) -> ndarray:
+    ret = np.empty((len(x)), dtype=np.float64)
+    for i in prange(len(x)):
+        ret[i] = np.sum(eigs <= x[i])
+    return ret
+
+
 # this function is equivalent to `return len(eigs[eigs <= x])`
 # in particular, since our eigenvalues are always sorted, we can simply
 # return the index of the eigenvalue in eigs, e.g. if we have eigs
@@ -21,29 +31,6 @@ def stepFunctionG(eigs: ndarray, x: float) -> int:
         else:
             cumulative += 1
     return cumulative
-
-
-# slow, but guaranteed to be correct
-@jit(nopython=True, fastmath=True, cache=True, parallel=True)
-def stepFunctionCorrect(eigs: ndarray, x: ndarray) -> ndarray:
-    ret = np.empty((len(x)), dtype=np.float64)
-    for i in prange(len(x)):
-        ret[i] = np.sum(eigs <= x[i])
-    return ret
-
-
-@jit(nopython=True, fastmath=True, cache=True)
-def stepFunctionHelpful(eigs: ndarray, x: float) -> Tuple[int, int]:
-    """Count the number of eigenvalues <= x."""
-    cumulative = 0
-    index = 0
-    for i, eig in enumerate(eigs):
-        if x <= eig:
-            break
-        else:
-            cumulative += 1
-            index = i
-    return cumulative, index
 
 
 # Currently this is extremely slow since we don't use the fact that
@@ -81,16 +68,12 @@ def stepFunctionFast(eigs: ndarray, x: ndarray) -> ndarray:
             i += 1
             count += 1
             continue
-        # ret[j] = count  # if we get here, x[j] finally has a nonzero step value
-        # j += 1
         while j < len(x) and x[j] < eigs[i]:  # look ahead
             ret[j] = count
             j += 1
 
     while j < len(x):
         ret[j] = count
-        # if x[j] >= eigs[-1]:
-        #     count += 1
         j += 1
 
     return ret

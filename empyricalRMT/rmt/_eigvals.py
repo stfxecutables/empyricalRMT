@@ -4,7 +4,7 @@ from numpy import ndarray
 from typing import Iterable, Sized
 
 from empyricalRMT._validate import make_1d_array
-from empyricalRMT.rmt.observables.step import stepFunctionVectorized
+from empyricalRMT.rmt.observables.step import stepFunctionFast
 from empyricalRMT.rmt.plot import spacings as plotSpacings
 from empyricalRMT.rmt.plot import rawEigDist, rawEigSorted, stepFunction, PlotResult
 
@@ -40,7 +40,7 @@ class EigVals:
     @property
     def steps(self) -> ndarray:
         if self._steps is None:
-            self._steps = stepFunctionVectorized(self._vals, self._vals)
+            self._steps = stepFunctionFast(self._vals, self._vals)
         return self._steps
 
     @property
@@ -48,7 +48,7 @@ class EigVals:
         return self.vals[1:] - self.vals[:-1]
 
     def step_function(self, x: ndarray) -> ndarray:
-        return stepFunctionVectorized(eigs=self.vals, x=x)
+        return stepFunctionFast(eigs=self.vals, x=x)
 
     def plot_sorted(self, *args, **kwargs) -> PlotResult:  # type: ignore
         return rawEigSorted(eigs=self.values, *args, **kwargs)  # type: ignore
