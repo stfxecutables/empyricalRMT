@@ -40,7 +40,7 @@ from empyricalRMT.rmt.observables.step import stepFunctionFast
 #    datapoints (L, ∆3(L)).
 def spectralRigidity(
     unfolded: ndarray,
-    c_iters: int = 50000,
+    c_iters: int = 10000,
     L_grid_size: int = None,
     min_L: float = 2,
     max_L: float = 50,
@@ -53,21 +53,21 @@ def spectralRigidity(
 
     Parameters
     ----------
-    unfolded : ndarray
+    unfolded: ndarray
         The unfolded eigenvalues.
-    L_grid_size : int = 100
+    L_grid_size: int
         The number of values of L to generate betwen min_L and max_L.
-    min_L : int = 0.5
+    min_L: int
         The lowest possible L value for which to compute the spectral
-        rigidity.
-    max_L : int = 20
+        rigidity. Default 2.
+    max_L: int
         The largest possible L value for which to compute the spectral
-        rigidity.
-    c_iters: int = 50
+        rigidity. Default 50.
+    c_iters: int
         How many times the location of the center, c, of the interval
         [c - L/2, c + L/2] should be chosen uniformly at random for
         each L in order to compute the estimate of the spectral
-        rigidity.
+        rigidity. Default 10000.
 
     Returns
     -------
@@ -77,9 +77,30 @@ def spectralRigidity(
     delta3 : ndarray
         The computed spectral rigidity values for each of L.
 
+    Notes
+    -----
+    This algorithm is fairly heavily optimized, and executes fast for even
+    high grid densities and a large number of iterations per grid value.
+    Efficiency seems to be roughly O(L_grid_size). Increasing len(unfolded)
+    and increasing c_iters also increases the execution time, but not nearly
+    as much as increasing the grid density. Even for a large number of iterations
+    per L value (e.g. 100000) the algorithm is still quite quick, so large values
+    are generally recommended here. This is especially the case if looking at
+    large L values (e.g. probably for L > 20, definitely for L > 50).
+
+    In general, the extent to which observed spectral rigidity values will
+    match those predicted by theory will depend heavily on the choice of
+    unfolding function. In addition, convergence to the expected curves can be
+    quite slow, especially for large L values. E.g. the eigenvalues of an
+    n == 1000 GOE matrix, with polynomial unfolding, will generally only match
+    expected values up to about L == 20. For an n == 5000 GOE matrix, rigidty
+    values will start to deviate from theory by about L == 40 or L == 50. For
+    n == 10000, you will probably start seeing noticable deviation by about
+    L == 60 or L == 70. I.e. convergence is slow.
+
     References
     ----------
-    .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier.
+    .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier
     """
     if L_grid_size is None:
         L_grid_size = int(2 * np.abs((np.floor(max_L) - np.floor(min_L))))
@@ -123,10 +144,10 @@ def spectralIter(
     for i in prange(len(starts)):
         # c_start is in space of unfolded, not unfolded
         grid = np.linspace(starts[i] - L / 2, starts[i] + L / 2, interval_gridsize)
-        step_vals = stepFunctionFast(unfolded, grid)  # performance bottleneck
-        K = slope(grid, step_vals)
-        w = intercept(grid, step_vals, K)
-        y_vals = sq_lin_deviation_all(unfolded, K, w, grid)
+        steps = stepFunctionFast(unfolded, grid)  # performance bottleneck
+        K = slope(grid, steps)
+        w = intercept(grid, steps, K)
+        y_vals = sq_lin_deviation(unfolded, steps, K, w, grid)
         delta3 = integrateFast(grid, y_vals)  # O(len(grid))
         delta3_L_vals[i] = delta3 / L
     return delta3_L_vals
@@ -163,16 +184,36 @@ def integrateFast(grid: ndarray, values: ndarray) -> np.float64:
     return integral
 
 
+# NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
+# the outer loops. Adding it inside *dramatically* slows performance.
 @jit(nopython=True, fastmath=True, cache=True)
-def sq_lin_deviation(eigs: ndarray, K: float, w: float, l: float) -> np.float64:
-    n = stepFunctionFast(eigs, l)
-    deviation = n - K * l - w
-    return deviation * deviation
+def sq_lin_deviation(
+    eigs: ndarray, steps: ndarray, K: float, w: float, grid: ndarray
+) -> ndarray:
+    """Compute the sqaured deviation of the staircase function of the best fitting
+    line, over the region in `grid`.
 
+    Parameters
+    ----------
+    eigs: ndarray
+        The raw, sorted eigenvalues
+    steps: ndarray
+        The step function values which were computed on `grid`.
+    K: float
+        The calculated slope of the line of best fit.
+    w: float
+        The calculated intercept.
+    grid: ndarray
+        The grid of values for which the step function was evaluated.
 
-@jit(nopython=True, fastmath=True, cache=True)
-def sq_lin_deviation_all(eigs: ndarray, K: float, w: float, x: ndarray) -> ndarray:
-    ret = np.empty(len(x))
-    for i in prange(len(x)):
-        ret[i] = sq_lin_deviation(eigs, K, w, x[i])
+    Returns
+    -------
+    sq_deviations: ndarray
+        The squared deviations.
+    """
+    ret = np.empty((len(grid)), dtype=np.float64)
+    for i in prange(len(grid)):
+        n = steps[i]
+        deviation = n - K * grid[i] - w
+        ret[i] = deviation * deviation
     return ret
