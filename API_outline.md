@@ -53,6 +53,12 @@ class TrimReport:
     .unfold()                    -> Unfolded
 ```
 
+```python
+class Trimmed(EigsVals):
+    unfold(smoother: Smoother)   -> Unfolded
+    unfold_auto()                -> Unfolded
+```
+
 ## Smoother
 
 ```python
@@ -64,7 +70,7 @@ class Smoother():
 ## Unfolded
 
 ```python
-class Unfolded(RawEigs):
+class Unfolded(EigVals):
     .trimmed                     -> Trimmed
     .plot_smoother_fit()         -> Axes
     .compare(ensemble: Ensemble) -> pd.DataFrame report
