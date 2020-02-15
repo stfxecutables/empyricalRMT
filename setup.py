@@ -18,7 +18,7 @@ REQUIREMENTS = [
 ]
 
 
-def read_file(path):
+def read_file(path):  # type: ignore
     with open(os.path.join(os.path.dirname(__file__), path)) as fp:
         return fp.read()
 
@@ -42,5 +42,5 @@ setup(
     ],
     install_requires=REQUIREMENTS,
     python_requires=">=3",
-    keywords="RMT RandomMatrixTheory spectral observabales eigenvalues unfolding",
+    keywords="RMT RandomMatrixTheory spectral observables eigenvalues unfolding",  # noqa E501
 )
