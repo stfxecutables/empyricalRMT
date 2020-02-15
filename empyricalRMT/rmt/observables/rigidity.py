@@ -6,7 +6,7 @@ from numba import jit, prange
 from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
 from typing import Tuple
 
-from empyricalRMT.rmt.observables.step import stepFunctionFast
+from empyricalRMT.rmt.observables.step import _step_function_fast
 
 
 # spectral rigidity ∆3
@@ -38,7 +38,7 @@ from empyricalRMT.rmt.observables.step import stepFunctionFast
 #    l_i ≤ c + L, as per Equation (4). This process can be repeated an
 #    appropriate number of times to generate a dataset consisting of
 #    datapoints (L, ∆3(L)).
-def spectralRigidity(
+def spectral_rigidity(
     unfolded: ndarray,
     c_iters: int = 10000,
     L_grid_size: int = None,
@@ -121,7 +121,7 @@ def spectralRigidity(
         pbar = ProgressBar(widgets=pbar_widgets, maxval=L_vals.shape[0]).start()
     for i, L in enumerate(L_vals):
         delta3_L_vals = np.empty((c_iters))
-        spectralIter(unfolded, delta3_L_vals, L, c_iters, L_grid_size)
+        _spectral_iter(unfolded, delta3_L_vals, L, c_iters, L_grid_size)
         if len(delta3_L_vals) != c_iters:
             raise Exception("We aren't computing enough L values")
         delta3[i] = np.mean(delta3_L_vals)
@@ -133,7 +133,7 @@ def spectralRigidity(
 
 
 @jit(nopython=True, fastmath=True, cache=True, parallel=True)
-def spectralIter(
+def _spectral_iter(
     unfolded: ndarray,
     delta3_L_vals: ndarray,
     L: float,
@@ -144,17 +144,17 @@ def spectralIter(
     for i in prange(len(starts)):
         # c_start is in space of unfolded, not unfolded
         grid = np.linspace(starts[i] - L / 2, starts[i] + L / 2, interval_gridsize)
-        steps = stepFunctionFast(unfolded, grid)  # performance bottleneck
-        K = slope(grid, steps)
-        w = intercept(grid, steps, K)
-        y_vals = sq_lin_deviation(unfolded, steps, K, w, grid)
-        delta3 = integrateFast(grid, y_vals)  # O(len(grid))
+        steps = _step_function_fast(unfolded, grid)  # performance bottleneck
+        K = _slope(grid, steps)
+        w = _intercept(grid, steps, K)
+        y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
+        delta3 = _integrate_fast(grid, y_vals)  # O(len(grid))
         delta3_L_vals[i] = delta3 / L
     return delta3_L_vals
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def slope(x: ndarray, y: ndarray) -> np.float64:
+def _slope(x: ndarray, y: ndarray) -> np.float64:
     """Perform linear regression to compute the slope."""
     x_mean = np.mean(x)
     y_mean = np.mean(y)
@@ -168,12 +168,12 @@ def slope(x: ndarray, y: ndarray) -> np.float64:
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
+def _intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
     return np.mean(y) - slope * np.mean(x)
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def integrateFast(grid: ndarray, values: ndarray) -> np.float64:
+def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
     """scipy.integrate.trapz is excruciatingly slow and unusable for our purposes.
     This tiny rewrite seems to result in a near 20x speedup."""
     integral = 0
@@ -187,7 +187,7 @@ def integrateFast(grid: ndarray, values: ndarray) -> np.float64:
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
 # the outer loops. Adding it inside *dramatically* slows performance.
 @jit(nopython=True, fastmath=True, cache=True)
-def sq_lin_deviation(
+def _sq_lin_deviation(
     eigs: ndarray, steps: ndarray, K: float, w: float, grid: ndarray
 ) -> ndarray:
     """Compute the sqaured deviation of the staircase function of the best fitting

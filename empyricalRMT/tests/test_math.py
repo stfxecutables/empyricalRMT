@@ -6,11 +6,11 @@ from numpy import ndarray
 from scipy.integrate import trapz
 from typing import Any
 
-from empyricalRMT.rmt.observables.rigidity import slope, intercept, integrateFast
+from empyricalRMT.rmt.observables.rigidity import _slope, _intercept, _integrate_fast
 from empyricalRMT.rmt.observables.step import (
-    stepFunctionCorrect,
-    stepFunctionFast,
-    stepFunctionVectorized,
+    _step_function_correct,
+    _step_function_fast,
+    _step_function_slow,
 )
 
 
@@ -19,14 +19,14 @@ from empyricalRMT.rmt.observables.step import (
 def test_step_fast() -> None:
     def is_correct(eigs: ndarray, vals: ndarray) -> Any:
         return np.allclose(
-            np.array(stepFunctionFast(eigs, vals), dtype=int),
-            np.array(stepFunctionCorrect(eigs, vals), dtype=int),
+            np.array(_step_function_fast(eigs, vals), dtype=int),
+            np.array(_step_function_correct(eigs, vals), dtype=int),
             atol=1e-5,
         )
 
     def is_close(eigs: ndarray, vals: ndarray) -> bool:
-        computed = stepFunctionFast(eigs, vals)
-        correct = stepFunctionCorrect(eigs, vals)
+        computed = _step_function_fast(eigs, vals)
+        correct = _step_function_correct(eigs, vals)
         diffs = np.sum(np.abs(computed - correct)) / len(vals)
         return bool(diffs < 1e-5)
 
@@ -34,26 +34,26 @@ def test_step_fast() -> None:
     reigs = np.array([-2, -1, 0, 1, 2], dtype=float)
     x = np.array([-3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0])
     assert np.allclose(
-        np.array(stepFunctionFast(reigs, x), dtype=int),
+        np.array(_step_function_fast(reigs, x), dtype=int),
         np.array([0, 0, 1, 1, 2, 2, 3], dtype=int),
     )
     assert is_correct(reigs, x)
     x = np.array([-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
     assert np.allclose(
-        np.array(stepFunctionFast(reigs, x), dtype=int),
+        np.array(_step_function_fast(reigs, x), dtype=int),
         np.array([1, 1, 2, 2, 3, 3, 4, 4, 5, 5], dtype=int),
     )
     assert is_correct(reigs, x)
     x = np.array([-3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
     assert np.allclose(
-        np.array(stepFunctionFast(reigs, x), dtype=int),
+        np.array(_step_function_fast(reigs, x), dtype=int),
         np.array([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5], dtype=int),
     )
     assert is_correct(reigs, x)
     # this input is causing a segfault
     x = np.array([0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
     assert np.allclose(
-        np.array(stepFunctionFast(reigs, x), dtype=int),
+        np.array(_step_function_fast(reigs, x), dtype=int),
         np.array([3, 3, 4, 4, 5, 5], dtype=int),
     )
     assert is_correct(reigs, x)
@@ -83,45 +83,45 @@ def test_step_fast() -> None:
 
 @pytest.mark.perf
 def test_step_fast_perf() -> None:
-    step_fasts, step_vecs, step_corrects = [], [], []
-    for _ in range(20):
+    step_fasts, step_slows, step_corrects = [], [], []
+    for _ in range(5):
         eigs = np.sort(np.random.uniform(-10000, 10000, 10000))
         x = np.linspace(eigs[0], eigs[-1], 50000)
 
         start = time.time()
         for _ in range(100):
-            stepFunctionFast(eigs, x)
+            _step_function_fast(eigs, x)
         step_fast = time.time() - start
 
         start = time.time()
         for _ in range(100):
-            stepFunctionVectorized(eigs, x)
-        step_vec = time.time() - start
+            _step_function_slow(eigs, x)
+        step_slow = time.time() - start
 
         start = time.time()
         for _ in range(100):
-            stepFunctionCorrect(eigs, x)
+            _step_function_correct(eigs, x)
         step_correct = time.time() - start
 
         step_fasts.append(step_fast)
-        step_vecs.append(step_vec)
+        step_slows.append(step_slow)
         step_corrects.append(step_correct)
 
     print("Smaller values are better (seconds)")
     print(
-        "stepFunctionFast:       ",
+        "_step_function_fast:       ",
         np.mean(step_fasts),
         "+-",
         3 * np.std(step_fasts, ddof=1),
     )
     print(
-        "stepFunctionVectorized: ",
-        np.mean(step_vecs),
+        "_step_function_slow: ",
+        np.mean(step_slows),
         "+-",
-        3 * np.std(step_vecs, ddof=1),
+        3 * np.std(step_slows, ddof=1),
     )
     print(
-        "stepFunctionCorrect:    ",
+        "_step_function_correct:    ",
         np.mean(step_corrects),
         "+-",
         3 * np.std(step_corrects, ddof=1),
@@ -136,8 +136,8 @@ def test_slope() -> None:
         b = np.random.uniform(-10, 10)
         x = np.random.uniform(-1000, 1000, 1000)
         y = m * x + b
-        m_comp = slope(x, y)
-        b_comp = intercept(x, y, m_comp)
+        m_comp = _slope(x, y)
+        b_comp = _intercept(x, y, m_comp)
         assert np.allclose(m, m_comp)
         assert np.allclose(b, b_comp)
 
@@ -155,7 +155,7 @@ def test_integrate() -> None:
         int_analytic = (m * grid[-1] ** 2 / 2 + b * grid[-1]) - (
             m * grid[0] ** 2 / 2 + b * grid[0]
         )
-        int_comp = integrateFast(grid, y)
+        int_comp = _integrate_fast(grid, y)
         int_exp = trapz(y, x=grid)
         assert np.allclose(int_analytic, int_exp)
         assert np.allclose(int_comp, int_exp)
@@ -169,7 +169,7 @@ def test_integrate() -> None:
         y = a * grid ** 2 + b * grid + c
         f = lambda x: a / 3 * x ** 3 + b / 2 * x ** 2 + c * x  # noqa E731
         int_analytic = f(grid[-1]) - f(grid[0])
-        int_comp = integrateFast(grid, y)
+        int_comp = _integrate_fast(grid, y)
         int_exp = trapz(y, x=grid)
         assert np.abs(int_analytic - int_comp) < 0.001 * np.abs(int_analytic)
         assert np.allclose(int_comp, int_exp)
@@ -189,7 +189,7 @@ def test_integrate_perf() -> None:
 
     start = time.time()
     for i in range(n):
-        integrateFast(grid, y[i])
+        _integrate_fast(grid, y[i])
     total_custom = time.time() - start
 
     start = time.time()

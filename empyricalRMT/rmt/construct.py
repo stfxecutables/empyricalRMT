@@ -31,7 +31,7 @@ def generate_eigs(
         The kind of matrix to generate.
     """
     if kind == "poisson":
-        M = generatePoisson(matsize)
+        M = _generate_poisson(matsize)
     elif kind == "uniform":
         raise Exception("UNIMPLEMENTED!")
     elif kind == "gue":
@@ -39,7 +39,7 @@ def generate_eigs(
         A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
         M = (A + A.conjugate().T) / 2
     elif kind == "goe":
-        M = generateGOEMatrix(matsize, mean, sd)
+        M = _generate_GOE_matrix(matsize, mean, sd)
     else:
         kinds = ["goe", "gue", "poisson", "uniform"]
         raise ValueError(f"`kind` must be one of {kinds}")
@@ -67,32 +67,34 @@ def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
     last_matsize = matsize % sub_matsize
     eigs_submats = np.empty([n_submats, sub_matsize])
     for i in range(n_submats):
-        M = generateGOEMatrix(size=sub_matsize)
+        M = _generate_GOE_matrix(size=sub_matsize)
         sub_eigs = np.linalg.eigvalsh(M)
         eigs_submats[i, :] = sub_eigs
-    eigs_remain = np.linalg.eigvalsh(generateGOEMatrix(size=last_matsize))
+    eigs_remain = np.linalg.eigvalsh(_generate_GOE_matrix(size=last_matsize))
     eigs = list(eigs_submats.flatten()) + list(eigs_remain)
     eigs = np.sort(eigs)
     return eigs
 
 
-def generateUniform(matsize: int = 1000, lower: float = 0, upper: float = 1) -> ndarray:
+def generate_uniform(
+    matsize: int = 1000, lower: float = 0, upper: float = 1
+) -> ndarray:
     raise NotImplementedError
 
 
-def almostIdentity(size: int = 100) -> ndarray:
+def _almost_identity(size: int = 100) -> ndarray:
     E = np.random.standard_normal(size * size).reshape(size, size)
     E = (E + E.T) / np.sqrt(2)
     M = np.ma.identity(size)
     return M + E
 
 
-def random_1vector(size: int = 100) -> ndarray:
+def _random_1vector(size: int = 100) -> ndarray:
     vals = np.random.standard_normal([size, 1])
     return vals * vals.T
 
 
-def generateGOEMatrix(
+def _generate_GOE_matrix(
     size: int = 100, mean: float = 0, sd: float = 1, seed: int = None
 ) -> ndarray:
     if seed is not None:
@@ -104,11 +106,11 @@ def generateGOEMatrix(
     return (M + M.T) / np.sqrt(2)
 
 
-def generatePoisson(size: int = 100) -> ndarray:
+def _generate_poisson(size: int = 100) -> ndarray:
     return np.diag(np.random.standard_normal(size))
 
 
-def generateRandomMatrix(size: int = 100) -> ndarray:
+def _generate_random_matrix(size: int = 100) -> ndarray:
     norm_means = np.abs(np.random.normal(10.0, 2.0, size=size * size))
     norm_sds = np.abs(np.random.normal(3.0, 0.5, size=size * size))
     # exp_rates = np.abs(np.random.normal(size=size*size))

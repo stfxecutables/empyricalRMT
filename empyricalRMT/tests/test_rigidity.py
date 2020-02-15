@@ -1,15 +1,7 @@
-import numpy as np
-from numpy import ndarray
-import pandas as pd
 import pytest
 
-from pathlib import Path
-
-import empyricalRMT.rmt.plot
-
-from empyricalRMT.rmt.construct import generateGOEMatrix, generate_eigs
+from empyricalRMT.rmt.construct import generate_eigs
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.observables.rigidity import spectralRigidity
 
 
 @pytest.mark.plot

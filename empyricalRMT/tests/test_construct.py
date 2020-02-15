@@ -1,7 +1,7 @@
 import pytest
 
 from empyricalRMT.rmt.construct import fast_poisson_eigs
-from empyricalRMT.rmt.plot import spacings as plotSpacings
+from empyricalRMT.rmt.plot import _spacings as plotSpacings
 from empyricalRMT.rmt.unfolder import Unfolder
 
 

@@ -1,6 +1,7 @@
 import numpy as np
 
 from numba import jit, prange
+from typing import Any
 
 
 def get_signals(arr2d: np.array, threshold: float = 0.01) -> np.array:
@@ -17,7 +18,7 @@ def get_signals(arr2d: np.array, threshold: float = 0.01) -> np.array:
 
 
 @jit(nopython=True, parallel=True, fastmath=True)
-def fill_mask(mask, arr2d, threshold):
+def fill_mask(mask: Any, arr2d: Any, threshold: Any) -> Any:
     """Remove voxels that will cause undefined correlations"""
     for i in prange(mask.shape[0]):
         if np.var(arr2d[i]) <= threshold:

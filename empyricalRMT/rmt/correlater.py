@@ -37,9 +37,9 @@ def compute_correlations(
         pbar = setup_progressbar(f"Computing correlations{info}", arr.shape[0]).start()
         for i in range(arr.shape[0]):
             if detrended:
-                compute_detrended_column_corrs(corrs, arr, i)
+                _compute_detrended_column_corrs(corrs, arr, i)
             else:
-                compute_clean_column_corrs(corrs, arr, i)
+                _compute_clean_column_corrs(corrs, arr, i)
             if i % 10 == 0:
                 pass
                 pbar.update(i)
@@ -51,7 +51,7 @@ def compute_correlations(
 
 # @jit(nopython=True, cache=False, parallel=True, fastmath=True)
 @jit(nopython=True, cache=False, parallel=True)
-def compute_corrs(reshaped: ndarray, iters: int) -> ndarray:
+def _compute_corrs(reshaped: ndarray, iters: int) -> ndarray:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
     corrs = np.empty((iters, iters), dtype=np.float64)
@@ -73,7 +73,7 @@ def compute_corrs(reshaped: ndarray, iters: int) -> ndarray:
 
 
 @jit(nopython=True, parallel=True, cache=True, fastmath=True)
-def compute_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
+def _compute_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
     voxel_count = reshaped.shape[0]
@@ -102,7 +102,7 @@ def compute_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
 
 
 @jit(nopython=True, parallel=True, fastmath=True)
-def compute_clean_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
+def _compute_clean_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
     def clean_correlate(x: ndarray, y: ndarray) -> float:
@@ -130,7 +130,7 @@ def compute_clean_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> Non
 
 
 @jit(nopython=True, fastmath=True, cache=True)
-def fast_r_detrended(x: ndarray, y: ndarray) -> np.float64:
+def _fast_r_detrended(x: ndarray, y: ndarray) -> np.float64:
     num = np.sum(x * y)
     denom = np.sqrt(np.sum(x * x)) * np.sqrt(np.sum(y * y))
     if denom == 0:
@@ -139,7 +139,7 @@ def fast_r_detrended(x: ndarray, y: ndarray) -> np.float64:
 
 
 @jit(nopython=True, parallel=True, fastmath=True)
-def compute_detrended_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
+def _compute_detrended_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
     voxel_count = reshaped.shape[0]
@@ -149,13 +149,13 @@ def compute_detrended_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) ->
         elif i == j:
             corrs[i, j] = 1
         else:
-            corr = fast_r_detrended(reshaped[i, :], reshaped[j, :])
+            corr = _fast_r_detrended(reshaped[i, :], reshaped[j, :])
             corrs[i, j] = corr
             corrs[j, i] = corr
 
 
 @jit(nopython=True, fastmath=True)
-def fast_r(x: ndarray, y: ndarray) -> float:
+def _fast_r(x: ndarray, y: ndarray) -> float:
     """i.e. s^2"""
     x2, y2 = x ** 2, y ** 2
     return float((x * y) / np.sqrt(x2 * y2))

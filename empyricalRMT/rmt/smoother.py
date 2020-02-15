@@ -18,7 +18,7 @@ from empyricalRMT.rmt._constants import (
     DEFAULT_SPLINE_SMOOTHS,
 )
 from empyricalRMT.rmt.exponentials import gompertz
-from empyricalRMT.rmt.observables.step import stepFunctionFast
+from empyricalRMT.rmt.observables.step import _step_function_fast
 
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}
@@ -77,7 +77,7 @@ class Smoother:
             the step-function values
         """
         eigs = self._eigs
-        steps = stepFunctionFast(eigs, eigs)
+        steps = _step_function_fast(eigs, eigs)
         self.__validate_args(
             smoother=smoother, degree=degree, spline_smooth=spline_smooth
         )

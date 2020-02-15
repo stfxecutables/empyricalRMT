@@ -9,7 +9,7 @@ import empyricalRMT.rmt.plot as plot
 
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.observables.levelvariance import level_number_variance
-from empyricalRMT.rmt.observables.rigidity import spectralRigidity
+from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
 from empyricalRMT.rmt.plot import PlotMode, PlotResult
 
 
@@ -89,7 +89,7 @@ class Unfolded(EigVals):
         .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier.
         """
         unfolded = self.values
-        L, delta = spectralRigidity(
+        L, delta = spectral_rigidity(
             unfolded,
             c_iters=c_iters,
             L_grid_size=L_grid_size,
@@ -97,7 +97,7 @@ class Unfolded(EigVals):
             max_L=max_L,
             show_progress=show_progress,
         )
-        plot_result = plot.spectral_rigidity(
+        plot_result = plot._spectral_rigidity(
             unfolded,
             pd.DataFrame({"L": L, "delta": delta}),
             title,
@@ -172,7 +172,7 @@ class Unfolded(EigVals):
             max_L=max_L,
             show_progress=show_progress,
         )
-        plot_result = plot.level_number_variance(
+        plot_result = plot._level_number_variance(
             unfolded=unfolded,
             data=pd.DataFrame({"L": L, "sigma": sigma}),
             title=title,

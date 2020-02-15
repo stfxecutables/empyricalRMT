@@ -71,7 +71,7 @@ def level_number_variance(
         ]
         pbar = ProgressBar(widgets=pbar_widgets, maxval=L_grid.shape[0]).start()
     for i, L in enumerate(L_grid):
-        sigma_sq[i] = sigma_iter(unfolded, L, c_iters)
+        sigma_sq[i] = _sigma_iter(unfolded, L, c_iters)
         if show_progress:
             pbar.update(i)
     if show_progress:
@@ -81,7 +81,7 @@ def level_number_variance(
 
 
 @jit(nopython=True, cache=True, fastmath=True, parallel=True)
-def sigma_iter(unfolded: ndarray, L: float, c_iters: int = 100) -> ndarray:
+def _sigma_iter(unfolded: ndarray, L: float, c_iters: int = 100) -> ndarray:
     levels = np.empty((c_iters), dtype=np.float64)
     levels_sq = np.empty((c_iters), dtype=np.float64)  # levels squared
     for i in prange(c_iters):
@@ -99,7 +99,7 @@ def sigma_iter(unfolded: ndarray, L: float, c_iters: int = 100) -> ndarray:
     return av_of_sq_levels - av_of_levels_sq
 
 
-def sigmaSquared_exhaustive(
+def _sigmaSquared_exhaustive(
     unfolded: ndarray, c_step: float = 0.05, L_grid_size: int = 100, max_L: float = 50
 ) -> ndarray:
     L_grid = np.linspace(0.001, max_L, L_grid_size)  # don't want L==0

@@ -4,8 +4,8 @@ import pytest
 
 from pathlib import Path
 
-from empyricalRMT.rmt.construct import generateGOEMatrix
-from empyricalRMT.rmt.plot import rawEigDist
+from empyricalRMT.rmt.construct import _generate_GOE_matrix
+from empyricalRMT.rmt.plot import _raw_eig_dist
 from empyricalRMT.utils import eprint
 
 CUR_DIR = Path(__file__).parent
@@ -21,7 +21,7 @@ def load_eigs(matsize: int = 10000) -> ndarray:
     try:
         eigs = np.load(res(eigs_out))
     except IOError as e:
-        M = generateGOEMatrix(matsize)
+        M = _generate_GOE_matrix(matsize)
         eprint(e)
         eigs = np.linalg.eigvalsh(M)
         np.save("test_eigs.npy", res(eigs_out))
@@ -30,7 +30,7 @@ def load_eigs(matsize: int = 10000) -> ndarray:
 
 
 def generate_eigs(matsize: int) -> ndarray:
-    M = generateGOEMatrix(matsize)
+    M = _generate_GOE_matrix(matsize)
     eigs = np.linalg.eigvalsh(M)
     return eigs
 
@@ -43,6 +43,6 @@ def test_semicircle(
         pass  # use passed in eigenvalues
     else:
         eigs = generate_eigs(matsize) if new_eigs else load_eigs(matsize)
-    rawEigDist(
+    _raw_eig_dist(
         eigs, bins=100, title="Wigner Semicircle PLotting Test", kde=False, mode="block"
     )

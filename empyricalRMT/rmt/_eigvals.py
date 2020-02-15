@@ -4,9 +4,14 @@ from numpy import ndarray
 from typing import Sized
 
 from empyricalRMT._validate import make_1d_array
-from empyricalRMT.rmt.observables.step import stepFunctionFast
-from empyricalRMT.rmt.plot import spacings as plotSpacings
-from empyricalRMT.rmt.plot import rawEigDist, rawEigSorted, stepFunction, PlotResult
+from empyricalRMT.rmt.observables.step import _step_function_fast
+from empyricalRMT.rmt.plot import _spacings as plotSpacings
+from empyricalRMT.rmt.plot import (
+    _raw_eig_dist,
+    _raw_eig_sorted,
+    _step_function,
+    PlotResult,
+)
 
 
 class EigVals:
@@ -40,7 +45,7 @@ class EigVals:
     @property
     def steps(self) -> ndarray:
         if self._steps is None:
-            self._steps = stepFunctionFast(self._vals, self._vals)
+            self._steps = _step_function_fast(self._vals, self._vals)
         return self._steps
 
     @property
@@ -48,17 +53,16 @@ class EigVals:
         return self.vals[1:] - self.vals[:-1]
 
     def step_function(self, x: ndarray) -> ndarray:
-        return stepFunctionFast(eigs=self.vals, x=x)
+        return _step_function_fast(eigs=self.vals, x=x)
 
     def plot_sorted(self, *args, **kwargs) -> PlotResult:  # type: ignore
-        return rawEigSorted(eigs=self.values, *args, **kwargs)  # type: ignore
+        return _raw_eig_sorted(eigs=self.values, *args, **kwargs)  # type: ignore
 
     def plot_distribution(self, *args, **kwargs) -> PlotResult:  # type: ignore
-        return rawEigDist(eigs=self.values, *args, **kwargs)  # type: ignore
+        return _raw_eig_dist(eigs=self.values, *args, **kwargs)  # type: ignore
 
     def plot_steps(self, *args, **kwargs) -> PlotResult:  # type: ignore
-        return stepFunction(eigs=self.values, *args, **kwargs)  # type: ignore
+        return _step_function(eigs=self.values, *args, **kwargs)  # type: ignore
 
     def plot_spacings(self, *args, **kwargs) -> PlotResult:  # type: ignore
         return plotSpacings(unfolded=self.values, *args, **kwargs)  # type: ignore
-

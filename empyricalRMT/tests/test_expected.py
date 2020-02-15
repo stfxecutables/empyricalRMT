@@ -1,28 +1,25 @@
 import numpy as np
 from numpy import ndarray
-import matplotlib.pyplot as plt
 import pytest
-import seaborn as sbn
 
-from scipy.stats import ks_2samp, kstest
+from scipy.stats import ks_2samp  # , kstest
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import Any, List, Tuple
+from typing import Any, List
 
 import empyricalRMT.rmt.ensemble as ensemble
 
-from empyricalRMT.rmt.construct import generateGOEMatrix
-from empyricalRMT.rmt.plot import spacings as plotSpacings
-from empyricalRMT.rmt.unfolder import Unfolder
+from empyricalRMT.rmt.construct import generate_eigs
+from empyricalRMT.rmt.eigenvalues import Eigenvalues
+from empyricalRMT.rmt.plot import _spacings as plotSpacings
 
 
 @pytest.mark.plot
 @pytest.mark.fast
 def test_GOE() -> None:
     for i in range(1):
-        M = generateGOEMatrix(1000)
-        eigs = np.sort(np.linalg.eigvals(M))
-        unfolded = Unfolder(eigs).unfold(trim=False)
-        plotSpacings(
+        eigs = Eigenvalues(generate_eigs(1000))
+        unfolded = eigs.unfold(degree=9)
+        unfolded.plot_spacings(
             unfolded,
             title="Generate GOE spacing plot test",
             bins=20,
@@ -60,10 +57,9 @@ def test_nnsd_mad_msd(capsys) -> None:  # type: ignore
         for size in sizes:
             mads, msqds = [], []
             for i in range(reps):
-                M = generateGOEMatrix(size)
-                eigs = np.sort(np.linalg.eigvalsh(M))
-                unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
-                spacings = unfolded[1:] - unfolded[:-1]
+                eigs = Eigenvalues(generate_eigs(size))
+                unfolded = eigs.unfold(degree=9)
+                spacings = unfolded.spacings
                 obs = _get_kde_values(spacings, 10000)
                 exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
@@ -115,9 +111,10 @@ def test_nnsd_mad_msd(capsys) -> None:  # type: ignore
         for size in sizes:
             mads, msqds = [], []
             for i in range(reps):
-                eigs = np.sort(np.random.uniform(-1, 1, size))
-                unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
-                spacings = unfolded[1:] - unfolded[:-1]
+                vals = np.sort(np.random.uniform(-1, 1, size))
+                eigs = Eigenvalues(vals)
+                unfolded = eigs.unfold(degree=9)
+                spacings = unfolded.spacings
                 obs = _get_kde_values(spacings, 10000)
                 exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
@@ -168,9 +165,10 @@ def test_nnsd_mad_msd(capsys) -> None:  # type: ignore
         for size in sizes:
             mads, msqds = [], []
             for i in range(reps):
-                eigs = np.sort(np.random.standard_normal(size))
-                unfolded = Unfolder(eigs).unfold(trim=False, **kwargs)
-                spacings = unfolded[1:] - unfolded[:-1]
+                vals = np.sort(np.random.standard_normal(size))
+                eigs = Eigenvalues(vals)
+                unfolded = eigs.unfold(degree=9)
+                spacings = unfolded.spacings
                 obs = _get_kde_values(spacings, 10000)
                 exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
@@ -260,9 +258,9 @@ def test_nnsd_kolmogorov(capsys: Any) -> None:
     various mean distance functions look like.
     """
     sizes = [50, 100, 200, 500, 1000, 2000, 4000]
-    goe_eigs = [np.sort(np.linalg.eigvalsh(generateGOEMatrix(size))) for size in sizes]
-    goe_unfolded = [Unfolder(eigs).unfold(trim=False) for eigs in goe_eigs]
-    goe_spacings = np.array([unfolded[1:] - unfolded[:-1] for unfolded in goe_unfolded])
+    goe_eigs = [np.sort(generate_eigs(size)) for size in sizes]
+    goe_unfolded = [Eigenvalues(vals).unfold(degree=9) for vals in goe_eigs]
+    goe_spacings = [unfolded.spacings for unfolded in goe_unfolded]
 
     def _compute_ks(reps: int = 10, **unfold_kwargs: Any) -> List[str]:
         log = []
@@ -270,9 +268,9 @@ def test_nnsd_kolmogorov(capsys: Any) -> None:
             # compare to uniformly distributed eigenvalues
             stats, p_vals = [], []
             for _ in range(reps):
-                eigs = np.sort(np.random.uniform(-1, 1, size))
-                unfolded = Unfolder(eigs).unfold(trim=False, **unfold_kwargs)
-                compare_spacings = unfolded[1:] - unfolded[:-1]
+                vals = np.sort(np.random.uniform(-1, 1, size))
+                unfolded = Eigenvalues(vals).unfold(**unfold_kwargs)
+                compare_spacings = unfolded.spacings
                 goe = goe_spacings[i]
                 D, p_val = ks_2samp(compare_spacings, goe)
                 stats.append(D), p_vals.append(1000 * p_val)  # type: ignore
@@ -303,9 +301,9 @@ def test_nnsd_kolmogorov(capsys: Any) -> None:
             # compare to standard normally distributed eigenvalues (poisson)
             stats, p_vals = [], []
             for _ in range(reps):
-                eigs = np.sort(np.random.standard_normal(size))
-                unfolded = Unfolder(eigs).unfold(trim=False, **unfold_kwargs)
-                compare_spacings = unfolded[1:] - unfolded[:-1]
+                vals = np.sort(np.random.standard_normal(size))
+                unfolded = Eigenvalues(vals).unfold(**unfold_kwargs)
+                compare_spacings = unfolded.spacings
                 goe = goe_spacings[i]
                 D, p_val = ks_2samp(compare_spacings, goe)
                 stats.append(D), p_vals.append(p_val * 1000)  # type: ignore

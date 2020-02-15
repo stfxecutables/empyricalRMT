@@ -18,7 +18,7 @@ from empyricalRMT.rmt._constants import (
     DEFAULT_SPLINE_DEGREES,
 )
 from empyricalRMT.rmt._eigvals import EigVals
-from empyricalRMT.rmt.observables.step import stepFunctionFast
+from empyricalRMT.rmt.observables.step import _step_function_fast
 from empyricalRMT.rmt.plot import _setup_plotting, PlotMode, PlotResult
 from empyricalRMT.rmt.smoother import Smoother
 from empyricalRMT.rmt.unfold import Unfolded
@@ -384,7 +384,7 @@ class TrimReport:
             unfolded values, and inlier/outlier labels at iteration `i`.
         """
         eigs = self._untrimmed
-        steps = stepFunctionFast(eigs, eigs)
+        steps = _step_function_fast(eigs, eigs)
         unfolded = Smoother(eigs).fit()[0]
         iter_results = [  # zeroth iteration is just the full set of values, none considered outliers
             pd.DataFrame(

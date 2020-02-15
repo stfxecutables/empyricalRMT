@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
-from empyricalRMT.rmt.observables.step import stepFunctionFast
+from empyricalRMT.rmt.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
 
 PlotResult = Optional[Tuple[plt.Figure, plt.Axes]]
@@ -23,7 +23,7 @@ RESET = Style.RESET_ALL
 PLOTTING_READY = False
 
 
-def rawEigDist(
+def _raw_eig_dist(
     eigs: ndarray,
     bins: int = 50,
     title: str = "Raw Eigenvalue Distribution",
@@ -79,7 +79,7 @@ def rawEigDist(
     return _handle_plot_mode(mode, axes, outfile)
 
 
-def stepFunction(
+def _step_function(
     eigs: ndarray,
     gridsize: int = 100000,
     title: str = "Eigenvalue Step Function",
@@ -113,14 +113,14 @@ def stepFunction(
     """
     _setup_plotting()
     grid = np.linspace(eigs.min(), eigs.max(), gridsize)
-    steps = stepFunctionFast(eigs, grid)
+    steps = _step_function_fast(eigs, grid)
     df = pd.DataFrame({"Cumulative Value": steps, "Raw eigenvalues λ": grid})
     axes = sbn.lineplot(data=df, x="Raw eigenvalues λ", y="Cumulative Value")
     plt.title(title)
     return _handle_plot_mode(mode, axes, outfile)
 
 
-def rawEigSorted(
+def _raw_eig_sorted(
     eigs: ndarray,
     title: str = "Raw Eigenvalues",
     mode: PlotMode = "block",
@@ -164,7 +164,7 @@ def rawEigSorted(
     return _handle_plot_mode(mode, axes, outfile)
 
 
-def unfoldedDist(
+def _unfolded_dist(
     unfolded: ndarray,
     bins: int = 50,
     kde: bool = True,
@@ -220,7 +220,7 @@ def unfoldedDist(
     return _handle_plot_mode(mode, axes, outfile)
 
 
-def unfoldedFit(
+def _unfolded_fit(
     unfolded: ndarray,
     title: str = "Unfolding Fit",
     mode: PlotMode = "block",
@@ -259,7 +259,7 @@ def unfoldedFit(
 
 
 # this essentially plots the nearest-neighbors spacing distribution
-def spacings(
+def _spacings(
     unfolded: ndarray,
     bins: int = 50,
     kde: bool = True,
@@ -296,17 +296,17 @@ def spacings(
         The handles to the matplotlib objects, only if `mode` is "return".
     """
     _setup_plotting()
-    spacings = np.sort(unfolded[1:] - unfolded[:-1])
+    _spacings = np.sort(unfolded[1:] - unfolded[:-1])
     # Generate expected distributions for classical ensembles
     p = np.pi
-    s = np.linspace(spacings.min(), spacings.max(), 10000)
+    s = np.linspace(_spacings.min(), _spacings.max(), 10000)
     poisson = np.exp(-s)
     goe = ((p * s) / 2) * np.exp(-(p / 4) * s * s)
     gue = (32 / p ** 2) * (s * s) * np.exp(-(4 * s * s) / p)
     gse = (2 ** 18 / (3 ** 6 * p ** 3)) * (s ** 4) * np.exp(-((64 / (9 * p)) * (s * s)))
 
     axes = sbn.distplot(
-        spacings,
+        _spacings,
         norm_hist=True,
         bins=bins,  # doane
         kde=False,
@@ -316,7 +316,7 @@ def spacings(
     )
 
     if kde is True:
-        _kde_plot(spacings, s, axes)
+        _kde_plot(_spacings, s, axes)
 
     poisson = axes.plot(s, poisson, label="Poisson")
     goe = axes.plot(s, goe, label="Gaussian Orthogonal")
@@ -332,12 +332,12 @@ def spacings(
     plt.legend()
     # adjusting the right bounds can be necessary when / if there are
     # many large eigenvalue spacings
-    axes.set_xlim(left=0, right=np.percentile(spacings, 99))
+    axes.set_xlim(left=0, right=np.percentile(_spacings, 99))
 
     return _handle_plot_mode(mode, axes, outfile)
 
 
-def spectral_rigidity(
+def _spectral_rigidity(
     unfolded: ndarray,
     data: pd.DataFrame,
     title: str = "Spectral Rigidity",
@@ -411,7 +411,7 @@ def spectral_rigidity(
     return _handle_plot_mode(mode, axes, outfile)
 
 
-def level_number_variance(
+def _level_number_variance(
     unfolded: ndarray,
     data: pd.DataFrame,
     title: str = "Level Number Variance",

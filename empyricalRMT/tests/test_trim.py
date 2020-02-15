@@ -1,25 +1,19 @@
 import numpy as np
-from numpy import ndarray
-import os
 import pandas as pd
 import pytest
 
-from pathlib import Path
-
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.construct import generateGOEMatrix, generate_eigs
-from empyricalRMT.rmt.trim import Trimmed, TrimReport
-from empyricalRMT.rmt.unfolder import Unfolder
+from empyricalRMT.rmt.construct import _generate_GOE_matrix, generate_eigs
+from empyricalRMT.rmt.trim import TrimReport
 
 
 @pytest.mark.fast
 @pytest.mark.trim
 def test_init_sanity() -> None:
     for i in range(10):
-        M = generateGOEMatrix(100)
-        eigs = np.sort(np.linalg.eigvalsh(M))
-        trim = TrimReport(eigs)
-        assert np.allclose(trim._untrimmed, eigs)
+        vals = generate_eigs(100)
+        trim = TrimReport(vals)
+        assert np.allclose(trim._untrimmed, vals)
         assert isinstance(trim._unfold_info, pd.DataFrame)
         assert isinstance(trim._all_unfolds, pd.DataFrame)
         assert isinstance(trim._trim_steps, list)
@@ -29,12 +23,11 @@ def test_init_sanity() -> None:
 @pytest.mark.fast
 @pytest.mark.trim
 def test_trim_manual() -> None:
-    M = generateGOEMatrix(2000)
-    eigs = np.linalg.eigvalsh(M)
+    vals = generate_eigs(2000)
     for i in range(20):
-        m, n = np.sort(np.array(np.random.uniform(0, len(eigs), 2), dtype=int))
-        raw_trimmed = np.copy(eigs[m:n])
-        eigenvalues = Eigenvalues(eigs)
+        m, n = np.sort(np.array(np.random.uniform(0, len(vals), 2), dtype=int))
+        raw_trimmed = np.copy(vals[m:n])
+        eigenvalues = Eigenvalues(vals)
         trimmed = eigenvalues.trim_manually(m, n)
         assert np.allclose(raw_trimmed, trimmed.vals)
 
@@ -42,8 +35,9 @@ def test_trim_manual() -> None:
 @pytest.mark.fast
 @pytest.mark.trim
 def test_trim_reports() -> None:
-    M = generateGOEMatrix(2000, seed=0)
+    M = _generate_GOE_matrix(2000, seed=0)
     eigs = np.linalg.eigvalsh(M)
+    eigs = generate_eigs(2000)
     report = TrimReport(eigs)
     best_smoothers, best_unfolds, best_indices, consistent_smoothers = (
         report.summarize_trim_unfoldings()

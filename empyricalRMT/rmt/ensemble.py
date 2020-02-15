@@ -13,7 +13,6 @@ class Poisson:
     def spectral_rigidity(
         unfolded: ndarray, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
     ) -> ndarray:
-        spacings = unfolded[1:] - unfolded[:-1]
         L = np.linspace(L_min, L_max, num_L)
         return L / 15 / 2
 
