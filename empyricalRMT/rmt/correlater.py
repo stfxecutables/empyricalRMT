@@ -159,3 +159,29 @@ def _fast_r(x: ndarray, y: ndarray) -> float:
     """i.e. s^2"""
     x2, y2 = x ** 2, y ** 2
     return float((x * y) / np.sqrt(x2 * y2))
+
+
+# @jit(nopython=True, parallel=True, fastmath=True)
+@jit(nopython=True, fastmath=True)
+def _compute_upper_correlations(corrs: ndarray, array: ndarray) -> None:
+    """Compute the upper triangle of correlation coefficients of `array`,
+    and save the values in `corrs`. """
+    n = array.shape[0]
+    for i in range(n):
+        for j in range(n):
+            if i < j:
+                corr = _clean_correlate(array[i, :], array[j, :])
+                corrs[i, j] = corr
+
+
+@jit(nopython=True, fastmath=True)
+def _clean_correlate(x: ndarray, y: ndarray) -> float:
+    x_norm = x - x.mean()
+    y_norm = y - y.mean()
+    x_mag = np.linalg.norm(x_norm)
+    y_mag = np.linalg.norm(y_norm)
+    denom = x_mag * y_mag
+    if np.abs(denom) == 0:
+        return 0.0
+    numerator = np.dot(x_norm, y_norm)
+    return float(numerator / denom)

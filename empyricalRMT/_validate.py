@@ -14,4 +14,4 @@ def make_1d_array(array: Any) -> ndarray:
     if len(flat) != len(arr):
         raise ValueError("Could not convert passed in value to 1-dimensional array.")
 
-    return flat
+    return np.copy(flat)
