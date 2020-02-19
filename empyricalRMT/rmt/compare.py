@@ -52,6 +52,32 @@ class Compare:
         data = np.corrcoef(self.curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
+    def mean_sq_difference(self) -> DataFrame:
+        """Return the grid of mean square differences across curves."""
+        self.__validate_curve_lengths(
+            message="Comparing via mean squared differences requires all curves have identical lengths",
+            check_all_equal=True,
+        )
+        n, curves = len(self.curves), self.curves
+        data = np.empty([n, n])
+        for j in range(n):
+            for i in range(n):
+                data[i, j] = np.mean((curves[i] - curves[j]) ** 2)
+        return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
+
+    def mean_abs_difference(self) -> DataFrame:
+        """Return the grid of mean absolute differences across curves."""
+        self.__validate_curve_lengths(
+            message="Comparing via mean absolute differences requires all curves have identical lengths",
+            check_all_equal=True,
+        )
+        n, curves = len(self.curves), self.curves
+        data = np.empty([n, n])
+        for j in range(n):
+            for i in range(n):
+                data[i, j] = np.mean(np.abs(curves[i] - curves[j]))
+        return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
+
     def __validate_curve_lengths(
         self, message: str = None, check_all_equal: bool = False
     ) -> None:
