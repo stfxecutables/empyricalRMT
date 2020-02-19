@@ -10,18 +10,19 @@ from empyricalRMT.rmt.correlater import _compute_upper_correlations
 @pytest.mark.math
 @pytest.mark.fast
 def test_correlate() -> None:
-    n_curves = 2
-    curves = [np.random.standard_normal(100) for _ in range(n_curves)]
-    labels = [str(i) for i in range(n_curves)]
-    compare = Compare(curves, labels)
-    df = compare.correlate()
+    for n_curves in range(2, 7):
+        n_curves = 2
+        curves = [np.random.standard_normal(100) for _ in range(n_curves)]
+        labels = [str(i) for i in range(n_curves)]
+        compare = Compare(curves, labels)
+        df = compare.correlate()
 
-    # basic sanity / construction checks
-    assert np.all(df.index == labels)
-    assert np.all(df.columns == labels)
+        # basic sanity / construction checks
+        assert np.all(df.index == labels)
+        assert np.all(df.columns == labels)
 
     curves = [np.random.standard_normal(100) for _ in range(1)]
-    labels = [str(i) for i in range(n_curves)]
+    labels = [str(i) for i in range(len(curves))]
 
     # check that can't have less than 2 curves
     with pytest.raises(ValueError):
@@ -32,7 +33,9 @@ def test_correlate() -> None:
     with pytest.raises(ValueError):
         compare = Compare(curves, labels)
 
-    curves = [np.random.standard_normal(np.random.choice(100)) for _ in range(3)]
+    # check that curves must be consistent
+    sizes = [3, 4, 5]
+    curves = [np.random.standard_normal(size) for size in sizes]
     labels = [str(i) for i in range(len(curves))]
     with pytest.raises(ValueError):
         compare = Compare(curves, labels).correlate()
