@@ -35,7 +35,7 @@ class Compare:
         """
         self.curves = [make_1d_array(curve) for curve in curves]
         self.labels = labels.copy()
-        self.base_curve = make_1d_array(base_curve) if base_curve else None
+        self.base_curve = make_1d_array(base_curve) if base_curve is not None else None
         self.base_label = base_label  # don't need to copy strings in Python
         self.__validate_curve_lengths()
         self.dict = dict(zip(self.labels, self.curves))
@@ -47,7 +47,9 @@ class Compare:
             check_all_equal=True,
         )
         if self.base_curve is not None:
-            data = np.corrcoef(self.base_curve, self.curves)[0]
+            # index with [0, 1:], since [0, :] give first row of correlations, and since
+            # [0, 0] is just the correlation of the base_curve with itself
+            data = np.corrcoef(self.base_curve, self.curves)[0, 1:]
             return pd.DataFrame(data=data, index=self.labels, columns=[self.base_label])
         data = np.corrcoef(self.curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
