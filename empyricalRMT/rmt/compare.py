@@ -65,8 +65,10 @@ class Compare:
         if self.base_curve is not None:
             diffs = np.empty(curves.shape[0])
             for i in range(len(diffs)):
-                diffs[i] = np.mean((self.base_curve - curves[i])**2)
-                return pd.DataFrame(data=diffs, index=self.labels, columns=[self.base_label])
+                diffs[i] = np.mean((self.base_curve - curves[i]) ** 2)
+                return pd.DataFrame(
+                    data=diffs, index=self.labels, columns=[self.base_label]
+                )
         data = self.__fast_msqd(curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
@@ -76,8 +78,15 @@ class Compare:
             message="Comparing via mean absolute differences requires all curves have identical lengths",
             check_all_equal=True,
         )
-        raise NotImplementedError
-
+        curves = np.array(self.curves)
+        if self.base_curve is not None:
+            diffs = np.empty(curves.shape[0])
+            for i in range(len(diffs)):
+                diffs[i] = np.mean(np.abs(self.base_curve - curves[i]))
+                return pd.DataFrame(
+                    data=diffs, index=self.labels, columns=[self.base_label]
+                )
+        data = self.__fast_msqd(curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
     def _test_validate(self, **kwargs: Any) -> None:

@@ -100,3 +100,34 @@ def test_msqd() -> None:
         assert np.all(df.columns == base_label)
         assert df.shape == (n, 1)
 
+
+@pytest.mark.math
+@pytest.mark.fast
+def test_msqad() -> None:
+    for n_curves in range(2, 7):
+        n_curves = 2
+        curves = [np.random.standard_normal(100) for _ in range(n_curves)]
+        labels = ["label" + str(i) for i in range(n_curves)]
+        compare = Compare(curves, labels)
+        n = len(labels)
+        df = compare.mean_abs_difference()
+
+        # basic sanity / construction checks
+        assert np.all(df.index == labels)
+        assert np.all(df.columns == labels)
+        assert df.shape == (n, n)
+
+    for n_curves in range(3, 7):
+        curves = [np.random.standard_normal(100) for _ in range(n_curves)]
+        labels = ["label" + str(i) for i in range(n_curves)]
+        base_curve = np.random.standard_cauchy(100)
+        base_label = "base"
+        compare = Compare(curves, labels, base_curve, base_label)
+        n = len(labels)
+        df = compare.mean_abs_difference()
+
+        # basic sanity / construction checks
+        assert np.all(df.index == labels)
+        assert np.all(df.columns == base_label)
+        assert df.shape == (n, 1)
+
