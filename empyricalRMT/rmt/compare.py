@@ -3,7 +3,7 @@ import pandas as pd
 
 from numpy import ndarray
 from pandas import DataFrame
-from typing import List
+from typing import Any, List
 
 from empyricalRMT._validate import make_1d_array
 
@@ -78,6 +78,9 @@ class Compare:
                 data[i, j] = np.mean(np.abs(curves[i] - curves[j]))
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
+    def _test_validate(self, **kwargs: Any) -> None:
+        self.__validate_curve_lengths(**kwargs)
+
     def __validate_curve_lengths(
         self, message: str = None, check_all_equal: bool = False
     ) -> None:
@@ -96,4 +99,3 @@ class Compare:
                     raise ValueError(message)
             if not all_equal:
                 raise ValueError(message)
-
