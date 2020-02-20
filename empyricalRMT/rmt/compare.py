@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+from numba import jit
 from numpy import ndarray
 from pandas import DataFrame
 from typing import Any, List
@@ -60,11 +61,13 @@ class Compare:
             message="Comparing via mean squared differences requires all curves have identical lengths",
             check_all_equal=True,
         )
-        n, curves = len(self.curves), self.curves
-        data = np.empty([n, n])
-        for j in range(n):
-            for i in range(n):
-                data[i, j] = np.mean((curves[i] - curves[j]) ** 2)
+        curves = np.array(self.curves)
+        if self.base_curve is not None:
+            diffs = np.empty(curves.shape[0])
+            for i in range(len(diffs)):
+                diffs[i] = np.mean((self.base_curve - curves[i])**2)
+                return pd.DataFrame(data=diffs, index=self.labels, columns=[self.base_label])
+        data = self.__fast_msqd(curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
     def mean_abs_difference(self) -> DataFrame:
@@ -73,15 +76,22 @@ class Compare:
             message="Comparing via mean absolute differences requires all curves have identical lengths",
             check_all_equal=True,
         )
-        n, curves = len(self.curves), self.curves
-        data = np.empty([n, n])
-        for j in range(n):
-            for i in range(n):
-                data[i, j] = np.mean(np.abs(curves[i] - curves[j]))
+        raise NotImplementedError
+
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
     def _test_validate(self, **kwargs: Any) -> None:
         self.__validate_curve_lengths(**kwargs)
+
+    @staticmethod
+    @jit(nopython=True, fastmath=True)
+    def __fast_msqd(curves: ndarray) -> ndarray:
+        n = curves.shape[0]
+        data = np.empty((n, n), dtype=np.float64)
+        for j in range(n):
+            for i in range(n):
+                data[i, j] = np.mean((curves[i] - curves[j]) ** 2)
+        return data
 
     def __validate_curve_lengths(
         self, message: str = None, check_all_equal: bool = False
