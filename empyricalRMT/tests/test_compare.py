@@ -103,7 +103,7 @@ def test_msqd() -> None:
 
 @pytest.mark.math
 @pytest.mark.fast
-def test_msqad() -> None:
+def test_mad() -> None:
     for n_curves in range(2, 7):
         n_curves = 2
         curves = [np.random.standard_normal(100) for _ in range(n_curves)]

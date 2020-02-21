@@ -86,7 +86,7 @@ class Compare:
                 return pd.DataFrame(
                     data=diffs, index=self.labels, columns=[self.base_label]
                 )
-        data = self.__fast_msqd(curves)
+        data = self.__fast_mad(curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
     def _test_validate(self, **kwargs: Any) -> None:
@@ -100,6 +100,16 @@ class Compare:
         for j in range(n):
             for i in range(n):
                 data[i, j] = np.mean((curves[i] - curves[j]) ** 2)
+        return data
+
+    @staticmethod
+    @jit(nopython=True, fastmath=True)
+    def __fast_mad(curves: ndarray) -> ndarray:
+        n = curves.shape[0]
+        data = np.empty((n, n), dtype=np.float64)
+        for j in range(n):
+            for i in range(n):
+                data[i, j] = np.mean(np.abs(curves[i] - curves[j]))
         return data
 
     def __validate_curve_lengths(
