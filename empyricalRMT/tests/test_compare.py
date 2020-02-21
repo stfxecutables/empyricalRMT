@@ -100,6 +100,25 @@ def test_msqd() -> None:
         assert np.all(df.columns == base_label)
         assert df.shape == (n, 1)
 
+    # very trivial correctness checks
+    curves = [[1, 1, 1], [2, 2, 2]]
+    labels = ["ones", "twos"]
+    compare = Compare(curves, labels)
+    df = compare.mean_sq_difference()
+    assert df["ones"]["twos"] == 1.0
+    assert df["twos"]["ones"] == 1.0
+    assert df["ones"]["ones"] == 0.0
+    assert df["twos"]["twos"] == 0.0
+
+    curves = [[1, 1, 1], [3, 3, 3]]
+    labels = ["ones", "threes"]
+    compare = Compare(curves, labels)
+    df = compare.mean_sq_difference()
+    assert df["ones"]["threes"] == 4.0
+    assert df["threes"]["ones"] == 4.0
+    assert df["ones"]["ones"] == 0.0
+    assert df["threes"]["threes"] == 0.0
+
 
 @pytest.mark.math
 @pytest.mark.fast
@@ -131,3 +150,20 @@ def test_mad() -> None:
         assert np.all(df.columns == base_label)
         assert df.shape == (n, 1)
 
+    curves = [[1, 1, 1], [2, 2, 2]]
+    labels = ["ones", "twos"]
+    compare = Compare(curves, labels)
+    df = compare.mean_abs_difference()
+    assert df["ones"]["twos"] == 1.0
+    assert df["twos"]["ones"] == 1.0
+    assert df["ones"]["ones"] == 0.0
+    assert df["twos"]["twos"] == 0.0
+
+    curves = [[1, 1, 1], [3, 3, 3]]
+    labels = ["ones", "threes"]
+    compare = Compare(curves, labels)
+    df = compare.mean_abs_difference()
+    assert df["ones"]["threes"] == 2.0
+    assert df["threes"]["ones"] == 2.0
+    assert df["ones"]["ones"] == 0.0
+    assert df["threes"]["threes"] == 0.0
