@@ -4,7 +4,7 @@ import pandas as pd
 from numba import jit
 from numpy import ndarray
 from pandas import DataFrame
-from typing import Any, List
+from typing import Any, List, Tuple
 
 from empyricalRMT._validate import make_1d_array
 
@@ -111,6 +111,41 @@ class Compare:
             for i in range(n):
                 data[i, j] = np.mean(np.abs(curves[i] - curves[j]))
         return data
+
+    @staticmethod
+    def __histograms(curve1: ndarray, curve2: ndarray, n_bins: int = 10) -> Tuple[ndarray, ndarray, ndarray]:
+        """Compute a histogram over [min(curve1, curve2), max(curve1, curve2)].
+
+        Returns
+        -------
+        counts1: ndarray
+            The bin counts for curve1.
+        counts2: ndarray
+            The bin counts for curve2.
+        endpoints: ndarray
+            The (sorted) ndarray of bin endpoints.
+        """
+        vals1 = np.sort(curve1)
+        vals2 = np.sort(curve2)
+        endpoints = np.linspace(min(vals1[0], vals2[0]), max(vals1[-1], vals2[-1]), n_bins + 1)
+        n, counts1, counts2 = 0, np.arange(n_bins), np.arange(n_bins)
+        for val in vals1:
+            if val < endpoints[n]:
+                counts1[n] += 1
+            else:
+                n += 1
+            if n >= len(counts1):
+                raise RuntimeError("Problem with hist algorithm. Should be impossible.")
+        n = 0
+        for val in vals2:
+            if val < endpoints[n]:
+                counts2[n] += 1
+            else:
+                n += 1
+            if n >= len(counts2):
+                raise RuntimeError("Problem with hist algorithm. Should be impossible.")
+
+        return endpoints, counts1, counts2
 
     def __validate_curve_lengths(
         self, message: str = None, check_all_equal: bool = False
