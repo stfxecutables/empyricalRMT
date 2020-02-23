@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from numpy import ndarray
+from pandas import DataFrame
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
@@ -25,6 +26,99 @@ class Unfolded(EigVals):
     @property
     def vals(self) -> ndarray:
         return self._vals
+
+    def spectral_rigidity(
+        self,
+        min_L: float = 2,
+        max_L: float = 50,
+        L_grid_size: int = None,
+        c_iters: int = 50000,
+        show_progress: bool = False,
+    ) -> DataFrame:
+        """Compute and the spectral rigidity.
+
+        Parameters
+        ----------
+        min_L: int
+            The lowest possible L value for which to compute the spectral
+            rigidity. Default 2.
+        max_L: int = 20
+            The largest possible L value for which to compute the spectral
+            rigidity.
+        L_grid_size: int
+            The number of values of L to generate betwen min_L and max_L. Default
+            2 * (max_L - min_L).
+        c_iters: int = 50
+            How many times the location of the center, c, of the interval
+            [c - L/2, c + L/2] should be chosen uniformly at random for
+            each L in order to compute the estimate of the spectral
+            rigidity. Not a particularly significant effect on performance.
+        show_progress: bool
+            Whether or not to display computation progress in stdout.
+
+        Returns
+        -------
+        df: DataFrame
+            DataFrame with columns "L" and "delta" where df["L"] contains The L values
+            generated based on the values of L_grid_size, min_L, and max_L, and where
+            df["delta"] contains the computed spectral rigidity values for each of L.
+        """
+        unfolded = self.values
+        L, delta = spectral_rigidity(
+            unfolded,
+            c_iters=c_iters,
+            L_grid_size=L_grid_size,
+            min_L=min_L,
+            max_L=max_L,
+            show_progress=show_progress,
+        )
+        return (pd.DataFrame({"L": L, "delta": delta}),)
+
+    def level_variance(
+        self,
+        min_L: float = 2,
+        max_L: float = 50,
+        c_iters: int = 50000,
+        L_grid_size: int = None,
+        show_progress: bool = False,
+    ) -> DataFrame:
+        """Compute the level number variance of the current unfolded eigenvalues.
+
+        Parameters
+        ----------
+        min_L: int
+            The lowest possible L value for which to compute the spectral
+            rigidity.
+        max_L: int
+            The largest possible L value for which to compute the spectral
+            rigidity.
+        c_iters: int
+            How many times the location of the center, c, of the interval
+            [c - L/2, c + L/2] should be chosen uniformly at random for
+            each L in order to compute the estimate of the number level
+            variance.
+        L_grid_size: int
+            The number of values of L to generate betwen min_L and max_L.
+        show_progress: bool
+            Whether or not to display computation progress in stdout.
+
+        Returns
+        -------
+        df: DataFrame
+            A dataframe with columns "L", the L values generated based on the
+            input arguments, and "sigma", the computed level variances for each
+            value of L.
+        """
+        unfolded = self.values
+        L, sigma = level_number_variance(
+            unfolded=unfolded,
+            c_iters=c_iters,
+            L_grid_size=L_grid_size,
+            min_L=min_L,
+            max_L=max_L,
+            show_progress=show_progress,
+        )
+        return DataFrame({"L": L, "sigma": sigma})
 
     def plot_nnsd(self, *args: Any, **kwargs: Any) -> PlotResult:
         return self.plot_spacings(*args, **kwargs)
@@ -71,6 +165,8 @@ class Unfolded(EigVals):
             Intermediate directories will be created if needed.
         ensembles: ["poisson", "goe", "gue", "gse"]
             Which ensembles to display the expected spectral rigidity curves for comparison against.
+        show_progress: bool
+            Whether or not to display computation progress in stdout.
 
 
         Returns
