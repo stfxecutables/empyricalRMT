@@ -1,4 +1,6 @@
 import numpy as np
+import time
+
 from numpy import ndarray
 from typing import Union
 from typing_extensions import Literal
@@ -12,7 +14,11 @@ MatrixKind = Union[
 
 
 def generate_eigs(
-    matsize: int, mean: float = 0, sd: float = 1, kind: MatrixKind = "goe"
+    matsize: int,
+    mean: float = 0,
+    sd: float = 1,
+    kind: MatrixKind = "goe",
+    log: bool = False,
 ) -> ndarray:
     """Generate a random matrix as specified by arguments, and compute and return
     the eigenvalues.
@@ -44,7 +50,11 @@ def generate_eigs(
         kinds = ["goe", "gue", "poisson", "uniform"]
         raise ValueError(f"`kind` must be one of {kinds}")
 
+    if log:
+        print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
     eigs = np.linalg.eigvalsh(M)
+    if log:
+        print(f"{time.strftime('%H:%M:%S')} -- computed eigenvalues.")
     return eigs
 
 
