@@ -3,10 +3,16 @@ import pytest
 import time
 
 from numpy import ndarray
-from scipy.integrate import trapz
+from scipy.integrate import simps, trapz
 from typing import Any
 
-from empyricalRMT.rmt.observables.rigidity import _slope, _intercept, _integrate_fast
+from empyricalRMT.rmt.observables.rigidity import (
+    _slope,
+    _intercept,
+    _integrate_fast,
+    _integrate_simpsons,
+    _int_simps_nonunif,
+)
 from empyricalRMT.rmt.observables.step import (
     _step_function_correct,
     _step_function_fast,
@@ -143,7 +149,7 @@ def test_slope() -> None:
 
 
 @pytest.mark.math
-def test_integrate() -> None:
+def test_integrate_trapz() -> None:
     """Just some extremely non-rigorous but basic sanity checks."""
     # linear functions
     for _ in range(100):
@@ -176,7 +182,45 @@ def test_integrate() -> None:
 
 
 @pytest.mark.math
-def test_integrate_perf() -> None:
+def test_integrate_simps() -> None:
+    """Just some extremely non-rigorous but basic sanity checks."""
+    # linear functions
+    for _ in range(100):
+        m = np.random.uniform(-10, 10)
+        b = np.random.uniform(-10, 10)
+        grid = np.linspace(-500, 500, 1001)  # must be uniform grid for simpsons
+        y = m * grid + b
+        # m*x**2/2 + bx
+        int_analytic = (m * grid[-1] ** 2 / 2 + b * grid[-1]) - (
+            m * grid[0] ** 2 / 2 + b * grid[0]
+        )
+        # int_comp = _integrate_simpsons(grid, y)
+        int_comp = _int_simps_nonunif(grid, y)
+        int_exp = simps(y, x=grid)
+        print("Calculated via my simpsons: ", int_comp)
+        print("Calculated via analytic: ", int_analytic)
+        assert np.allclose(int_analytic, int_exp)
+        assert np.allclose(int_comp, int_exp)
+
+    # quadratic functions
+    for _ in range(100):
+        a = np.random.uniform(-10, 10)
+        b = np.random.uniform(-10, 10)
+        c = np.random.uniform(-10, 10)
+        grid = np.linspace(-500, 500, 1001)
+        y = a * grid ** 2 + b * grid + c
+        f = lambda x: a / 3 * x ** 3 + b / 2 * x ** 2 + c * x  # noqa E731
+        int_analytic = f(grid[-1]) - f(grid[0])
+        int_comp = _int_simps_nonunif(grid, y)
+        int_exp = simps(y, x=grid)
+        print("Calculated via my simpsons: ", int_comp)
+        print("Calculated via analytic: ", int_analytic)
+        assert np.abs(int_analytic - int_comp) < 0.001 * np.abs(int_analytic)
+        assert np.allclose(int_comp, int_exp)
+
+
+@pytest.mark.perf
+def test_integrate_perf_trapz() -> None:
     import time
 
     n = 10000
@@ -199,5 +243,33 @@ def test_integrate_perf() -> None:
 
     # just make sure we are at least doing better than scipy
     assert total_custom < total_lib
-    print("Custom integration time: ", total_custom)
-    print("Scipy integration time: ", total_lib)
+    print("Custom trapz integration time: ", total_custom)
+    print("Scipy trapz integration time: ", total_lib)
+
+
+@pytest.mark.perf
+def test_integrate_perf_simps() -> None:
+    import time
+
+    n = 10000
+    m = np.random.uniform(-10, 10, n)
+    b = np.random.uniform(-10, 10, n)
+    grid = np.sort(np.random.uniform(-1000, 1000, 1000))
+    y = np.empty([n, len(grid)])
+    for i in range(n):
+        y[i, :] = m[i] * grid + b[i]
+
+    start = time.time()
+    for i in range(n):
+        _int_simps_nonunif(grid, y[i])
+    total_custom = time.time() - start
+
+    start = time.time()
+    for i in range(n):
+        simps(y[i], x=grid)
+    total_lib = time.time() - start
+
+    # just make sure we are at least doing better than scipy
+    assert total_custom < total_lib
+    print("Custom simps integration time: ", total_custom)
+    print("Scipy simps integration time: ", total_lib)

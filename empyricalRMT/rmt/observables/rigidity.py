@@ -5,6 +5,7 @@ from colorama import Fore
 from numba import jit, prange
 from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
 from typing import Tuple
+from typing_extensions import Literal
 
 from empyricalRMT.rmt.observables.step import _step_function_fast
 
@@ -40,10 +41,11 @@ from empyricalRMT.rmt.observables.step import _step_function_fast
 #    datapoints (L, ∆3(L)).
 def spectral_rigidity(
     unfolded: ndarray,
-    c_iters: int = 10000,
     L_grid_size: int = None,
     min_L: float = 2,
     max_L: float = 50,
+    c_iters: int = 10000,
+    integration: Literal["simps", "trapz"] = "simps",
     show_progress: bool = True,
 ) -> Tuple[ndarray, ndarray]:
     """Compute the spectral rigidity for a particular unfolding.
@@ -68,6 +70,9 @@ def spectral_rigidity(
         [c - L/2, c + L/2] should be chosen uniformly at random for
         each L in order to compute the estimate of the spectral
         rigidity. Default 10000.
+    integration: "simps" | "trapz"
+        Whether to use the trapezoidal or simpson's rule for integration. Default
+        `simps`.
 
     Returns
     -------
@@ -121,7 +126,12 @@ def spectral_rigidity(
         pbar = ProgressBar(widgets=pbar_widgets, maxval=L_vals.shape[0]).start()
     for i, L in enumerate(L_vals):
         delta3_L_vals = np.empty((c_iters))
-        _spectral_iter(unfolded, delta3_L_vals, L, c_iters, L_grid_size)
+        if integration == "trapz":
+            _spectral_iter(
+                unfolded, delta3_L_vals, L, c_iters, L_grid_size, use_simpsons=False
+            )
+        else:
+            _spectral_iter(unfolded, delta3_L_vals, L, c_iters, L_grid_size)
         if len(delta3_L_vals) != c_iters:
             raise Exception("We aren't computing enough L values")
         delta3[i] = np.mean(delta3_L_vals)
@@ -139,6 +149,7 @@ def _spectral_iter(
     L: float,
     c_iters: int = 10000,
     interval_gridsize: int = 10000,  # does not tend to effect performance significantly
+    use_simpsons: bool = True,
 ) -> ndarray:
     starts = np.random.uniform(unfolded[0], unfolded[-1], c_iters)
     for i in prange(len(starts)):
@@ -148,7 +159,10 @@ def _spectral_iter(
         K = _slope(grid, steps)
         w = _intercept(grid, steps, K)
         y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
-        delta3 = _integrate_fast(grid, y_vals)  # O(len(grid))
+        if use_simpsons:
+            delta3 = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
+        else:
+            delta3 = _integrate_fast(grid, y_vals)  # O(len(grid))
         delta3_L_vals[i] = delta3 / L
     return delta3_L_vals
 
@@ -175,13 +189,68 @@ def _intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
 @jit(nopython=True, fastmath=True, cache=True)
 def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
     """scipy.integrate.trapz is excruciatingly slow and unusable for our purposes.
-    This tiny rewrite seems to result in a near 20x speedup."""
+    This tiny rewrite seems to result in a near 20x speedup. However, being trapezoidal
+    integration, it is quite inaccurate."""
     integral = 0
     for i in range(len(grid) - 1):
         w = grid[i + 1] - grid[i]
         h = values[i] + values[i + 1]
         integral += w * h / 2
     return integral
+
+
+@jit(nopython=True, fastmath=True, cache=True)
+def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
+    """
+    Simpson rule for irregularly spaced data. Copied from
+    https://en.wikipedia.org/w/index.php?title=Simpson%27s_rule&oldid=938527913#Composite_Simpson's_rule_for_irregularly_spaced_data
+    for compilation here with Numba, and to overcome the extremely slow performance
+    problems with scipy.integrate.simps.
+
+    Parameters
+    ----------
+    grid: list or np.array of floats
+            Sampling points for the function values
+    vals: list or np.array of floats
+            Function values at the sampling points
+
+    Returns
+    -------
+    float: approximation for the integral
+    """
+    N = len(grid) - 1
+    h = np.diff(grid)
+
+    result = 0.0
+    for i in range(1, N, 2):
+        hph = h[i] + h[i - 1]
+        result += (
+            vals[i]
+            * (h[i] ** 3 + h[i - 1] ** 3 + 3.0 * h[i] * h[i - 1] * hph)
+            / (6 * h[i] * h[i - 1])
+        )
+        result += (
+            vals[i - 1]
+            * (2.0 * h[i - 1] ** 3 - h[i] ** 3 + 3.0 * h[i] * h[i - 1] ** 2)
+            / (6 * h[i - 1] * hph)
+        )
+        result += (
+            vals[i + 1]
+            * (2.0 * h[i] ** 3 - h[i - 1] ** 3 + 3.0 * h[i - 1] * h[i] ** 2)
+            / (6 * h[i] * hph)
+        )
+
+    if (N + 1) % 2 == 0:
+        result += (
+            vals[N]
+            * (2 * h[N - 1] ** 2 + 3.0 * h[N - 2] * h[N - 1])
+            / (6 * (h[N - 2] + h[N - 1]))
+        )
+        result += (
+            vals[N - 1] * (h[N - 1] ** 2 + 3 * h[N - 1] * h[N - 2]) / (6 * h[N - 2])
+        )
+        result -= vals[N - 2] * h[N - 1] ** 3 / (6 * h[N - 2] * (h[N - 2] + h[N - 1]))
+    return result
 
 
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize

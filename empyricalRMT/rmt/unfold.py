@@ -5,6 +5,7 @@ from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
+from typing_extensions import Literal
 
 import empyricalRMT.rmt.plot as plot
 
@@ -33,6 +34,7 @@ class Unfolded(EigVals):
         max_L: float = 50,
         L_grid_size: int = None,
         c_iters: int = 50000,
+        integration: Literal["simps", "trapz"] = "simps",
         show_progress: bool = False,
     ) -> DataFrame:
         """Compute and the spectral rigidity.
@@ -70,6 +72,7 @@ class Unfolded(EigVals):
             L_grid_size=L_grid_size,
             min_L=min_L,
             max_L=max_L,
+            integration=integration,
             show_progress=show_progress,
         )
         return (pd.DataFrame({"L": L, "delta": delta}),)
@@ -129,6 +132,7 @@ class Unfolded(EigVals):
         max_L: float = 50,
         L_grid_size: int = None,
         c_iters: int = 50000,
+        integration: Literal["simps", "trapz"] = "simps",
         title: str = "Spectral Rigidity",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -191,6 +195,7 @@ class Unfolded(EigVals):
             L_grid_size=L_grid_size,
             min_L=min_L,
             max_L=max_L,
+            integration=integration,
             show_progress=show_progress,
         )
         plot_result = plot._spectral_rigidity(
