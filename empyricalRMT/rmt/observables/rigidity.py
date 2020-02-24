@@ -151,6 +151,24 @@ def _spectral_iter(
     interval_gridsize: int = 10000,  # does not tend to effect performance significantly
     use_simpsons: bool = True,
 ) -> ndarray:
+    """Compute c_iters values of L and save them in delta3_L_vals.
+
+    Parameters
+    ----------
+    unfolded: ndarray
+        The sorted unfolded eigenvalues.
+    delta3_L_vals: ndarray
+        The array to store all the c_iters computed L values.
+    L: float
+        The current L value for which the spectral rigidity is being calculated.
+    c_iters: int
+        The number of centre-points (c) to choose (i.e. the number of L values to
+        compute).
+    interval_gridsize: int
+        The number of points for which to evaluate the deviation from a straight
+        line on [c - L/2, c + L/2].
+    """
+    # make each iteration centred at a random value on the unfolded spectrum
     starts = np.random.uniform(unfolded[0], unfolded[-1], c_iters)
     for i in prange(len(starts)):
         # c_start is in space of unfolded, not unfolded
@@ -164,7 +182,6 @@ def _spectral_iter(
         else:
             delta3 = _integrate_fast(grid, y_vals)  # O(len(grid))
         delta3_L_vals[i] = delta3 / L
-    return delta3_L_vals
 
 
 @jit(nopython=True, fastmath=True, cache=True)
@@ -199,6 +216,7 @@ def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
     return integral
 
 
+# fmt: off
 @jit(nopython=True, fastmath=True, cache=True)
 def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
     """
@@ -224,33 +242,16 @@ def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
     result = 0.0
     for i in range(1, N, 2):
         hph = h[i] + h[i - 1]
-        result += (
-            vals[i]
-            * (h[i] ** 3 + h[i - 1] ** 3 + 3.0 * h[i] * h[i - 1] * hph)
-            / (6 * h[i] * h[i - 1])
-        )
-        result += (
-            vals[i - 1]
-            * (2.0 * h[i - 1] ** 3 - h[i] ** 3 + 3.0 * h[i] * h[i - 1] ** 2)
-            / (6 * h[i - 1] * hph)
-        )
-        result += (
-            vals[i + 1]
-            * (2.0 * h[i] ** 3 - h[i - 1] ** 3 + 3.0 * h[i - 1] * h[i] ** 2)
-            / (6 * h[i] * hph)
-        )
+        result += vals[i] * (h[i]**3 + h[i-1]**3 + 3.0*h[i]*h[i-1]*hph) / (6*h[i]*h[i-1])
+        result += vals[i-1] * (2.0*h[i-1]**3 - h[i]**3 + 3.0*h[i]*h[i-1]**2) / (6*h[i-1] * hph)
+        result += vals[i+1] * (2.0*h[i]**3 - h[i-1]**3 + 3.0*h[i-1]*h[i]**2) / (6*h[i] * hph)
 
     if (N + 1) % 2 == 0:
-        result += (
-            vals[N]
-            * (2 * h[N - 1] ** 2 + 3.0 * h[N - 2] * h[N - 1])
-            / (6 * (h[N - 2] + h[N - 1]))
-        )
-        result += (
-            vals[N - 1] * (h[N - 1] ** 2 + 3 * h[N - 1] * h[N - 2]) / (6 * h[N - 2])
-        )
-        result -= vals[N - 2] * h[N - 1] ** 3 / (6 * h[N - 2] * (h[N - 2] + h[N - 1]))
+        result += vals[N] * (2*h[N-1]**2 + 3.0*h[N-2]*h[N-1]) / (6*(h[N-2] + h[N-1]))
+        result += vals[N-1] * (h[N-1]**2 + 3*h[N-1]*h[N-2]) / (6*h[N-2])
+        result -= vals[N-2] * h[N-1]**3 / (6*h[N-2]*(h[N-2] + h[N-1]))
     return result
+# fmt: on
 
 
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
