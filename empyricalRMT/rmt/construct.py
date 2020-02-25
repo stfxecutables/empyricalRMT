@@ -60,7 +60,7 @@ def generate_eigs(
     return eigs
 
 
-def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
+def goe_unfolded(matsize: int, log: bool = False, average: int = 1) -> Unfolded:
     N = matsize
     M = _generate_GOE_matrix(N, 0, 1)
     # std of off-diagonals
@@ -88,18 +88,25 @@ def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
 
         raise ValueError("Unreachable!")
 
-    if log:
-        print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
-    eigs = np.linalg.eigvalsh(M)
-    if log:
-        print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
+    all_eigs = []
+    all_unfolded = []
+    for i in range(average):
+        if log:
+            print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
+        eigs = np.linalg.eigvalsh(M)
+        if log:
+            print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
 
-    unfolded = np.empty([N])
-    for i in range(N):
-        # multiply N here to prevent overflow issues
-        unfolded[i] = N * explicit(eigs[i])
+        unfolded = np.empty([N])
+        for i in range(N):
+            # multiply N here to prevent overflow issues
+            unfolded[i] = N * explicit(eigs[i])
+        all_eigs.append(eigs)
+        all_unfolded.append(unfolded)
+    all_eigs = np.mean(np.array(all_eigs), axis=0)
+    all_unfolded = np.mean(np.array(all_unfolded), axis=0)
 
-    return Unfolded(originals=eigs, unfolded=unfolded)
+    return Unfolded(originals=all_eigs, unfolded=all_unfolded)
 
 
 def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
