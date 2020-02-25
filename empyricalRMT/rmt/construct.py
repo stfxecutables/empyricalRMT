@@ -56,11 +56,11 @@ def generate_eigs(
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
     eigs = np.linalg.eigvalsh(M)
     if log:
-        print(f"{time.strftime('%H:%M:%S')} -- computed eigenvalues.")
+        print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
     return eigs
 
 
-def goe_unfolded(matsize: int) -> Unfolded:
+def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
     N = matsize
     M = _generate_GOE_matrix(N, 0, 1)
     # std of off-diagonals
@@ -88,7 +88,11 @@ def goe_unfolded(matsize: int) -> Unfolded:
 
         raise ValueError("Unreachable!")
 
+    if log:
+        print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
     eigs = np.linalg.eigvalsh(M)
+    if log:
+        print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
 
     unfolded = np.empty([N])
     for i in range(N):
