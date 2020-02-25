@@ -62,6 +62,9 @@ def generate_eigs(
 
 def goe_unfolded(matsize: int) -> Unfolded:
     N = matsize
+    M = _generate_GOE_matrix(N, 0, 1)
+    # std of off-diagonals
+    a = 2 * np.sqrt(N) * np.std(M[np.array(1 - np.eye(N), dtype=bool)], ddof=1)
 
     def explicit(E: float) -> Any:
         """
@@ -72,11 +75,11 @@ def goe_unfolded(matsize: int) -> Unfolded:
         for chaotic and mixed systems. Physica A: Statistical Mechanics and its
         Applications, 396, 185-194, section A
         """
-        if np.abs(E) <= 2 * np.sqrt(N):
+        if np.abs(E) <= a:
             return (
                 0.5
-                + (E / (4 * N * np.pi)) * np.sqrt(4 * N - E * E)
-                + (1 / np.pi) * np.arctan(E / np.sqrt(4 * N - E * E))
+                + (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
+                + (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
             )
         if E < -2 * np.sqrt(N):
             return 0
@@ -85,8 +88,6 @@ def goe_unfolded(matsize: int) -> Unfolded:
 
         raise ValueError("Unreachable!")
 
-    N = matsize
-    M = _generate_GOE_matrix(N, 0, 1)
     eigs = np.linalg.eigvalsh(M)
 
     unfolded = np.empty([N])
