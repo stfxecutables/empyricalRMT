@@ -75,7 +75,7 @@ class Unfolded(EigVals):
             integration=integration,
             show_progress=show_progress,
         )
-        return (pd.DataFrame({"L": L, "delta": delta}),)
+        return pd.DataFrame({"L": L, "delta": delta})
 
     def level_variance(
         self,
