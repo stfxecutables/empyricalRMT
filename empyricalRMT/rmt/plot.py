@@ -2,14 +2,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sbn
+import warnings
 
 from colorama import Fore, Style
 from numpy import ndarray
 from pathlib import Path
+from scipy.integrate import quad
+from scipy.special import sici
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing import List, Optional, Tuple, Union
 from typing_extensions import Literal
-from warnings import warn
+from warnings import filterwarnings, warn
+
 
 from empyricalRMT.rmt.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
@@ -458,12 +462,37 @@ def _level_number_variance(
     p, y = np.pi, np.euler_gamma
     s = L / np.mean(unfolded[1:] - unfolded[:-1])
 
+    def exact(x: float) -> float:
+        f1 = lambda r: (np.sin(r) / r) ** 2
+        # re-arranging the formula for sici from
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.sici.html
+        # to match Mehta (2004) p595, A.38, we get:
+        int_2 = y + np.log(2 * p * x) - sici(2 * p * x)[1]
+        # sici(x) returns (Sine integral from 0 to x, gamma + log(x) + Cosine integral from 0 to x)
+        int_3 = (sici(np.inf)[0] - sici(p * x)[0]) ** 2
+        t1 = 4 * x / p
+        t2 = 2 / p ** 2
+        t3 = t2 / 2
+        res = (
+            t1 * quad(f1, p * x, np.inf, limit=100)[0] + t2 * int_2 - 0.25 + t3 * int_3
+        )
+        return float(res)
+
     if "poisson" in ensembles:
         poisson = L / 2  # waste of time, too large very often
         poisson = plt.plot(L, poisson, label="Poisson")
         plt.setp(poisson, color="#08FD4F")
     if "goe" in ensembles:
-        goe = (2 / (p ** 2)) * (np.log(2 * p * s) + y + 1 - (p ** 2) / 8)
+        goe = np.zeros(s.shape)
+        with warnings.catch_warnings():  # ignore integration, divide-by-zero warnings
+            warnings.simplefilter("ignore")
+            for i, s_val in enumerate(s):
+                if L[i] < 10:
+                    goe[i] = exact(s_val)
+                else:
+                    goe[i] = (2 / (p ** 2)) * (
+                        np.log(2 * p * s_val) + y + 1 - (p ** 2) / 8
+                    )
         goe = plt.plot(L, goe, label="Gaussian Orthogonal")
         plt.setp(goe, color="#FD8208")
     if "gue" in ensembles:
