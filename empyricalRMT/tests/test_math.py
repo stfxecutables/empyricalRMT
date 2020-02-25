@@ -10,7 +10,6 @@ from empyricalRMT.rmt.observables.rigidity import (
     _slope,
     _intercept,
     _integrate_fast,
-    _integrate_simpsons,
     _int_simps_nonunif,
 )
 from empyricalRMT.rmt.observables.step import (

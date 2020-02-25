@@ -2,9 +2,11 @@ import numpy as np
 import time
 
 from numpy import ndarray
-from typing import Union
+from scipy.integrate import quad
+from typing import Any, Union
 from typing_extensions import Literal
 
+from empyricalRMT.rmt.unfold import Unfolded
 from empyricalRMT.utils import eprint
 
 
@@ -56,6 +58,43 @@ def generate_eigs(
     if log:
         print(f"{time.strftime('%H:%M:%S')} -- computed eigenvalues.")
     return eigs
+
+
+def goe_unfolded(matsize: int) -> Unfolded:
+    N = matsize
+
+    def explicit(E: float) -> Any:
+        """
+        See the section on Asymptotic Level Densities for the closed form
+        function below.
+
+        Abul-Magd, A. A., & Abul-Magd, A. Y. (2014). Unfolding of the spectrum
+        for chaotic and mixed systems. Physica A: Statistical Mechanics and its
+        Applications, 396, 185-194, section A
+        """
+        if np.abs(E) <= 2 * np.sqrt(N):
+            return (
+                0.5
+                + (E / (4 * N * np.pi)) * np.sqrt(4 * N - E * E)
+                + (1 / np.pi) * np.arctan(E / np.sqrt(4 * N - E * E))
+            )
+        if E < -2 * np.sqrt(N):
+            return 0
+        if E > 2 * np.sqrt(N):
+            return 1
+
+        raise ValueError("Unreachable!")
+
+    N = matsize
+    M = _generate_GOE_matrix(N, 0, 1)
+    eigs = np.linalg.eigvalsh(M)
+
+    unfolded = np.empty([N])
+    for i in range(N):
+        # multiply N here to prevent overflow issues
+        unfolded[i] = N * explicit(eigs[i])
+
+    return Unfolded(originals=eigs, unfolded=unfolded)
 
 
 def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:

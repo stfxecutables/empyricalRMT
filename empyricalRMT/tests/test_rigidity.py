@@ -1,6 +1,6 @@
 import pytest
 
-from empyricalRMT.rmt.construct import generate_eigs
+from empyricalRMT.rmt.construct import generate_eigs, goe_unfolded
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
 
 
@@ -9,6 +9,16 @@ def test_plot_rigidity() -> None:
     # good fit for max_L=50 when using generate_eigs(10000)
     # good fit for max_L=55 when using generate_eigs(20000)
     # not likely to be good fit for max_L beyond 20 for generate_eigs(1000)
-    eigs = Eigenvalues(generate_eigs(2000))
-    unfolded = eigs.unfold(smoother="poly", degree=9)
-    unfolded.plot_spectral_rigidity(max_L=40, c_iters=5000)
+    # L good | len(eigs) |     percent
+    # -----------------------------------
+    # 30-40  |    2000   |
+    # 30-50  |    8000   |  0.375 - 0.625
+    # 50-70  |   10000   |    0.5 - 0.7
+    #   50   |   20000   |      0.25
+    # eigs = Eigenvalues(generate_eigs(2000, log=True))
+    # unfolded = eigs.unfold(smoother="goe", degree=9)
+
+    unfolded = goe_unfolded(5000)
+    unfolded.plot_nnsd(mode="noblock")
+    unfolded.plot_level_variance(mode="noblock")
+    unfolded.plot_spectral_rigidity(max_L=100, c_iters=10000)

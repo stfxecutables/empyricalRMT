@@ -1,7 +1,8 @@
 import numpy as np
 
 from numpy import ndarray
-from typing import List, Sized
+from scipy.integrate import quad
+from typing import Any, List, Sized
 from warnings import warn
 
 from empyricalRMT.rmt._constants import (
@@ -370,7 +371,7 @@ class Eigenvalues(EigVals):
         ----------
         eigs: ndarray
             sorted eigenvalues
-        smoother: "poly" | "spline" | "gompertz" | lambda
+        smoother: "poly" | "spline" | "gompertz" | "goe" | lambda
             the type of smoothing function used to fit the step function
         degree: int
             the degree of the polynomial or spline
@@ -385,6 +386,10 @@ class Eigenvalues(EigVals):
         steps: ndarray
             the step-function values
         """
+
+        if smoother == "goe":
+            return self.unfold_goe()
+
         eigs = self.eigs
         unfolded, _ = Smoother(eigs).fit(
             smoother=smoother,
@@ -393,3 +398,21 @@ class Eigenvalues(EigVals):
             emd_detrend=emd_detrend,
         )
         return Unfolded(originals=eigs, unfolded=unfolded)
+
+    def unfold_goe(self) -> Unfolded:
+        N = len(self.eigenvalues)
+        eigs = self.eigenvalues / np.mean(self.eigenvalues)
+
+        # def R1_x(x: float) -> Any:
+        #     return N * np.pi * 0.5 * x * np.exp(np.pi * 0.25 * x ** 2)
+        def rho_E(E: float) -> Any:
+            if np.abs(E) <= 2 * np.sqrt(N):
+                return (np.pi * 0.5) * np.sqrt(4 * N - E * E)
+            return 0
+
+        unfolded = np.empty([N])
+        for i in range(N):
+            res, err = quad(rho_E, -np.inf, eigs[i], limit=1000)
+            unfolded[i] = res
+        print(unfolded)
+        return Unfolded(originals=self.eigs, unfolded=unfolded)
