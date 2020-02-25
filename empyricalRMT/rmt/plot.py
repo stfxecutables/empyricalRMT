@@ -338,7 +338,7 @@ def _spacings(
 
 
 def _spectral_rigidity(
-    unfolded: ndarray,
+    unfolded: Optional[ndarray],
     data: pd.DataFrame,
     title: str = "Spectral Rigidity",
     mode: PlotMode = "block",
@@ -384,7 +384,7 @@ def _spectral_rigidity(
     p, y = np.pi, np.euler_gamma
 
     # see pg 290 of Mehta (2004) for definition of s
-    s = L / np.mean(unfolded[1:] - unfolded[:-1])
+    s = L / np.mean(unfolded[1:] - unfolded[:-1]) if unfolded is not None else L
 
     if "poisson" in ensembles:
         poisson = L / 15 / 2
