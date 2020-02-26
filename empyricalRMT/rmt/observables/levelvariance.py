@@ -82,6 +82,7 @@ def level_number_variance(
 
 @jit(nopython=True, cache=True, fastmath=True, parallel=True)
 def _sigma_iter(unfolded: ndarray, L: float, c_iters: int = 100) -> ndarray:
+    c_iters = np.min(np.array([int(L * 2000), int(25000)]))
     levels = np.empty((c_iters), dtype=np.float64)
     levels_sq = np.empty((c_iters), dtype=np.float64)  # levels squared
     for i in prange(c_iters):
