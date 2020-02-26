@@ -66,9 +66,12 @@ def generate_eigs(
 
 def goe_unfolded(matsize: int, log: bool = False, average: int = 1) -> Unfolded:
     N = matsize
-    M = _generate_GOE_matrix(N, 0, 1)
+    M = _generate_GOE_tridiagonal(matsize)
     # std of off-diagonals
-    a = 2 * np.sqrt(N) * np.std(M[np.array(1 - np.eye(N), dtype=bool)], ddof=1)
+    # a_matrix = _generate_GOE_matrix(size=matsize)
+    # a = 2 * np.sqrt(N) * np.std(a_matrix[np.array(1 - np.eye(N), dtype=bool)], ddof=1)
+    a = 2 * np.sqrt(N)
+    # a = 1
 
     def explicit(E: float) -> Any:
         """
@@ -85,9 +88,9 @@ def goe_unfolded(matsize: int, log: bool = False, average: int = 1) -> Unfolded:
                 + (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
                 + (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
             )
-        if E < -2 * np.sqrt(N):
+        if E < a:
             return 0
-        if E > 2 * np.sqrt(N):
+        if E > a:
             return 1
 
         raise ValueError("Unreachable!")

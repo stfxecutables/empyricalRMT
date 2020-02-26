@@ -399,20 +399,42 @@ class Eigenvalues(EigVals):
         )
         return Unfolded(originals=eigs, unfolded=unfolded)
 
-    def unfold_goe(self) -> Unfolded:
+    def unfold_goe(self, a: float = None) -> Unfolded:
+        # eigs = self.eigs
+        # unfolded = eigs / np.mean(np.diff(eigs))
+        # return Unfolded(eigs, unfolded)
+
         N = len(self.eigenvalues)
-        eigs = self.eigenvalues / np.mean(self.eigenvalues)
+        if a is None:
+            a = 2 * np.sqrt(N)
+        # a = 1
 
-        # def R1_x(x: float) -> Any:
-        #     return N * np.pi * 0.5 * x * np.exp(np.pi * 0.25 * x ** 2)
-        def rho_E(E: float) -> Any:
-            if np.abs(E) <= 2 * np.sqrt(N):
-                return (np.pi * 0.5) * np.sqrt(4 * N - E * E)
-            return 0
+        def explicit(E: float) -> Any:
+            """
+            See the section on Asymptotic Level Densities for the closed form
+            function below.
 
+            Abul-Magd, A. A., & Abul-Magd, A. Y. (2014). Unfolding of the spectrum
+            for chaotic and mixed systems. Physica A: Statistical Mechanics and its
+            Applications, 396, 185-194, section A
+            """
+            if np.abs(E) <= a:
+                return (
+                    0.5
+                    + (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
+                    + (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
+                )
+            if E < a:
+                return 0
+            if E > a:
+                return 1
+
+            raise ValueError("Unreachable!")
+
+        eigs = self.eigenvalues
         unfolded = np.empty([N])
         for i in range(N):
-            res, err = quad(rho_E, -np.inf, eigs[i], limit=1000)
-            unfolded[i] = res
-        print(unfolded)
-        return Unfolded(originals=self.eigs, unfolded=unfolded)
+            # multiply N here to prevent overflow issues
+            unfolded[i] = N * explicit(eigs[i])
+        return Unfolded(originals=eigs, unfolded=unfolded)
+
