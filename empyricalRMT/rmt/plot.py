@@ -341,6 +341,81 @@ def _spacings(
     return _handle_plot_mode(mode, axes, outfile)
 
 
+def _next_spacings(
+    unfolded: ndarray,
+    bins: int = 50,
+    kde: bool = True,
+    title: str = "next Nearest-Neigbors Spacing Distribution",
+    mode: PlotMode = "block",
+    outfile: Path = None,
+) -> PlotResult:
+    """Plots a histogram of the next Nearest-Neighbors Spacing Distribution
+
+    Parameters
+    ----------
+    unfolded: ndarray
+        the unfolded eigenvalues
+    bins: int
+        the number of (equal-sized) bins to display and use for the histogram
+    kde: boolean
+        If False (default), do not display a kernel density estimate. If true, use
+        [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
+        with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+    title: string
+        The plot title string
+    mode: "block" | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+
+    Returns
+    -------
+    (fig, axes): (Figure, Axes)
+        The handles to the matplotlib objects, only if `mode` is "return".
+    """
+    _setup_plotting()
+    _spacings = np.sort((unfolded[2:] - unfolded[:-2]) / 2)
+    # Generate expected distributions for classical ensembles
+    p = np.pi
+    s = np.linspace(_spacings.min(), _spacings.max(), 10000)
+    # see:
+    # Dettmann, C. P., Georgiou, O., & Knight, G. (2017).
+    # Spectral statistics of random geometric graphs.
+    # EPL (Europhysics Letters), 118(1), 18003.
+    # doi:10.1209/0295-5075/118/18003, pp10, Equation. 11
+    # for this expected distribution formula
+    goe = (2 ** 18 / (3 ** 6 * p ** 3)) * (s ** 4) * np.exp(-((64 / (9 * p)) * (s * s)))
+
+    axes = sbn.distplot(
+        _spacings,
+        norm_hist=True,
+        bins=bins,  # doane
+        kde=False,
+        label="next NNSD",
+        axlabel="spacing (s_2)",
+        color="black",
+    )
+
+    if kde is True:
+        _kde_plot(_spacings, s, axes)
+
+    goe = axes.plot(s, goe, label="Gaussian Orthogonal")
+    plt.setp(goe, color="#FD8208")
+
+    plt.ylabel("Density p(s)")
+    plt.title(title)
+    plt.legend()
+    # adjusting the right bounds can be necessary when / if there are
+    # many large eigenvalue spacings
+    axes.set_xlim(left=0, right=np.percentile(_spacings, 99))
+
+    return _handle_plot_mode(mode, axes, outfile)
+
+
 def _spectral_rigidity(
     unfolded: Optional[ndarray],
     data: pd.DataFrame,

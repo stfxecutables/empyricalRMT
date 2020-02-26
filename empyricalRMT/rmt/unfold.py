@@ -12,7 +12,7 @@ import empyricalRMT.rmt.plot as plot
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.observables.levelvariance import level_number_variance
 from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
-from empyricalRMT.rmt.plot import PlotMode, PlotResult
+from empyricalRMT.rmt.plot import _next_spacings, PlotMode, PlotResult
 
 
 class Unfolded(EigVals):
@@ -125,6 +125,51 @@ class Unfolded(EigVals):
 
     def plot_nnsd(self, *args: Any, **kwargs: Any) -> PlotResult:
         return self.plot_spacings(*args, **kwargs)
+
+    def plot_next_nnsd(
+        self,
+        bins: int = 50,
+        kde: bool = True,
+        title: str = "next Nearest-Neigbors Spacing Distribution",
+        mode: PlotMode = "block",
+        outfile: Path = None,
+    ) -> PlotResult:
+        """Plots a histogram of the next Nearest-Neighbors Spacing Distribution
+
+        Parameters
+        ----------
+        unfolded: ndarray
+            the unfolded eigenvalues
+        bins: int
+            the number of (equal-sized) bins to display and use for the histogram
+        kde: boolean
+            If False (default), do not display a kernel density estimate. If true, use
+            [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
+            with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+        title: string
+            The plot title string
+        mode: "block" | "noblock" | "save" | "return"
+            If "block", call plot.plot() and display plot in a blocking fashion.
+            If "noblock", attempt to generate plot in nonblocking fashion.
+            If "save", save plot to pathlib Path specified in `outfile` argument
+            If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        outfile: Path
+            If mode="save", save generated plot to Path specified in `outfile` argument.
+            Intermediate directories will be created if needed.
+
+        Returns
+        -------
+        (fig, axes): (Figure, Axes)
+            The handles to the matplotlib objects, only if `mode` is "return".
+        """
+        return _next_spacings(
+            unfolded=self.vals,
+            bins=bins,
+            kde=kde,
+            title=title,
+            mode=mode,
+            outfile=outfile,
+        )
 
     def plot_spectral_rigidity(
         self,
