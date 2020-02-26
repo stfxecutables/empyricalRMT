@@ -6,6 +6,7 @@ from numpy import ndarray
 from scipy.integrate import simps, trapz
 from typing import Any
 
+from empyricalRMT.rmt.construct import _generate_GOE_tridiagonal, generate_eigs
 from empyricalRMT.rmt.observables.rigidity import (
     _slope,
     _intercept,
@@ -272,3 +273,18 @@ def test_integrate_perf_simps() -> None:
     assert total_custom < total_lib
     print("Custom simps integration time: ", total_custom)
     print("Scipy simps integration time: ", total_lib)
+
+
+@pytest.mark.math
+def test_tridiag() -> None:
+    sizes = [100, 1000, 2000, 5000, 6000]
+    for size in sizes:
+        start = time.time()
+        _generate_GOE_tridiagonal(size)
+        duration = time.time() - start
+        print(f"Time for tridiagonal (N = {size}): {duration}")
+
+        start = time.time()
+        generate_eigs(size)
+        duration = time.time() - start
+        print(f"Time for normal (N = {size}): {duration}")
