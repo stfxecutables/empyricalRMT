@@ -3,6 +3,7 @@ import time
 
 from numpy import ndarray
 from scipy.integrate import quad
+from scipy.sparse import diags
 from typing import Any, Union
 from typing_extensions import Literal
 
@@ -47,7 +48,10 @@ def generate_eigs(
         A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
         M = (A + A.conjugate().T) / 2
     elif kind == "goe":
-        M = _generate_GOE_matrix(matsize, mean, sd)
+        if matsize > 1000:
+            M = _generate_GOE_tridiagonal(size=matsize)
+        else:
+            M = _generate_GOE_matrix(matsize, mean, sd)
     else:
         kinds = ["goe", "gue", "poisson", "uniform"]
         raise ValueError(f"`kind` must be one of {kinds}")
@@ -165,6 +169,25 @@ def _generate_GOE_matrix(
     else:
         M = np.random.standard_normal([size, size])
     return (M + M.T) / np.sqrt(2)
+
+
+def _generate_GOE_tridiagonal(size: int = 100) -> ndarray:
+    """See: Edelman, A., Sutton, B. D., & Wang, Y. (2014).
+    Random matrix theory, numerical computation and applications.
+    Modern Aspects of Random Matrix Theory, 72, 53.
+    """
+    chi_range = size - 1 - np.arange(size - 1)
+    chi = np.sqrt(np.random.chisquare(chi_range))
+    # off = [np.sqrt(np.random.gamma((size - n - 1) / 2)) for n in range(size - 1)]
+    # diagonals = [np.random.normal(0, np.sqrt(2), size), chi, chi]
+    # scale = np.sqrt(size)
+    diagonals = [np.random.normal(0, 1, size) / np.sqrt(2), chi]
+    M = diags(diagonals, [0, -1]).toarray()
+    return (M + M.T) / np.sqrt(2)
+
+    # return tri.toarray()
+    # eigs = np.linalg.eigvalsh(tri.toarray())
+    # return eigs
 
 
 def _generate_poisson(size: int = 100) -> ndarray:
