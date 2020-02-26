@@ -10,9 +10,9 @@ from pathlib import Path
 from scipy.integrate import quad
 from scipy.special import sici
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 from typing_extensions import Literal
-from warnings import filterwarnings, warn
+from warnings import warn
 
 
 from empyricalRMT.rmt.observables.step import _step_function_fast
@@ -538,7 +538,9 @@ def _level_number_variance(
     s = L / np.mean(unfolded[1:] - unfolded[:-1])
 
     def exact(x: float) -> float:
-        f1 = lambda r: (np.sin(r) / r) ** 2
+        def f1(r: float) -> Any:
+            return (np.sin(r) / r) ** 2
+
         # re-arranging the formula for sici from
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.sici.html
         # to match Mehta (2004) p595, A.38, we get:

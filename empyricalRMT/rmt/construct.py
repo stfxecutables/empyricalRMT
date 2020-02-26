@@ -82,11 +82,9 @@ def goe_unfolded(matsize: int, log: bool = False, average: int = 1) -> Unfolded:
         Applications, 396, 185-194, section A
         """
         if np.abs(E) <= a:
-            return (
-                0.5
-                + (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
-                + (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
-            )
+            t1 = (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
+            t2 = (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
+            return 0.5 + t1 + t2
         if E < a:
             return 0
         if E > a:

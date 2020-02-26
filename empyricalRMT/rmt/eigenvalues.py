@@ -1,7 +1,6 @@
 import numpy as np
 
 from numpy import ndarray
-from scipy.integrate import quad
 from typing import Any, List, Sized
 from warnings import warn
 
@@ -419,14 +418,13 @@ class Eigenvalues(EigVals):
             Applications, 396, 185-194, section A
             """
             if np.abs(E) <= a:
-                return (
-                    0.5
-                    + (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
-                    + (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
-                )
-            if E < a:
+                t1 = (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)  # type: ignore
+                t2 = (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))  # type: ignore
+
+                return 0.5 + t1 + t2
+            if E < a:  # type: ignore
                 return 0
-            if E > a:
+            if E > a:  # type: ignore
                 return 1
 
             raise ValueError("Unreachable!")
@@ -437,4 +435,3 @@ class Eigenvalues(EigVals):
             # multiply N here to prevent overflow issues
             unfolded[i] = N * explicit(eigs[i])
         return Unfolded(originals=eigs, unfolded=unfolded)
-
