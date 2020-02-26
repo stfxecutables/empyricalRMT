@@ -2,7 +2,6 @@ import numpy as np
 import time
 
 from numpy import ndarray
-from scipy.integrate import quad
 from scipy.sparse import diags
 from typing import Any, Union
 from typing_extensions import Literal
@@ -48,7 +47,7 @@ def generate_eigs(
         A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
         M = (A + A.conjugate().T) / 2
     elif kind == "goe":
-        if matsize > 1000:
+        if matsize > 500:
             M = _generate_GOE_tridiagonal(size=matsize)
         else:
             M = _generate_GOE_matrix(matsize, mean, sd)
@@ -181,16 +180,13 @@ def _generate_GOE_tridiagonal(size: int = 100) -> ndarray:
     """
     chi_range = size - 1 - np.arange(size - 1)
     chi = np.sqrt(np.random.chisquare(chi_range))
-    # off = [np.sqrt(np.random.gamma((size - n - 1) / 2)) for n in range(size - 1)]
-    # diagonals = [np.random.normal(0, np.sqrt(2), size), chi, chi]
-    # scale = np.sqrt(size)
-    diagonals = [np.random.normal(0, 1, size) / np.sqrt(2), chi]
-    M = diags(diagonals, [0, -1]).toarray()
-    return (M + M.T) / np.sqrt(2)
-
-    # return tri.toarray()
-    # eigs = np.linalg.eigvalsh(tri.toarray())
-    # return eigs
+    diagonals = [
+        np.random.normal(0, np.sqrt(2), size) / np.sqrt(2),
+        chi / np.sqrt(2),
+        chi / np.sqrt(2),
+    ]
+    M = diags(diagonals, [0, -1, 1])
+    return M.toarray()
 
 
 def _generate_poisson(size: int = 100) -> ndarray:
