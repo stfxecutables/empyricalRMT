@@ -11,6 +11,10 @@ def test_fast_poisson() -> None:
     for i in range(1):
         vals = fast_poisson_eigs(5000)
         unfolded = Eigenvalues(vals).unfold()
-        plotSpacings(
-            unfolded, title="Fast Poisson Spacing Test", bins=20, kde=True, mode="block"
+        unfolded.plot_nnsd(
+            title="Fast Poisson Spacing Test",
+            bins=10,
+            kde=True,
+            mode="noblock",
+            ensembles=["poisson"],
         )
