@@ -5,6 +5,7 @@ import pytest
 from empyricalRMT.rmt.construct import generate_eigs, goe_unfolded
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
 from empyricalRMT.rmt.plot import _spectral_rigidity
+from empyricalRMT.rmt.unfold import Unfolded
 
 
 @pytest.mark.plot
@@ -18,13 +19,19 @@ def test_plot_rigidity() -> None:
     # 30-50  |    8000   |  0.375 - 0.625
     # 50-70  |   10000   |    0.5 - 0.7
     #   50   |   20000   |      0.25
-    # eigs = Eigenvalues(generate_eigs(2000, log=True))
-    # unfolded = eigs.unfold(smoother="goe", degree=9)
+    eigs = Eigenvalues(generate_eigs(2000, log=True))
+    unfolded = eigs.unfold(smoother="poly", degree=19)
 
-    unfolded = goe_unfolded(20000, log=True)
     unfolded.plot_nnsd(mode="noblock")
-    unfolded.plot_level_variance(mode="noblock")
-    unfolded.plot_spectral_rigidity(max_L=200, c_iters=20000)
+    # unfolded.plot_next_nnsd(mode="block")
+    unfolded.plot_level_variance(
+        min_L=1,
+        max_L=100,
+        L_grid_size=100,
+        mode="noblock",
+        ensembles=["goe", "poisson"],
+    )
+    unfolded.plot_spectral_rigidity(max_L=200, c_iters=10000)
 
 
 @pytest.mark.plot
