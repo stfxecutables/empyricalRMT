@@ -64,6 +64,7 @@ def generate_eigs(
 
 
 def goe_unfolded(matsize: int, log: bool = False, average: int = 1) -> Unfolded:
+    raise NotImplementedError("This feature is still a work in progress.")
     N = matsize
     M = _generate_GOE_tridiagonal(matsize)
     # std of off-diagonals
