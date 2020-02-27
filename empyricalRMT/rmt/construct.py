@@ -20,6 +20,7 @@ def generate_eigs(
     mean: float = 0,
     sd: float = 1,
     kind: MatrixKind = "goe",
+    seed: int = None,
     log: bool = False,
 ) -> ndarray:
     """Generate a random matrix as specified by arguments, and compute and return
@@ -39,18 +40,20 @@ def generate_eigs(
         The kind of matrix to generate.
     """
     if kind == "poisson":
-        M = _generate_poisson(matsize)
+        M = _generate_poisson(matsize, seed)
     elif kind == "uniform":
         raise Exception("UNIMPLEMENTED!")
     elif kind == "gue":
         size = [matsize, matsize]
+        if seed is not None:
+            np.random.seed(seed)
         A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
         M = (A + A.conjugate().T) / 2
     elif kind == "goe":
         if matsize > 500:
-            M = _generate_GOE_tridiagonal(size=matsize)
+            M = _generate_GOE_tridiagonal(size=matsize, seed=seed)
         else:
-            M = _generate_GOE_matrix(matsize, mean, sd)
+            M = _generate_GOE_matrix(matsize, mean, sd, seed=seed)
     else:
         kinds = ["goe", "gue", "poisson", "uniform"]
         raise ValueError(f"`kind` must be one of {kinds}")
@@ -172,11 +175,13 @@ def _generate_GOE_matrix(
     return (M + M.T) / np.sqrt(2)
 
 
-def _generate_GOE_tridiagonal(size: int = 100) -> ndarray:
+def _generate_GOE_tridiagonal(size: int = 100, seed: int = None) -> ndarray:
     """See: Edelman, A., Sutton, B. D., & Wang, Y. (2014).
     Random matrix theory, numerical computation and applications.
     Modern Aspects of Random Matrix Theory, 72, 53.
     """
+    if seed is not None:
+        np.random.seed(seed)
     chi_range = size - 1 - np.arange(size - 1)
     chi = np.sqrt(np.random.chisquare(chi_range))
     diagonals = [
@@ -188,7 +193,9 @@ def _generate_GOE_tridiagonal(size: int = 100) -> ndarray:
     return M.toarray()
 
 
-def _generate_poisson(size: int = 100) -> ndarray:
+def _generate_poisson(size: int = 100, seed: int = None) -> ndarray:
+    if seed is not None:
+        np.random.seed(seed)
     return np.diag(np.random.standard_normal(size))
 
 
