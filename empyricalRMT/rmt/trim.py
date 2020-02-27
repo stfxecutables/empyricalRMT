@@ -41,7 +41,7 @@ class TrimReport:
         eigenvalues = np.sort(eigenvalues)
         self._untrimmed: ndarray = eigenvalues
         self._unfold_info: Optional[DataFrame] = None
-        self._all_unfolds: Optional[DataFrame] = None
+        self._all_unfolds: Optional[List[DataFrame]] = None
 
         self._trim_steps = self.__get_trim_iters(
             tolerance=outlier_tol, max_trim=max_trim, max_iters=max_iters
@@ -76,7 +76,9 @@ class TrimReport:
         return self._unfold_info
 
     @property
-    def unfoldings(self) -> DataFrame:
+    def unfoldings(self) -> List[DataFrame]:
+        if self._all_unfolds is None:
+            raise RuntimeError("TrimReport inrrectly initialized.")
         return self._all_unfolds
 
     def compare_trim_unfolds(
@@ -112,11 +114,11 @@ class TrimReport:
             A dict with keys "best", "second", "third", (or equivalently "0", "1", "2",
             respectively) and the GOE fit scores
 
-        best_unfoldeds: DataFrame
-            a DataFrame with column names identifying the fit method, and columns
-            corresponding to the unfolded eigenvalues using those methods. The first
-            column has the "best" unfolded values, the second column the second best, and
-            etc, up to the third best
+        best_unfoldeds: List[DataFrame]
+            A list of DataFrame elements with column names identifying the fit method, and
+            columns corresponding to the unfolded eigenvalues using those methods. The
+            first column of `best_unfoldeds[i]` has the "best" unfolded values, the second
+            column the second best, and etc, up to the third best.
 
         best_trim_indices: List[Tuple[int, int]]
             Compares the GOE scores of each of the possible trim regions across all
@@ -136,8 +138,8 @@ class TrimReport:
             GOE fit scores across all trimmings. Useful for deciding on a single smoothing
             method to use across a dataset. Consistent smoothers are *not* ordered.
         """
-        report, unfolds = self._unfold_info, self._all_unfolds
-        if report is None or unfolds is None:
+        report, all_unfolds = self._unfold_info, self._all_unfolds
+        if report is None or all_unfolds is None:
             raise RuntimeError(
                 "Eigenvalues have not yet been unfolded. This should be impossible."
             )
@@ -150,9 +152,8 @@ class TrimReport:
         # indices of rows with best scores
         best_smoother_rows = report[best_smoother_cols].abs().idxmin().to_list()
         # best unfolded eigenvalues
-        best_unfoldeds = unfolds[
-            map(lambda s: s.replace("--score", ""), best_smoother_cols)  # type: ignore
-        ]
+        best_smoother_names = [s.replace("--score", "") for s in best_smoother_cols]
+        best_unfoldeds = [unfold[best_smoother_names] for unfold in all_unfolds]
 
         # take the mean GOE score across smoothers for each trimming, find the row
         # with the lowest mean score, and call this the "best overall" trim
@@ -273,12 +274,13 @@ class TrimReport:
 
         width = 5  # 5 plots
         height = np.ceil(len(trim_steps) / width)
+        # fig, axs = plt.subplots(height, width)
         for i, df in enumerate(trim_steps):
             df = df.rename(index=str, columns={"eigs": "λ", "steps": "N(λ)"})
             trim_percent = np.round(
                 100 * (1 - len(df["cluster"] == "inlier") / len(untrimmed)), 2
             )
-            plt.subplot(height, width, i + 1)
+            plt.subplot(height, width, i + 1, label=f"plot_{i}")
             spacings = np.sort(np.array(df["unfolded"]))
             spacings = spacings[1:] - spacings[:-1]
             sbn.scatterplot(
@@ -293,6 +295,7 @@ class TrimReport:
                 markers=[".", "X"],
                 palette=["black", "red"],
                 hue_order=["inlier", "outlier"],
+                label=f"plot_{i}",
             )
             subtitle = "No trim" if i == 0 else "Trim {:.2f}%".format(trim_percent)
             info = "<s> {:.4f} var(s) {:.4f}".format(

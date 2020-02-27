@@ -36,16 +36,17 @@ def test_trim_manual() -> None:
 @pytest.mark.fast
 @pytest.mark.trim
 def test_trim_reports() -> None:
-    M = _generate_GOE_matrix(2000, seed=0)
-    eigs = np.linalg.eigvalsh(M)
-    eigs = generate_eigs(2000)
+    eigs = generate_eigs(2000, seed=2)
     report = TrimReport(eigs)
     best_smoothers, best_unfolds, best_indices, consistent_smoothers = (
         report.summarize_trim_unfoldings()
     )
     assert np.array_equal(
-        np.sort(consistent_smoothers), np.sort(["cubic-spline_1.0", "poly_6", "poly_5"])
+        np.sort(consistent_smoothers), np.sort(["poly_7", "poly_8", "poly_9"])
     )
-    assert np.array_equal(best_indices, [(0, 1895), (367, 1769), (232, 1769)])
+    assert np.array_equal(best_indices, [(104, 1765), (231, 1765), (104, 2000)])
 
     report.plot_trim_steps(mode="noblock")
+
+
+# test_trim_reports()
