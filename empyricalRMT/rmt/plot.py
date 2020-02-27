@@ -270,6 +270,7 @@ def _spacings(
     title: str = "Unfolded Spacing Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
+    ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
 ) -> PlotResult:
     """Plots a histogram of the Nearest-Neighbors Spacing Distribution
 
@@ -293,6 +294,8 @@ def _spacings(
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+    ensembles: ["poisson", "goe", "gue", "gse"]
+        Which ensembles to display the expected spectral rigidity curves for comparison against.
 
     Returns
     -------
@@ -304,11 +307,6 @@ def _spacings(
     # Generate expected distributions for classical ensembles
     p = np.pi
     s = np.linspace(_spacings.min(), _spacings.max(), 10000)
-    poisson = np.exp(-s)
-    goe = ((p * s) / 2) * np.exp(-(p / 4) * s * s)
-    gue = (32 / p ** 2) * (s * s) * np.exp(-(4 * s * s) / p)
-    gse = (2 ** 18 / (3 ** 6 * p ** 3)) * (s ** 4) * np.exp(-((64 / (9 * p)) * (s * s)))
-
     axes = sbn.distplot(
         _spacings,
         norm_hist=True,
@@ -319,17 +317,27 @@ def _spacings(
         color="black",
     )
 
+    # fmt: off
+    if "poisson" in ensembles:
+        poisson = np.exp(-s)
+        poisson = axes.plot(s, poisson, label="Poisson")
+        plt.setp(poisson, color="#08FD4F")
+    if "goe" in ensembles:
+        goe = ((p * s) / 2) * np.exp(-(p / 4) * s * s)
+        goe = axes.plot(s, goe, label="Gaussian Orthogonal")
+        plt.setp(goe, color="#FD8208")
+    if "gue" in ensembles:
+        gue = (32 / p**2) * (s * s) * np.exp(-(4 * s * s) / p)
+        gue = axes.plot(s, gue, label="Gaussian Unitary")
+        plt.setp(gue, color="#0066FF")
+    if "gse" in ensembles:
+        gse = (2**18 / (3**6 * p**3)) * (s**4) * np.exp(-((64 / (9 * p)) * (s * s)))
+        gse = plt.plot(s, gse, label="Gaussian Symplectic")
+        plt.setp(gse, color="#EA00FF")
+    # fmt: on
+
     if kde is True:
         _kde_plot(_spacings, s, axes)
-
-    poisson = axes.plot(s, poisson, label="Poisson")
-    goe = axes.plot(s, goe, label="Gaussian Orthogonal")
-    gue = axes.plot(s, gue, label="Gaussian Unitary")
-    gse = plt.plot(s, gse, label="Gaussian Symplectic")
-    plt.setp(poisson, color="#08FD4F")
-    plt.setp(goe, color="#FD8208")
-    plt.setp(gue, color="#0066FF")
-    plt.setp(gse, color="#EA00FF")
 
     plt.ylabel("Density p(s)")
     plt.title(title)
