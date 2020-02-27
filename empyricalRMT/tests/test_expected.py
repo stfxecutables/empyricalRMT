@@ -20,11 +20,7 @@ def test_GOE() -> None:
         eigs = Eigenvalues(generate_eigs(1000))
         unfolded = eigs.unfold(degree=9)
         unfolded.plot_spacings(
-            unfolded,
-            title="Generate GOE spacing plot test",
-            bins=20,
-            kde=True,
-            mode="block",
+            title="Generate GOE spacing plot test", bins=20, kde=True, mode="noblock"
         )
 
 
