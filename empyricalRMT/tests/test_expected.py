@@ -270,12 +270,6 @@ def test_nnsd_kolmogorov(capsys: Any) -> None:
                 goe = goe_spacings[i]
                 D, p_val = ks_2samp(compare_spacings, goe)
                 stats.append(D), p_vals.append(1000 * p_val)  # type: ignore
-                plotSpacings(
-                    unfolded,
-                    bins=20,
-                    kde=True,
-                    title=f"{size} uniformly-distributed eigens",
-                )
             mean_d, mean_p = np.mean(stats), np.mean(p_vals)
             d_perc = np.percentile(stats, [5, 95])
             p_perc = np.percentile(p_vals, [5, 95])
@@ -303,12 +297,6 @@ def test_nnsd_kolmogorov(capsys: Any) -> None:
                 goe = goe_spacings[i]
                 D, p_val = ks_2samp(compare_spacings, goe)
                 stats.append(D), p_vals.append(p_val * 1000)  # type: ignore
-                plotSpacings(
-                    unfolded,
-                    bins=20,
-                    kde=True,
-                    title=f"{size} normally-distributed eigens",
-                )
 
             mean_d, mean_p = np.mean(stats), np.mean(p_vals)
             d_perc = np.percentile(stats, [5, 95])
