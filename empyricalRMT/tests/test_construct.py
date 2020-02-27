@@ -2,7 +2,6 @@ import pytest
 
 from empyricalRMT.rmt.construct import fast_poisson_eigs
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.plot import _spacings as plotSpacings
 
 
 @pytest.mark.construct

@@ -21,4 +21,3 @@ def test_unfold_methods() -> None:
     print(unfolded.vals[-1])
     assert np.allclose(unfolded.vals[0], -2.473290621491799)
     assert np.allclose(unfolded.vals[-1], 504.2764217889801)
-

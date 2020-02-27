@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.construct import _generate_GOE_matrix, generate_eigs
+from empyricalRMT.rmt.construct import generate_eigs
 from empyricalRMT.rmt.trim import TrimReport
 
 

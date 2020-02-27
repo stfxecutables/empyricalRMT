@@ -1,11 +1,7 @@
-import numpy as np
-import pandas as pd
 import pytest
 
-from empyricalRMT.rmt.construct import generate_eigs, goe_unfolded
+from empyricalRMT.rmt.construct import generate_eigs
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.plot import _spectral_rigidity
-from empyricalRMT.rmt.unfold import Unfolded
 
 
 @pytest.mark.plot

@@ -10,7 +10,6 @@ import empyricalRMT.rmt.ensemble as ensemble
 
 from empyricalRMT.rmt.construct import generate_eigs
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.plot import _spacings as plotSpacings
 
 
 @pytest.mark.plot
