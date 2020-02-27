@@ -12,10 +12,11 @@ from empyricalRMT.rmt.trim import TrimReport
 def test_init_sanity() -> None:
     for i in range(10):
         vals = generate_eigs(100)
-        trim = TrimReport(vals)
+        trim = TrimReport(vals, poly_degrees=[5, 7], max_iters=5)
         assert np.allclose(trim._untrimmed, vals)
-        assert isinstance(trim._unfold_info, pd.DataFrame)
-        assert isinstance(trim._all_unfolds, pd.DataFrame)
+        assert isinstance(trim.unfold_info, pd.DataFrame)
+        assert isinstance(trim.unfoldings, list)
+        assert isinstance(trim.unfoldings[0], pd.DataFrame)
         assert isinstance(trim._trim_steps, list)
         assert isinstance(trim._trim_steps[0], pd.DataFrame)
 

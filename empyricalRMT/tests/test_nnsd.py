@@ -44,5 +44,9 @@ def test_semicircle(
     else:
         eigs = generate_eigs(matsize) if new_eigs else load_eigs(matsize)
     _raw_eig_dist(
-        eigs, bins=100, title="Wigner Semicircle PLotting Test", kde=False, mode="block"
+        eigs,
+        bins=100,
+        title="Wigner Semicircle PLotting Test",
+        kde=False,
+        mode="noblock",
     )

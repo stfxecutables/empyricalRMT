@@ -87,12 +87,13 @@ def test_step_fast() -> None:
         assert is_close(eigs, x_5)
 
 
+@pytest.mark.fast
 @pytest.mark.perf
 def test_step_fast_perf() -> None:
     step_fasts, step_slows, step_corrects = [], [], []
     for _ in range(5):
         eigs = np.sort(np.random.uniform(-10000, 10000, 10000))
-        x = np.linspace(eigs[0], eigs[-1], 50000)
+        x = np.linspace(eigs[0], eigs[-1], 5000)
 
         start = time.time()
         for _ in range(100):
@@ -148,6 +149,7 @@ def test_slope() -> None:
         assert np.allclose(b, b_comp)
 
 
+@pytest.mark.fast
 @pytest.mark.math
 def test_integrate_trapz() -> None:
     """Just some extremely non-rigorous but basic sanity checks."""
@@ -181,6 +183,7 @@ def test_integrate_trapz() -> None:
         assert np.allclose(int_comp, int_exp)
 
 
+@pytest.mark.fast
 @pytest.mark.math
 def test_integrate_simps() -> None:
     """Just some extremely non-rigorous but basic sanity checks."""
@@ -219,6 +222,7 @@ def test_integrate_simps() -> None:
         assert np.allclose(int_comp, int_exp)
 
 
+@pytest.mark.fast
 @pytest.mark.perf
 def test_integrate_perf_trapz() -> None:
     import time
@@ -247,6 +251,7 @@ def test_integrate_perf_trapz() -> None:
     print("Scipy trapz integration time: ", total_lib)
 
 
+@pytest.mark.fast
 @pytest.mark.perf
 def test_integrate_perf_simps() -> None:
     import time
@@ -275,6 +280,7 @@ def test_integrate_perf_simps() -> None:
     print("Scipy simps integration time: ", total_lib)
 
 
+@pytest.mark.fast
 @pytest.mark.math
 def test_tridiag() -> None:
     sizes = [100, 1000, 2000, 5000, 6000]
