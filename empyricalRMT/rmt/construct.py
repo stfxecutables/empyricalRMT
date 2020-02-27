@@ -3,7 +3,7 @@ import time
 
 from numpy import ndarray
 from scipy.sparse import diags
-from typing import Any, Union
+from typing import Union
 from typing_extensions import Literal
 
 from empyricalRMT.rmt.unfold import Unfolded
@@ -68,53 +68,53 @@ def generate_eigs(
 
 def goe_unfolded(matsize: int, log: bool = False, average: int = 1) -> Unfolded:
     raise NotImplementedError("This feature is still a work in progress.")
-    N = matsize
-    M = _generate_GOE_tridiagonal(matsize)
-    # std of off-diagonals
-    # a_matrix = _generate_GOE_matrix(size=matsize)
-    # a = 2 * np.sqrt(N) * np.std(a_matrix[np.array(1 - np.eye(N), dtype=bool)], ddof=1)
-    a = 2 * np.sqrt(N)
-    # a = 1
+    # N = matsize
+    # M = _generate_GOE_tridiagonal(matsize)
+    # # std of off-diagonals
+    # # a_matrix = _generate_GOE_matrix(size=matsize)
+    # # a = 2 * np.sqrt(N) * np.std(a_matrix[np.array(1 - np.eye(N), dtype=bool)], ddof=1)
+    # a = 2 * np.sqrt(N)
+    # # a = 1
 
-    def explicit(E: float) -> Any:
-        """
-        See the section on Asymptotic Level Densities for the closed form
-        function below.
+    # def explicit(E: float) -> Any:
+    #     """
+    #     See the section on Asymptotic Level Densities for the closed form
+    #     function below.
 
-        Abul-Magd, A. A., & Abul-Magd, A. Y. (2014). Unfolding of the spectrum
-        for chaotic and mixed systems. Physica A: Statistical Mechanics and its
-        Applications, 396, 185-194, section A
-        """
-        if np.abs(E) <= a:
-            t1 = (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
-            t2 = (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
-            return 0.5 + t1 + t2
-        if E < a:
-            return 0
-        if E > a:
-            return 1
+    #     Abul-Magd, A. A., & Abul-Magd, A. Y. (2014). Unfolding of the spectrum
+    #     for chaotic and mixed systems. Physica A: Statistical Mechanics and its
+    #     Applications, 396, 185-194, section A
+    #     """
+    #     if np.abs(E) <= a:
+    #         t1 = (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
+    #         t2 = (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
+    #         return 0.5 + t1 + t2
+    #     if E < a:
+    #         return 0
+    #     if E > a:
+    #         return 1
 
-        raise ValueError("Unreachable!")
+    #     raise ValueError("Unreachable!")
 
-    all_eigs = []
-    all_unfolded = []
-    for i in range(average):
-        if log:
-            print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
-        eigs = np.linalg.eigvalsh(M)
-        if log:
-            print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
+    # all_eigs = []
+    # all_unfolded = []
+    # for i in range(average):
+    #     if log:
+    #         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
+    #     eigs = np.linalg.eigvalsh(M)
+    #     if log:
+    #         print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
 
-        unfolded = np.empty([N])
-        for i in range(N):
-            # multiply N here to prevent overflow issues
-            unfolded[i] = N * explicit(eigs[i])
-        all_eigs.append(eigs)
-        all_unfolded.append(unfolded)
-    all_eigs = np.mean(np.array(all_eigs), axis=0)
-    all_unfolded = np.mean(np.array(all_unfolded), axis=0)
+    #     unfolded = np.empty([N])
+    #     for i in range(N):
+    #         # multiply N here to prevent overflow issues
+    #         unfolded[i] = N * explicit(eigs[i])
+    #     all_eigs.append(eigs)
+    #     all_unfolded.append(unfolded)
+    # all_eigs = np.mean(np.array(all_eigs), axis=0)
+    # all_unfolded = np.mean(np.array(all_unfolded), axis=0)
 
-    return Unfolded(originals=all_eigs, unfolded=all_unfolded)
+    # return Unfolded(originals=all_eigs, unfolded=all_unfolded)
 
 
 def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
