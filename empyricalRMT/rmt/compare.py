@@ -4,9 +4,13 @@ import pandas as pd
 from numba import jit
 from numpy import ndarray
 from pandas import DataFrame
-from typing import Any, List, Tuple
+from statsmodels.nonparametric.kde import KDEUnivariate as KDE
+from typing import Any, List, NewType, Tuple
+from typing_extensions import Literal
 
 from empyricalRMT._validate import make_1d_array
+
+Metric = Literal["mad", "msqd", "corr"]
 
 
 class Compare:
@@ -113,7 +117,9 @@ class Compare:
         return data
 
     @staticmethod
-    def __histograms(curve1: ndarray, curve2: ndarray, n_bins: int = 10) -> Tuple[ndarray, ndarray, ndarray]:
+    def __histograms(
+        curve1: ndarray, curve2: ndarray, n_bins: int = 10
+    ) -> Tuple[ndarray, ndarray, ndarray]:
         """Compute a histogram over [min(curve1, curve2), max(curve1, curve2)].
 
         Returns
@@ -127,7 +133,9 @@ class Compare:
         """
         vals1 = np.sort(curve1)
         vals2 = np.sort(curve2)
-        endpoints = np.linspace(min(vals1[0], vals2[0]), max(vals1[-1], vals2[-1]), n_bins + 1)
+        endpoints = np.linspace(
+            min(vals1[0], vals2[0]), max(vals1[-1], vals2[-1]), n_bins + 1
+        )
         n, counts1, counts2 = 0, np.arange(n_bins), np.arange(n_bins)
         for val in vals1:
             if val < endpoints[n]:
@@ -153,8 +161,10 @@ class Compare:
         curves = self.curves
         labels = self.labels
 
-        if len(curves) <= 1:
+        if len(curves) < 1:
             raise ValueError("There must be more than one curve to compare.")
+        if len(curves) == 1 and self.base_curve is None:
+            raise ValueError("There must be more than one curve to compare to the base curve.")
         if len(self.curves) != len(labels):
             raise ValueError("`labels` must have the same length as `curves`.")
 
