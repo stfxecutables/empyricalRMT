@@ -19,17 +19,20 @@ class Poisson:
 
     @staticmethod
     def spectral_rigidity(
-        L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50
     ) -> ndarray:
-        L = np.linspace(L_min, L_max, num_L)
+        L = np.linspace(min_L, max_L, L_grid_size)
         return L / 15 / 2
 
     @staticmethod
     def level_variance(
         unfolded: "Unfolded",
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
-        L = np.linspace(L_min, L_max, num_L)
+        L = np.linspace(min_L, max_L, L_grid_size)
         s = L / np.mean(spacings)
         return s / 2
 
@@ -48,9 +51,12 @@ class GOE:
     @staticmethod
     def spectral_rigidity(
         unfolded: "Unfolded",
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
-        L = np.linspace(L_min, L_max, num_L)
+        L = np.linspace(min_L, max_L, L_grid_size)
         s = L / np.mean(spacings)
         p, y = np.pi, np.euler_gamma
         return (1 / (p ** 2)) * (np.log(2 * p * s) + y - 5 / 4 - (p ** 2) / 8)
@@ -63,7 +69,7 @@ class GOE:
         L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
-        L = np.linspace(L_min, L_max, num_L)
+        L = np.linspace(min_L, max_L, L_grid_size)
         s = L / np.mean(spacings)
         p = np.pi
         return (2 / (p ** 2)) * (np.log(2 * p * s) + np.euler_gamma + 1 - (p ** 2) / 8)
@@ -85,7 +91,7 @@ class GUE:
         L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
-        L = np.linspace(L_min, L_max, num_L)
+        L = np.linspace(min_L, max_L, L_grid_size)
         s = L / np.mean(spacings)
         p = np.pi
         return (1 / (2 * (p ** 2))) * (np.log(2 * p * s) + np.euler_gamma - 5 / 4)
@@ -98,7 +104,7 @@ class GUE:
         L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
-        L = np.linspace(L_min, L_max, num_L)
+        L = np.linspace(min_L, max_L, L_grid_size)
         s = L / np.mean(spacings)
         p = np.pi
         return (1 / (p ** 2)) * (np.log(2 * p * s) + np.euler_gamma + 1)
@@ -123,7 +129,7 @@ class GSE:
         L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
-        L = np.linspace(L_min, L_max, num_L)
+        L = np.linspace(min_L, max_L, L_grid_size)
         s = L / np.mean(spacings)
         p, y = np.pi, np.euler_gamma
         return (1 / (4 * (p ** 2))) * (np.log(4 * p * s) + y - 5 / 4 + (p ** 2) / 8)
@@ -136,7 +142,7 @@ class GSE:
         L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
-        L = np.linspace(L_min, L_max, num_L)
+        L = np.linspace(min_L, max_L, L_grid_size)
         s = L / np.mean(spacings)
         p, y = np.pi, np.euler_gamma
         return (1 / (2 * (p ** 2))) * (np.log(4 * p * s) + y + 1 + (p ** 2) / 8)
