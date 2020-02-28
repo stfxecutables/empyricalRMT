@@ -49,6 +49,19 @@ class GOE:
         return ((p * s) / 2) * np.exp(-(p / 4) * s * s)
 
     @staticmethod
+    def nnnsd(unfolded: "Unfolded", n_points: int = 1000) -> ndarray:
+        """return expected spacings over the range [spacings.min(), spacings.max()], where
+        `spacings` are the spacings calculated from `unfolded`
+        """
+        spacings = unfolded.vals[2:] - unfolded.vals[:-2]
+        s = np.linspace(spacings.min(), spacings.max(), n_points)
+        p = np.pi
+        # fmt: off
+        goe = (2**18 / (3**6 * p**3)) * (s**4) * np.exp(-((64 / (9 * p)) * (s * s)))
+        # fmt: on
+        return goe
+
+    @staticmethod
     def spectral_rigidity(
         unfolded: "Unfolded",
         min_L: float = 0.5,

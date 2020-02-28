@@ -4,15 +4,20 @@ import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
+from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing import List, Optional, Tuple
 from typing_extensions import Literal
 
 import empyricalRMT.rmt.plot as plot
 
 from empyricalRMT.rmt._eigvals import EigVals
+from empyricalRMT.rmt.compare import Metric, Compare
+from empyricalRMT.rmt.ensemble import GOE
 from empyricalRMT.rmt.observables.levelvariance import level_number_variance
 from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
 from empyricalRMT.rmt.plot import _next_spacings, PlotMode, PlotResult
+
+Observables = Literal["nnsd", "nnnsd", "rigidity", "levelvar"]
 
 
 class Unfolded(EigVals):
@@ -122,6 +127,115 @@ class Unfolded(EigVals):
             show_progress=show_progress,
         )
         return DataFrame({"L": L, "sigma": sigma})
+
+    def goe_compare(
+        self,
+        observables: List[Observables] = ["nnsd", "nnnsd", "rigidity", "levelvar"],
+        metric: Metric = "msqd",
+        spacings: Tuple[float, float] = (0.5, 2.5),
+        kde_gridsize: int = 5000,
+        L_rigidity: ndarray = np.arange(2, 50, 0.5),
+        L_levelvar: ndarray = np.arange(1, 20, 0.5),
+        show_progress: bool = False,
+    ) -> pd.DataFrame:
+        """Compute various spectral observables for the unfolded eigenvalues
+        and compare those computed observables to the those expected for a GOE
+        ensemble to get indices of similarity.
+
+        Parameters
+        ----------
+        observables: List[Observables]
+            The observables to use for comparison.
+        metric: "msqd" | "mad" | "corr"
+            The metric (used here non-rigorously) used to compute the
+            similiarities. Histograms will be compared via their respective
+            kernel density estimate.
+        spacings: (float, float)
+            The range (min, max) spacing values to use for comparing kernel
+            density estimates to the expected goe density. Default (0.5, 2.5).
+        L_rigidity: ndarray
+            The values of L for which to calculate and compare the spectral
+            rigidity.
+        L_levelvar: ndarray
+            The values of L for which to calculate and compare the level number
+            variance.
+
+        Returns
+        -------
+        similarities: DataFrame
+            The similarities for each value of `observables`.
+
+        Notes
+        -----
+        The kernel density estimate will use the full set of unfolded
+        eigenvalues, but smoothing assumptions means KDE(s), the kernel density
+        estimate of p(s) (the spacings density), will be quite inaccurate as
+        s -> 0. So e.g. for a Poisson / Gaussian Diagonal Ensemble of size
+        N <= 5000, KDE(s) for s <= 0.5 will quite often be closer to the
+        expected density for GOE matrices than it will be to GDE matrices. This
+        introduces noise and spuriously increases the apparent similarity to the
+        GOE, and so a sensible minimum should be set. Likwise, for large s,
+        there may be fluctuations due to noise / unusually large spacings,
+        further reducing the utility of any similarity index.
+
+        The default values of 0.5 and 2.5 for the spacings minimum and maximum,
+        respectively, were chosen to be conservative: even for small N (~100),
+        KDE(s) for 0.5 < s < 2.5 should generally not be deviating wildly from
+        where it "should" be, regardless of whether the matrix is sampled from
+        the GOE or Poisson / GDE. As N increases, the bounds can be increased
+        in both directions.
+        """
+
+        def compare(
+            expected: ndarray, curve: ndarray, name: str, metric: Metric
+        ) -> np.float64:
+            comp = Compare(
+                curves=[curve], labels=[name], base_curve=expected, base_label="exp"
+            )
+            res = None
+            if metric == "mad":
+                res = comp.mean_abs_difference()
+            elif metric == "msqd":
+                res = comp.mean_sq_difference()
+            elif metric == "corr":
+                res = comp.correlate()
+            else:
+                raise ValueError(
+                    "Invalid metric. Must be one of ['mad', 'msqd', 'corr']."
+                )
+            return np.float64(res["exp"][name])
+
+        df = pd.DataFrame(index=[metric], columns=observables)
+        if "nnsd" in observables:
+            nnsd = self.__get_kde_values(kde_gridsize=kde_gridsize)
+            nnsd_exp = GOE.nnsd(self, n_points=kde_gridsize)
+            df["nnsd"] = compare(nnsd_exp, nnsd, "nnsd", metric)
+
+        if "nnnsd" in observables:
+            nnnsd = self.__get_kde_values(nnnsd=True, kde_gridsize=kde_gridsize)
+            nnnsd_exp = GOE.nnnsd(self, n_points=kde_gridsize)
+            df["nnnsd"] = compare(nnnsd_exp, nnnsd, "nnnsd", metric)
+
+        if "rigidity" in observables:
+            min_L, max_L, n_L = L_rigidity.min(), L_rigidity.max(), len(L_rigidity)
+            rigidity = self.spectral_rigidity(
+                min_L=min_L, max_L=max_L, L_grid_size=n_L, show_progress=show_progress
+            )["delta"]
+            rigidity_exp = GOE.spectral_rigidity(
+                self, min_L=min_L, max_L=max_L, L_grid_size=n_L
+            )
+            df["rigidity"] = compare(rigidity_exp, rigidity, "rigidity", metric)
+
+        if "levelvar" in observables:
+            min_L, max_L, n_L = L_levelvar.min(), L_levelvar.max(), len(L_levelvar)
+            levelvar = self.level_variance(
+                min_L=min_L, max_L=max_L, L_grid_size=n_L, show_progress=show_progress
+            )["sigma"]
+            levelvar_exp = GOE.level_variance(
+                self, min_L=min_L, max_L=max_L, L_grid_size=n_L
+            )
+            df["levelvar"] = compare(levelvar_exp, levelvar, "levelvar", metric)
+        return df
 
     def plot_nnsd(
         self,
@@ -372,3 +486,15 @@ class Unfolded(EigVals):
             ensembles=ensembles,
         )
         return L, sigma, plot_result
+
+    def __get_kde_values(
+        self, nnnsd: bool = False, kde_gridsize: int = 1000
+    ) -> np.array:
+        spacings = self.vals[2:] - self.vals[:-2] if nnnsd else self.spacings
+        kde = KDE(spacings)
+        kde.fit(kernel="gau", bw="scott", cut=0, fft=False, gridsize=kde_gridsize)
+        s = np.linspace(spacings[0], spacings[-1], kde_gridsize)
+        evaluated = np.empty_like(s)
+        for i, _ in enumerate(evaluated):
+            evaluated[i] = kde.evaluate(s[i])
+        return evaluated

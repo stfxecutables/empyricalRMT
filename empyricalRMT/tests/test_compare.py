@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 
 from empyricalRMT.rmt.compare import Compare
+from empyricalRMT.rmt.construct import generate_eigs
+from empyricalRMT.rmt.eigenvalues import Eigenvalues
 
 
 @pytest.mark.fast
@@ -167,3 +169,14 @@ def test_mad() -> None:
     assert df["threes"]["ones"] == 2.0
     assert df["ones"]["ones"] == 0.0
     assert df["threes"]["threes"] == 0.0
+
+
+@pytest.mark.fast
+def test_unfold_compare() -> None:
+    eigs = Eigenvalues(generate_eigs(2000))
+    unfolded = eigs.unfold(degree=13)
+    df = unfolded.goe_compare()
+    print(df)
+
+
+test_unfold_compare()
