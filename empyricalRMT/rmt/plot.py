@@ -344,7 +344,9 @@ def _spacings(
     plt.legend()
     # adjusting the right bounds can be necessary when / if there are
     # many large eigenvalue spacings
-    axes.set_xlim(left=0, right=np.percentile(_spacings, 99))
+    # axes.set_xlim(left=0, right=np.percentile(_spacings, 99))
+    axes.set_ylim(top=1.5, bottom=0)
+    axes.set_xlim(left=0, right=2.5)
 
     return _handle_plot_mode(mode, axes, outfile)
 
