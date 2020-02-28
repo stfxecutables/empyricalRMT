@@ -545,7 +545,8 @@ def _level_number_variance(
 
     L = df["L"]
     p, y = np.pi, np.euler_gamma
-    s = L / np.mean(unfolded[1:] - unfolded[:-1])
+    # s = L / np.mean(unfolded[1:] - unfolded[:-1])
+    s = L
 
     def exact(x: float) -> float:
         def f1(r: float) -> Any:

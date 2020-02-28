@@ -207,13 +207,17 @@ class Unfolded(EigVals):
 
         df = pd.DataFrame(index=[metric], columns=observables)
         if "nnsd" in observables:
-            nnsd = self.__get_kde_values(kde_gridsize=kde_gridsize)
-            nnsd_exp = GOE.nnsd(self, n_points=kde_gridsize)
+            nnsd = self.__get_kde_values(
+                spacings_range=spacings, kde_gridsize=kde_gridsize
+            )
+            nnsd_exp = GOE.nnsd(spacings_range=spacings, n_points=kde_gridsize)
             df["nnsd"] = compare(nnsd_exp, nnsd, "nnsd", metric)
 
         if "nnnsd" in observables:
-            nnnsd = self.__get_kde_values(nnnsd=True, kde_gridsize=kde_gridsize)
-            nnnsd_exp = GOE.nnnsd(self, n_points=kde_gridsize)
+            nnnsd = self.__get_kde_values(
+                spacings_range=spacings, nnnsd=True, kde_gridsize=kde_gridsize
+            )
+            nnnsd_exp = GOE.nnnsd(spacings_range=spacings, n_points=kde_gridsize)
             df["nnnsd"] = compare(nnnsd_exp, nnnsd, "nnnsd", metric)
 
         if "rigidity" in observables:
@@ -222,7 +226,7 @@ class Unfolded(EigVals):
                 min_L=min_L, max_L=max_L, L_grid_size=n_L, show_progress=show_progress
             )["delta"]
             rigidity_exp = GOE.spectral_rigidity(
-                self, min_L=min_L, max_L=max_L, L_grid_size=n_L
+                min_L=min_L, max_L=max_L, L_grid_size=n_L
             )
             df["rigidity"] = compare(rigidity_exp, rigidity, "rigidity", metric)
 
@@ -231,9 +235,7 @@ class Unfolded(EigVals):
             levelvar = self.level_variance(
                 min_L=min_L, max_L=max_L, L_grid_size=n_L, show_progress=show_progress
             )["sigma"]
-            levelvar_exp = GOE.level_variance(
-                self, min_L=min_L, max_L=max_L, L_grid_size=n_L
-            )
+            levelvar_exp = GOE.level_variance(min_L=min_L, max_L=max_L, L_grid_size=n_L)
             df["levelvar"] = compare(levelvar_exp, levelvar, "levelvar", metric)
         return df
 
@@ -488,13 +490,19 @@ class Unfolded(EigVals):
         return L, sigma, plot_result
 
     def __get_kde_values(
-        self, nnnsd: bool = False, kde_gridsize: int = 1000
+        self,
+        spacings_range: Tuple[float, float],
+        nnnsd: bool = False,
+        kde_gridsize: int = 1000,
     ) -> np.array:
-        spacings = self.vals[2:] - self.vals[:-2] if nnnsd else self.spacings
+        """Fit / derive the KDE using the entire set of unfolded values, but
+        evaluating only over the given `spacings_range`. """
+        spacings = np.sort(self.vals[2:] - self.vals[:-2]) if nnnsd else self.spacings
         kde = KDE(spacings)
-        kde.fit(kernel="gau", bw="scott", cut=0, fft=False, gridsize=kde_gridsize)
-        s = np.linspace(spacings[0], spacings[-1], kde_gridsize)
-        evaluated = np.empty_like(s)
-        for i, _ in enumerate(evaluated):
-            evaluated[i] = kde.evaluate(s[i])
+        kde.fit(kernel="gau", bw="scott", cut=0, fft=False, gridsize=10000)
+        s = np.linspace(spacings_range[0], spacings_range[1], kde_gridsize)
+        # evaluated = np.empty_like(s)
+        # for i, _ in enumerate(evaluated):
+        #     evaluated[i] = kde.evaluate(s[i])
+        evaluated = kde.evaluate(s)
         return evaluated

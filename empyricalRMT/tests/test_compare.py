@@ -173,10 +173,26 @@ def test_mad() -> None:
 
 @pytest.mark.fast
 def test_unfold_compare() -> None:
-    eigs = Eigenvalues(generate_eigs(2000))
+    print("\n")
+    print("=" * 80)
+    print("Testing for a GOE matrix")
+    eigs = Eigenvalues(generate_eigs(2000, seed=2))
     unfolded = eigs.unfold(degree=13)
-    df = unfolded.goe_compare()
+    df = unfolded.goe_compare(metric="msqd")
+    print(df)
+    df = unfolded.goe_compare(metric="mad")
+    print(df)
+    df = unfolded.goe_compare(metric="corr")
     print(df)
 
-
-test_unfold_compare()
+    print("\n")
+    print("=" * 80)
+    print("Testing for a Poisson / GDE matrix")
+    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    unfolded = eigs.unfold(degree=13)
+    df = unfolded.goe_compare(metric="msqd")
+    print(df)
+    df = unfolded.goe_compare(metric="mad")
+    print(df)
+    df = unfolded.goe_compare(metric="corr")
+    print(df)
