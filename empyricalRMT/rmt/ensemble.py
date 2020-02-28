@@ -1,12 +1,18 @@
 import numpy as np
 from numpy import ndarray
 
-from empyricalRMT.rmt.unfold import Unfolded
+
+# method to get around circular imports due to types
+# see https://www.stefaanlippens.net/circular-imports-type-hints-python.html
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from empyricalRMT.rmt.unfold import Unfolded
 
 
 class Poisson:
     @staticmethod
-    def spacing_distribution(unfolded: Unfolded) -> ndarray:
+    def spacing_distribution(unfolded: "Unfolded") -> ndarray:
         spacings = unfolded.spacings
         s = np.linspace(spacings.min(), spacings.max(), 10000)
         return np.exp(-s)
@@ -20,7 +26,7 @@ class Poisson:
 
     @staticmethod
     def level_variance(
-        unfolded: Unfolded, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+        unfolded: "Unfolded",
     ) -> ndarray:
         spacings = unfolded.spacings
         L = np.linspace(L_min, L_max, num_L)
@@ -30,7 +36,7 @@ class Poisson:
 
 class GOE:
     @staticmethod
-    def nnsd(unfolded: Unfolded, n_points: int = 1000) -> ndarray:
+    def nnsd(unfolded: "Unfolded", n_points: int = 1000) -> ndarray:
         """return expected spacings over the range [spacings.min(), spacings.max()], where
         `spacings` are the spacings calculated from `unfolded`
         """
@@ -41,7 +47,7 @@ class GOE:
 
     @staticmethod
     def spectral_rigidity(
-        unfolded: Unfolded, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+        unfolded: "Unfolded",
     ) -> ndarray:
         spacings = unfolded.spacings
         L = np.linspace(L_min, L_max, num_L)
@@ -51,7 +57,10 @@ class GOE:
 
     @staticmethod
     def level_variance(
-        unfolded: Unfolded, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+        unfolded: "Unfolded",
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
         L = np.linspace(L_min, L_max, num_L)
@@ -62,7 +71,7 @@ class GOE:
 
 class GUE:
     @staticmethod
-    def spacing_distribution(unfolded: Unfolded) -> ndarray:
+    def spacing_distribution(unfolded: "Unfolded") -> ndarray:
         spacings = unfolded.spacings
         s = np.linspace(spacings.min(), spacings.max(), 10000)
         p = np.pi
@@ -70,7 +79,10 @@ class GUE:
 
     @staticmethod
     def spectral_rigidity(
-        unfolded: Unfolded, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+        unfolded: "Unfolded",
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
         L = np.linspace(L_min, L_max, num_L)
@@ -80,7 +92,10 @@ class GUE:
 
     @staticmethod
     def level_variance(
-        unfolded: Unfolded, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+        unfolded: "Unfolded",
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
         L = np.linspace(L_min, L_max, num_L)
@@ -91,7 +106,7 @@ class GUE:
 
 class GSE:
     @staticmethod
-    def spacing_distribution(unfolded: Unfolded) -> ndarray:
+    def spacing_distribution(unfolded: "Unfolded") -> ndarray:
         spacings = unfolded.spacings
         s = np.linspace(spacings.min(), spacings.max(), 10000)
         p = np.pi
@@ -102,7 +117,10 @@ class GSE:
 
     @staticmethod
     def spectral_rigidity(
-        unfolded: Unfolded, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+        unfolded: "Unfolded",
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
         L = np.linspace(L_min, L_max, num_L)
@@ -112,7 +130,10 @@ class GSE:
 
     @staticmethod
     def level_variance(
-        unfolded: Unfolded, L_min: float = 0.5, L_max: float = 20, num_L: int = 50
+        unfolded: "Unfolded",
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
     ) -> ndarray:
         spacings = unfolded.spacings
         L = np.linspace(L_min, L_max, num_L)
