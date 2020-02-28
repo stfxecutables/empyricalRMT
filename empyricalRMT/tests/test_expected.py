@@ -56,7 +56,7 @@ def test_nnsd_mad_msd(capsys) -> None:  # type: ignore
                 unfolded = eigs.unfold(degree=9)
                 spacings = unfolded.spacings
                 obs = _get_kde_values(spacings, 10000)
-                exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
+                exp = ensemble.GOE.nnsd(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
                 mads.append(mad), msqds.append(msd), all_msqds.append(  # type: ignore
                     msd
@@ -111,7 +111,7 @@ def test_nnsd_mad_msd(capsys) -> None:  # type: ignore
                 unfolded = eigs.unfold(degree=9)
                 spacings = unfolded.spacings
                 obs = _get_kde_values(spacings, 10000)
-                exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
+                exp = ensemble.GOE.nnsd(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
                 mads.append(mad), msqds.append(msd), all_msqds.append(  # type: ignore
                     msd
@@ -165,7 +165,7 @@ def test_nnsd_mad_msd(capsys) -> None:  # type: ignore
                 unfolded = eigs.unfold(degree=9)
                 spacings = unfolded.spacings
                 obs = _get_kde_values(spacings, 10000)
-                exp = ensemble.GOE.spacing_distribution(unfolded, 10000)
+                exp = ensemble.GOE.nnsd(unfolded, 10000)
                 mad, msd = _mad(obs, exp), _msd(obs, exp)
                 mads.append(mad), msqds.append(msd), all_msqds.append(  # type: ignore
                     msd

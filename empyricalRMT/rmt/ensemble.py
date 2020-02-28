@@ -30,7 +30,7 @@ class Poisson:
 
 class GOE:
     @staticmethod
-    def spacing_distribution(unfolded: Unfolded, n_points: int = 1000) -> ndarray:
+    def nnsd(unfolded: Unfolded, n_points: int = 1000) -> ndarray:
         """return expected spacings over the range [spacings.min(), spacings.max()], where
         `spacings` are the spacings calculated from `unfolded`
         """
