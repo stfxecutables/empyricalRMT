@@ -3,8 +3,10 @@ import time
 
 from numpy import ndarray
 from scipy.sparse import diags
+from scipy.linalg import eigvalsh_tridiagonal
 from typing import Union
 from typing_extensions import Literal
+from warnings import warn
 
 from empyricalRMT.rmt.unfold import Unfolded
 from empyricalRMT.utils import eprint
@@ -40,7 +42,9 @@ def generate_eigs(
         The kind of matrix to generate.
     """
     if kind == "poisson":
-        M = _generate_poisson(matsize, seed)
+        np.random.seed(seed)
+        # eigenvalues of diagonal are just the entries
+        return np.sort(np.random.standard_normal(matsize))
     elif kind == "uniform":
         raise Exception("UNIMPLEMENTED!")
     elif kind == "gue":
@@ -191,6 +195,39 @@ def _generate_GOE_tridiagonal(size: int = 100, seed: int = None) -> ndarray:
     ]
     M = diags(diagonals, [0, -1, 1])
     return M.toarray()
+
+
+def _generate_GOE_tridiagonal_direct(
+    size: int = 100, seed: int = None, dowarn: bool = True
+) -> ndarray:
+    """See: Edelman, A., Sutton, B. D., & Wang, Y. (2014).
+    Random matrix theory, numerical computation and applications.
+    Modern Aspects of Random Matrix Theory, 72, 53.
+    """
+    if dowarn:
+        warn(
+            "While this method is fast, and uses the least memory, it appears that"
+            "`eigvalsh_tridiagonal` is considerably less precise, and will result"
+            "in significant deviations from the expected values for the long range"
+            "spectral observables (e.g. spectral rigidity, level number variance)."
+        )
+    if seed is not None:
+        np.random.seed(seed)
+    size = size + 2
+    chi_range = size - 1 - np.arange(size - 1)
+    chi = np.sqrt(np.random.chisquare(chi_range))
+    diagonal = np.random.normal(0, np.sqrt(2), size) / np.sqrt(2)
+    eigs = eigvalsh_tridiagonal(
+        diagonal,
+        chi,
+        # select="a",
+        check_finite=False,
+        select="i",
+        select_range=(1, size - 2),
+        lapack_driver="stebz",
+        tol=4 * np.finfo(np.float64).eps,
+    )
+    return eigs
 
 
 def _generate_poisson(size: int = 100, seed: int = None) -> ndarray:
