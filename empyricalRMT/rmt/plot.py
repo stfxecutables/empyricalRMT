@@ -268,6 +268,8 @@ def _spacings(
     unfolded: ndarray,
     bins: int = 50,
     kde: bool = True,
+    trim: float = 0.0,
+    trim_kde: bool = False,
     title: str = "Unfolded Spacing Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
@@ -285,6 +287,12 @@ def _spacings(
         If False (default), do not display a kernel density estimate. If true, use
         [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
         with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+    trim: float
+        If True, only use spacings <= `trim` for computing the KDE and plotting.
+        Useful for when large spacings distort the histogram.
+    trim_kde: bool
+        If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
+        KDE using all available spacings.
     title: string
         The plot title string
     mode: "block" | "noblock" | "save" | "return"
@@ -296,7 +304,7 @@ def _spacings(
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
     ensembles: ["poisson", "goe", "gue", "gse"]
-        Which ensembles to display the expected spectral rigidity curves for comparison against.
+        Which ensembles to display the expected NNSD curves for.
 
     Returns
     -------
@@ -305,6 +313,9 @@ def _spacings(
     """
     _setup_plotting()
     _spacings = np.sort(unfolded[1:] - unfolded[:-1])
+    all_spacings = np.copy(_spacings)
+    if trim > 0.0:
+        _spacings = _spacings[_spacings <= trim]
     # Generate expected distributions for classical ensembles
     p = np.pi
     s = np.linspace(_spacings.min(), _spacings.max(), 10000)
@@ -338,7 +349,10 @@ def _spacings(
     # fmt: on
 
     if kde is True:
-        _kde_plot(_spacings, s, axes)
+        if trim_kde:
+            _kde_plot(_spacings, s, axes)
+        else:
+            _kde_plot(all_spacings, s, axes)
 
     plt.ylabel("Density p(s)")
     plt.title(title)
@@ -361,6 +375,7 @@ def _next_spacings(
     title: str = "next Nearest-Neigbors Spacing Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
+    ensembles: List[str] = ["goe", "poisson"],
 ) -> PlotResult:
     """Plots a histogram of the next Nearest-Neighbors Spacing Distribution
 
@@ -390,6 +405,8 @@ def _next_spacings(
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+    ensembles: List["poisson", "goe"]
+        Which ensembles to display the expected next-NNSD curves for.
 
     Returns
     -------
@@ -405,14 +422,6 @@ def _next_spacings(
     p = np.pi
     s_min, s_max = _spacings.min(), _spacings.max()
     s = np.linspace(s_min, s_max, 10000)
-    # see:
-    # Dettmann, C. P., Georgiou, O., & Knight, G. (2017).
-    # Spectral statistics of random geometric graphs.
-    # EPL (Europhysics Letters), 118(1), 18003.
-    # doi:10.1209/0295-5075/118/18003, pp10, Equation. 11
-    # for this expected distribution formula
-    poisson = Poisson.nnnsd(spacings=s)
-    goe = (2 ** 18 / (3 ** 6 * p ** 3)) * (s ** 4) * np.exp(-((64 / (9 * p)) * (s * s)))
 
     axes = sbn.distplot(
         _spacings,
@@ -430,11 +439,15 @@ def _next_spacings(
         else:
             _kde_plot(all_spacings, s, axes)
 
-    goe = axes.plot(s, goe, label="Gaussian Orthogonal")
-    plt.setp(goe, color="#FD8208")
+    if "goe" in ensembles:
+        goe = GOE.nnnsd(spacings=s)
+        goe = axes.plot(s, goe, label="Gaussian Orthogonal")
+        plt.setp(goe, color="#FD8208")
 
-    poisson = axes.plot(s, poisson, label="Poisson")
-    plt.setp(poisson, color="#08FD4F")
+    if "poisson" in ensembles:
+        poisson = Poisson.nnnsd(spacings=s)
+        poisson = axes.plot(s, poisson, label="Poisson")
+        plt.setp(poisson, color="#08FD4F")
 
     plt.ylabel("Density p(s)")
     plt.title(title)

@@ -12,7 +12,7 @@ import empyricalRMT.rmt.plot as plot
 
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.compare import Metric, Compare
-from empyricalRMT.rmt.ensemble import Ensemble, GOE, Poisson
+from empyricalRMT.rmt.ensemble import Ensemble
 from empyricalRMT.rmt.observables.levelvariance import level_number_variance
 from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
 from empyricalRMT.rmt.plot import _next_spacings, PlotMode, PlotResult
@@ -249,6 +249,8 @@ class Unfolded(EigVals):
         self,
         bins: int = 50,
         kde: bool = True,
+        trim: float = 0.0,
+        trim_kde: bool = False,
         title: str = "Unfolded Spacing Distribution",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -266,6 +268,12 @@ class Unfolded(EigVals):
             If False (default), do not display a kernel density estimate. If true, use
             [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
             with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+        trim: float
+            If True, only use spacings <= `trim` for computing the KDE and plotting.
+            Useful for when large spacings distort the histogram.
+        trim_kde: bool
+            If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
+            KDE using all available spacings.
         title: string
             The plot title string
         mode: "block" | "noblock" | "save" | "return"
@@ -284,9 +292,12 @@ class Unfolded(EigVals):
         (fig, axes): (Figure, Axes)
             The handles to the matplotlib objects, only if `mode` is "return".
         """
-        return self.plot_spacings(
+        return _next_spacings(
+            unfolded=self.vals,
             bins=bins,
             kde=kde,
+            trim=trim,
+            trim_kde=trim_kde,
             title=title,
             mode=mode,
             outfile=outfile,
@@ -302,6 +313,7 @@ class Unfolded(EigVals):
         title: str = "next Nearest-Neigbors Spacing Distribution",
         mode: PlotMode = "block",
         outfile: Path = None,
+        ensembles: List[str] = ["goe", "poisson"],
     ) -> PlotResult:
         """Plots a histogram of the next Nearest-Neighbors Spacing Distribution
 
@@ -331,6 +343,8 @@ class Unfolded(EigVals):
         outfile: Path
             If mode="save", save generated plot to Path specified in `outfile` argument.
             Intermediate directories will be created if needed.
+        ensembles: List["poisson", "goe"]
+            Which ensembles to display the expected next-NNSD curves for.
 
         Returns
         -------
@@ -346,6 +360,7 @@ class Unfolded(EigVals):
             title=title,
             mode=mode,
             outfile=outfile,
+            ensembles=ensembles,
         )
 
     def plot_spectral_rigidity(

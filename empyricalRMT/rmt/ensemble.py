@@ -121,6 +121,12 @@ class GOE(_Ensemble):
     ) -> ndarray:
         """return expected spacings over the range [spacings.min(), spacings.max()], where
         `spacings` are the spacings calculated from `unfolded`
+
+        Notes
+        -----
+        See Dettmann, C. P., Georgiou, O., & Knight, G. (2017). Spectral
+        statistics of random geometric graphs. EPL (Europhysics Letters),
+        118(1), 18003. doi:10.1209/0295-5075/118/18003, pp10, Equation. 11
         """
         # remember, we need to scale by the mean spacing, which in the case of
         # the *next* NNSD, is 2, and not 1. So divide by two below
