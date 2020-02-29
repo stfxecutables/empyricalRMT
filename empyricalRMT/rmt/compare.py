@@ -164,7 +164,9 @@ class Compare:
         if len(curves) < 1:
             raise ValueError("There must be more than one curve to compare.")
         if len(curves) == 1 and self.base_curve is None:
-            raise ValueError("There must be more than one curve to compare to the base curve.")
+            raise ValueError(
+                "There must be more than one curve to compare to the base curve."
+            )
         if len(self.curves) != len(labels):
             raise ValueError("`labels` must have the same length as `curves`.")
 
