@@ -396,7 +396,7 @@ class Eigenvalues(EigVals):
             spline_smooth=spline_smooth,
             emd_detrend=emd_detrend,
         )
-        return Unfolded(originals=eigs, unfolded=unfolded)
+        return Unfolded(originals=eigs, unfolded=np.sort(unfolded))
 
     def unfold_goe(self, a: float = None) -> Unfolded:
         # eigs = self.eigs
