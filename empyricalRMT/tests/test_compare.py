@@ -4,6 +4,7 @@ import pytest
 from empyricalRMT.rmt.compare import Compare
 from empyricalRMT.rmt.construct import generate_eigs
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
+from empyricalRMT.rmt.ensemble import GOE, GDE
 
 
 @pytest.mark.fast
@@ -175,24 +176,44 @@ def test_mad() -> None:
 def test_unfold_compare() -> None:
     print("\n")
     print("=" * 80)
-    print("Testing for a GOE matrix")
+    print("Comparing a GOE matrix to GOE")
+    print("=" * 80)
     eigs = Eigenvalues(generate_eigs(2000, seed=2))
     unfolded = eigs.unfold(degree=13)
-    df = unfolded.goe_compare(metric="msqd")
-    print(df)
-    df = unfolded.goe_compare(metric="mad")
-    print(df)
-    df = unfolded.goe_compare(metric="corr")
+    df = unfolded.ensemble_compare(ensemble=GOE, metric="msqd")
+    df = df.append(unfolded.ensemble_compare(ensemble=GOE, metric="mad"))
+    df = df.append(unfolded.ensemble_compare(ensemble=GOE, metric="corr"))
     print(df)
 
     print("\n")
     print("=" * 80)
-    print("Testing for a Poisson / GDE matrix")
+    print("Comparing a Poisson / GDE matrix to GOE")
+    print("=" * 80)
     eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
     unfolded = eigs.unfold(degree=13)
-    df = unfolded.goe_compare(metric="msqd")
+    df = unfolded.ensemble_compare(ensemble=GOE, metric="msqd")
+    df = df.append(unfolded.ensemble_compare(ensemble=GOE, metric="mad"))
+    df = df.append(unfolded.ensemble_compare(ensemble=GOE, metric="corr"))
     print(df)
-    df = unfolded.goe_compare(metric="mad")
+
+    print("\n")
+    print("=" * 80)
+    print("Comparing a Poisson / GDE matrix to GOE")
+    print("=" * 80)
+    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    unfolded = eigs.unfold(degree=13)
+    df = unfolded.ensemble_compare(ensemble=GOE, metric="msqd")
+    df = df.append(unfolded.ensemble_compare(ensemble=GOE, metric="mad"))
+    df = df.append(unfolded.ensemble_compare(ensemble=GOE, metric="corr"))
     print(df)
-    df = unfolded.goe_compare(metric="corr")
+
+    print("\n")
+    print("=" * 80)
+    print("Comparing a Poisson / GDE matrix to Poisson / GDE")
+    print("=" * 80)
+    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    unfolded = eigs.unfold(degree=13)
+    df = unfolded.ensemble_compare(ensemble=GDE, metric="msqd")
+    df = df.append(unfolded.ensemble_compare(ensemble=GDE, metric="mad"))
+    df = df.append(unfolded.ensemble_compare(ensemble=GDE, metric="corr"))
     print(df)

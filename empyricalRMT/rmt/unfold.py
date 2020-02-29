@@ -5,14 +5,14 @@ from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Type
 from typing_extensions import Literal
 
 import empyricalRMT.rmt.plot as plot
 
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.compare import Metric, Compare
-from empyricalRMT.rmt.ensemble import GOE
+from empyricalRMT.rmt.ensemble import Ensemble, GOE, Poisson
 from empyricalRMT.rmt.observables.levelvariance import level_number_variance
 from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
 from empyricalRMT.rmt.plot import _next_spacings, PlotMode, PlotResult
@@ -128,8 +128,9 @@ class Unfolded(EigVals):
         )
         return DataFrame({"L": L, "sigma": sigma})
 
-    def goe_compare(
+    def ensemble_compare(
         self,
+        ensemble: Type[Ensemble],
         observables: List[Observables] = ["nnsd", "nnnsd", "rigidity", "levelvar"],
         metric: Metric = "msqd",
         spacings: Tuple[float, float] = (0.5, 2.5),
@@ -144,6 +145,9 @@ class Unfolded(EigVals):
 
         Parameters
         ----------
+        ensemble: Ensemble
+            The ensemble (Poisson / GDE, GUE, GOE, GSE) against which to compare
+            the unfolded eigenvalues.
         observables: List[Observables]
             The observables to use for comparison.
         metric: "msqd" | "mad" | "corr"
@@ -210,14 +214,14 @@ class Unfolded(EigVals):
             nnsd = self.__get_kde_values(
                 spacings_range=spacings, kde_gridsize=kde_gridsize
             )
-            nnsd_exp = GOE.nnsd(spacings_range=spacings, n_points=kde_gridsize)
+            nnsd_exp = ensemble.nnsd(spacings_range=spacings, n_points=kde_gridsize)
             df["nnsd"] = compare(nnsd_exp, nnsd, "nnsd", metric)
 
         if "nnnsd" in observables:
             nnnsd = self.__get_kde_values(
                 spacings_range=spacings, nnnsd=True, kde_gridsize=kde_gridsize
             )
-            nnnsd_exp = GOE.nnnsd(spacings_range=spacings, n_points=kde_gridsize)
+            nnnsd_exp = ensemble.nnnsd(spacings_range=spacings, n_points=kde_gridsize)
             df["nnnsd"] = compare(nnnsd_exp, nnnsd, "nnnsd", metric)
 
         if "rigidity" in observables:
@@ -225,7 +229,7 @@ class Unfolded(EigVals):
             rigidity = self.spectral_rigidity(
                 min_L=min_L, max_L=max_L, L_grid_size=n_L, show_progress=show_progress
             )["delta"]
-            rigidity_exp = GOE.spectral_rigidity(
+            rigidity_exp = ensemble.spectral_rigidity(
                 min_L=min_L, max_L=max_L, L_grid_size=n_L
             )
             df["rigidity"] = compare(rigidity_exp, rigidity, "rigidity", metric)
@@ -235,7 +239,9 @@ class Unfolded(EigVals):
             levelvar = self.level_variance(
                 min_L=min_L, max_L=max_L, L_grid_size=n_L, show_progress=show_progress
             )["sigma"]
-            levelvar_exp = GOE.level_variance(min_L=min_L, max_L=max_L, L_grid_size=n_L)
+            levelvar_exp = ensemble.level_variance(
+                min_L=min_L, max_L=max_L, L_grid_size=n_L
+            )
             df["levelvar"] = compare(levelvar_exp, levelvar, "levelvar", metric)
         return df
 
@@ -291,6 +297,8 @@ class Unfolded(EigVals):
         self,
         bins: int = 50,
         kde: bool = True,
+        trim: float = 0.0,
+        trim_kde: bool = False,
         title: str = "next Nearest-Neigbors Spacing Distribution",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -307,6 +315,12 @@ class Unfolded(EigVals):
             If False (default), do not display a kernel density estimate. If true, use
             [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
             with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+        trim: float
+            If True, only use spacings <= trim for computing the KDE and plotting.
+            Useful for when large spacings distort the histogram.
+        trim_kde: bool
+            If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
+            KDE using all available spacings.
         title: string
             The plot title string
         mode: "block" | "noblock" | "save" | "return"
@@ -327,6 +341,8 @@ class Unfolded(EigVals):
             unfolded=self.vals,
             bins=bins,
             kde=kde,
+            trim=trim,
+            trim_kde=trim_kde,
             title=title,
             mode=mode,
             outfile=outfile,

@@ -15,6 +15,7 @@ from typing_extensions import Literal
 from warnings import warn
 
 
+from empyricalRMT.rmt.ensemble import Poisson, GOE, GUE, GSE
 from empyricalRMT.rmt.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
 
@@ -355,6 +356,8 @@ def _next_spacings(
     unfolded: ndarray,
     bins: int = 50,
     kde: bool = True,
+    trim: float = 0.0,
+    trim_kde: bool = False,
     title: str = "next Nearest-Neigbors Spacing Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
@@ -371,6 +374,12 @@ def _next_spacings(
         If False (default), do not display a kernel density estimate. If true, use
         [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
         with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+    trim: float
+        If True, only use spacings <= `trim` for computing the KDE and plotting.
+        Useful for when large spacings distort the histogram.
+    trim_kde: bool
+        If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
+        KDE using all available spacings.
     title: string
         The plot title string
     mode: "block" | "noblock" | "save" | "return"
@@ -389,15 +398,20 @@ def _next_spacings(
     """
     _setup_plotting()
     _spacings = np.sort((unfolded[2:] - unfolded[:-2]) / 2)
+    all_spacings = np.copy(_spacings)
+    if trim > 0.0:
+        _spacings = _spacings[_spacings <= trim]
     # Generate expected distributions for classical ensembles
     p = np.pi
-    s = np.linspace(_spacings.min(), _spacings.max(), 10000)
+    s_min, s_max = _spacings.min(), _spacings.max()
+    s = np.linspace(s_min, s_max, 10000)
     # see:
     # Dettmann, C. P., Georgiou, O., & Knight, G. (2017).
     # Spectral statistics of random geometric graphs.
     # EPL (Europhysics Letters), 118(1), 18003.
     # doi:10.1209/0295-5075/118/18003, pp10, Equation. 11
     # for this expected distribution formula
+    poisson = Poisson.nnnsd(spacings=s)
     goe = (2 ** 18 / (3 ** 6 * p ** 3)) * (s ** 4) * np.exp(-((64 / (9 * p)) * (s * s)))
 
     axes = sbn.distplot(
@@ -411,17 +425,24 @@ def _next_spacings(
     )
 
     if kde is True:
-        _kde_plot(_spacings, s, axes)
+        if trim_kde:
+            _kde_plot(_spacings, s, axes)
+        else:
+            _kde_plot(all_spacings, s, axes)
 
     goe = axes.plot(s, goe, label="Gaussian Orthogonal")
     plt.setp(goe, color="#FD8208")
+
+    poisson = axes.plot(s, poisson, label="Poisson")
+    plt.setp(poisson, color="#08FD4F")
 
     plt.ylabel("Density p(s)")
     plt.title(title)
     plt.legend()
     # adjusting the right bounds can be necessary when / if there are
     # many large eigenvalue spacings
-    axes.set_xlim(left=0, right=np.percentile(_spacings, 99))
+    axes.set_ylim(top=2.0, bottom=0)
+    axes.set_xlim(left=0, right=2.5)
 
     return _handle_plot_mode(mode, axes, outfile)
 
@@ -622,7 +643,7 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes) -> None:
     Parameters
     ----------
     values: ndarray
-        the values used to compute the kernel density estimate
+        the values used to compute (fit) the kernel density estimate
     grid: ndarray
         the grid of values over which to evaluate the computed KDE curve
     axes: pyplot.Axes
