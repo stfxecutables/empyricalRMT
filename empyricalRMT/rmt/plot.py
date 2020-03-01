@@ -14,8 +14,7 @@ from typing import Any, List, Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
-
-from empyricalRMT.rmt.ensemble import Poisson, GOE, GUE, GSE
+from empyricalRMT.rmt.ensemble import Poisson, GOE
 from empyricalRMT.rmt.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
 
@@ -419,7 +418,6 @@ def _next_spacings(
     if trim > 0.0:
         _spacings = _spacings[_spacings <= trim]
     # Generate expected distributions for classical ensembles
-    p = np.pi
     s_min, s_max = _spacings.min(), _spacings.max()
     s = np.linspace(s_min, s_max, 10000)
 

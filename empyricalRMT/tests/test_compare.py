@@ -212,4 +212,3 @@ def test_unfold_compare() -> None:
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GDE, metrics=metrics, show_progress=True)
     print(df)
-

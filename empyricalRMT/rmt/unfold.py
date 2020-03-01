@@ -13,10 +13,7 @@ import empyricalRMT.rmt.plot as plot
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.compare import Metric, Compare
 from empyricalRMT.rmt.ensemble import Ensemble
-from empyricalRMT.rmt.observables.levelvariance import (
-    level_number_variance,
-    level_number_variance_stable,
-)
+from empyricalRMT.rmt.observables.levelvariance import level_number_variance_stable
 from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
 from empyricalRMT.rmt.plot import (
     _next_spacings,

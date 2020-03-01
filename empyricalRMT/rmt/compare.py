@@ -4,8 +4,7 @@ import pandas as pd
 from numba import jit
 from numpy import ndarray
 from pandas import DataFrame
-from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import Any, List, NewType, Tuple
+from typing import Any, List, Tuple
 from typing_extensions import Literal
 
 from empyricalRMT._validate import make_1d_array

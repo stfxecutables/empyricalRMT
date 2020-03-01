@@ -257,4 +257,3 @@ def _generate_random_matrix(size: int = 100) -> ndarray:
     it.close()
     eprint("Filled matrix")
     return M
-
