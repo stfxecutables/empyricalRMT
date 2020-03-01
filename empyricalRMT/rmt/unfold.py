@@ -146,7 +146,7 @@ class Unfolded(EigVals):
         self,
         ensemble: Type[Ensemble],
         observables: List[Observables] = ["nnsd", "nnnsd", "rigidity", "levelvar"],
-        metric: Metric = "msqd",
+        metrics: List[Metric] = ["msqd"],
         spacings: Tuple[float, float] = (0.5, 2.5),
         kde_gridsize: int = 5000,
         L_rigidity: ndarray = np.arange(2, 50, 0.2),
@@ -164,10 +164,10 @@ class Unfolded(EigVals):
             the unfolded eigenvalues.
         observables: List[Observables]
             The observables to use for comparison.
-        metric: "msqd" | "mad" | "corr"
-            The metric (used here non-rigorously) used to compute the
+        metrics: List["msqd" | "mad" | "corr"]
+            The metrics (used here non-rigorously) used to compute the
             similiarities. Histograms will be compared via their respective
-            kernel density estimate.
+            kernel density estimates.
         spacings: (float, float)
             The range (min, max) spacing values to use for comparing kernel
             density estimates to the expected goe density. Default (0.5, 2.5).
@@ -181,7 +181,10 @@ class Unfolded(EigVals):
         Returns
         -------
         similarities: DataFrame
-            The similarities for each value of `observables`.
+            The similarities for each value of `observables` for for each
+            metric. The metrics are the index, and the columns are the
+            observables, i.e. the DataFrame is metrics x observerables.
+
 
         Notes
         -----
@@ -223,20 +226,22 @@ class Unfolded(EigVals):
                 )
             return np.float64(res["exp"][name])
 
-        df = pd.DataFrame(index=[metric], columns=observables)
+        df = pd.DataFrame(index=metrics, columns=observables)
         if "nnsd" in observables:
             nnsd = self.__get_kde_values(
                 spacings_range=spacings, kde_gridsize=kde_gridsize
             )
             nnsd_exp = ensemble.nnsd(spacings_range=spacings, n_points=kde_gridsize)
-            df["nnsd"] = compare(nnsd_exp, nnsd, "nnsd", metric)
+            for metric in metrics:
+                df["nnsd"][metric] = compare(nnsd_exp, nnsd, "nnsd", metric)
 
         if "nnnsd" in observables:
             nnnsd = self.__get_kde_values(
                 spacings_range=spacings, nnnsd=True, kde_gridsize=kde_gridsize
             )
             nnnsd_exp = ensemble.nnnsd(spacings_range=spacings, n_points=kde_gridsize)
-            df["nnnsd"] = compare(nnnsd_exp, nnnsd, "nnnsd", metric)
+            for metric in metrics:
+                df["nnnsd"][metric] = compare(nnnsd_exp, nnnsd, "nnnsd", metric)
 
         if "rigidity" in observables:
             min_L, max_L, n_L = L_rigidity.min(), L_rigidity.max(), len(L_rigidity)
@@ -246,7 +251,10 @@ class Unfolded(EigVals):
             rigidity_exp = ensemble.spectral_rigidity(
                 min_L=min_L, max_L=max_L, L_grid_size=n_L
             )
-            df["rigidity"] = compare(rigidity_exp, rigidity, "rigidity", metric)
+            for metric in metrics:
+                df["rigidity"][metric] = compare(
+                    rigidity_exp, rigidity, "rigidity", metric
+                )
 
         if "levelvar" in observables:
             min_L, max_L, n_L = L_levelvar.min(), L_levelvar.max(), len(L_levelvar)
@@ -254,7 +262,10 @@ class Unfolded(EigVals):
                 "sigma"
             ]
             levelvar_exp = ensemble.level_variance(L=L_rigidity)
-            df["levelvar"] = compare(levelvar_exp, levelvar, "levelvar", metric)
+            for metric in metrics:
+                df["levelvar"][metric] = compare(
+                    levelvar_exp, levelvar, "levelvar", metric
+                )
         return df
 
     def plot_nnsd(

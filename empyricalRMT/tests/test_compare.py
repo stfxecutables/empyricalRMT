@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 
-from empyricalRMT.rmt.compare import Compare
+from typing import List
+
+from empyricalRMT.rmt.compare import Compare, Metric
 from empyricalRMT.rmt.construct import generate_eigs
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
 from empyricalRMT.rmt.ensemble import GOE, GDE
@@ -174,19 +176,14 @@ def test_mad() -> None:
 
 @pytest.mark.fast
 def test_unfold_compare() -> None:
+    metrics: List[Metric] = ["msqd", "mad", "corr"]
     print("\n")
     print("=" * 80)
     print("Comparing a GOE matrix to GOE")
     print("=" * 80)
     eigs = Eigenvalues(generate_eigs(2000, seed=2))
     unfolded = eigs.unfold(degree=13)
-    df = unfolded.ensemble_compare(ensemble=GOE, metric="msqd", show_progress=True)
-    df = df.append(
-        unfolded.ensemble_compare(ensemble=GOE, metric="mad", show_progress=True)
-    )
-    df = df.append(
-        unfolded.ensemble_compare(ensemble=GOE, metric="corr", show_progress=True)
-    )
+    df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
 
     print("\n")
@@ -195,13 +192,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
     unfolded = eigs.unfold(degree=13)
-    df = unfolded.ensemble_compare(ensemble=GOE, metric="msqd", show_progress=True)
-    df = df.append(
-        unfolded.ensemble_compare(ensemble=GOE, metric="mad", show_progress=True)
-    )
-    df = df.append(
-        unfolded.ensemble_compare(ensemble=GOE, metric="corr", show_progress=True)
-    )
+    df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
 
     print("\n")
@@ -210,13 +201,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
     unfolded = eigs.unfold(degree=13)
-    df = unfolded.ensemble_compare(ensemble=GOE, metric="msqd", show_progress=True)
-    df = df.append(
-        unfolded.ensemble_compare(ensemble=GOE, metric="mad", show_progress=True)
-    )
-    df = df.append(
-        unfolded.ensemble_compare(ensemble=GOE, metric="corr", show_progress=True)
-    )
+    df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
 
     print("\n")
@@ -225,12 +210,6 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
     unfolded = eigs.unfold(degree=13)
-    df = unfolded.ensemble_compare(ensemble=GDE, metric="msqd", show_progress=True)
-    df = df.append(
-        unfolded.ensemble_compare(ensemble=GDE, metric="mad", show_progress=True)
-    )
-    df = df.append(
-        unfolded.ensemble_compare(ensemble=GDE, metric="corr", show_progress=True)
-    )
+    df = unfolded.ensemble_compare(ensemble=GDE, metrics=metrics, show_progress=True)
     print(df)
 
