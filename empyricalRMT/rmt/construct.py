@@ -2,8 +2,10 @@ import numpy as np
 import time
 
 from numpy import ndarray
-from scipy.sparse import diags
+
+from scipy.integrate import quad
 from scipy.linalg import eigvalsh_tridiagonal
+from scipy.sparse import diags
 from typing import Union
 from typing_extensions import Literal
 from warnings import warn
@@ -70,55 +72,49 @@ def generate_eigs(
     return eigs
 
 
-def goe_unfolded(matsize: int, log: bool = False, average: int = 1) -> Unfolded:
-    raise NotImplementedError("This feature is still a work in progress.")
-    # N = matsize
-    # M = _generate_GOE_tridiagonal(matsize)
-    # # std of off-diagonals
-    # # a_matrix = _generate_GOE_matrix(size=matsize)
-    # # a = 2 * np.sqrt(N) * np.std(a_matrix[np.array(1 - np.eye(N), dtype=bool)], ddof=1)
-    # a = 2 * np.sqrt(N)
-    # # a = 1
+def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
+    """Perform a smooth / analytic unfolding using the expected limiting distribution,
+    e.g. Wigner's semicricle law.
 
-    # def explicit(E: float) -> Any:
-    #     """
-    #     See the section on Asymptotic Level Densities for the closed form
-    #     function below.
+    Parameters
+    ----------
+    matsize: int
+        The size (e.g. width) of the square GOE matrix.
+    log: bool
+        Whether or not to log when starting and completing solving the
+        eigenvalue problem. Useful for large matrices on slow machines.
 
-    #     Abul-Magd, A. A., & Abul-Magd, A. Y. (2014). Unfolding of the spectrum
-    #     for chaotic and mixed systems. Physica A: Statistical Mechanics and its
-    #     Applications, 396, 185-194, section A
-    #     """
-    #     if np.abs(E) <= a:
-    #         t1 = (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)
-    #         t2 = (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))
-    #         return 0.5 + t1 + t2
-    #     if E < a:
-    #         return 0
-    #     if E > a:
-    #         return 1
+    Returns
+    -------
+    unfolded: Unfolded
+        The Unfolded object containing the resultant original and unfolded
+        eigenvalues.
+    """
 
-    #     raise ValueError("Unreachable!")
+    N = matsize
+    end = np.sqrt(2 * N)
 
-    # all_eigs = []
-    # all_unfolded = []
-    # for i in range(average):
-    #     if log:
-    #         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
-    #     eigs = np.linalg.eigvalsh(M)
-    #     if log:
-    #         print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
+    def __R1(x: float) -> np.float64:
+        """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004) """
+        if np.abs(x) < end:
+            return np.float64((1 / np.pi) * np.sqrt(2 * N - x * x))
+        return 0.0
 
-    #     unfolded = np.empty([N])
-    #     for i in range(N):
-    #         # multiply N here to prevent overflow issues
-    #         unfolded[i] = N * explicit(eigs[i])
-    #     all_eigs.append(eigs)
-    #     all_unfolded.append(unfolded)
-    # all_eigs = np.mean(np.array(all_eigs), axis=0)
-    # all_unfolded = np.mean(np.array(all_unfolded), axis=0)
+    MAX = quad(__R1, -end, end)[0]
 
-    # return Unfolded(originals=all_eigs, unfolded=all_unfolded)
+    def smooth_goe(x: float) -> np.float64:
+        if x > end:
+            return MAX
+        return quad(__R1, -end, x)[0]
+
+    M = _generate_GOE_tridiagonal(matsize)
+    print("Computing GOE eigenvalues...")
+    eigs = np.linalg.eigvalsh(M)
+    print("Done!")
+    print(f"Unfolding GOE eigenvalues (N == {N})...")
+    unfolded_eigs = np.sort(np.vectorize(smooth_goe)(eigs))
+    print("Done!")
+    return Unfolded(originals=eigs, unfolded=unfolded_eigs)
 
 
 def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
@@ -261,3 +257,4 @@ def _generate_random_matrix(size: int = 100) -> ndarray:
     it.close()
     eprint("Filled matrix")
     return M
+
