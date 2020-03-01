@@ -95,8 +95,8 @@ class Unfolded(EigVals):
         self,
         L: ndarray = np.arange(0.5, 20, 0.2),
         tol: float = 0.01,
-        max_L_iters: int = 100000,
-        min_L_iters: int = 2000,
+        max_L_iters: int = 50000,
+        min_L_iters: int = 1000,
         show_progress: bool = False,
     ) -> DataFrame:
         """Compute the level number variance of the current unfolded eigenvalues.
