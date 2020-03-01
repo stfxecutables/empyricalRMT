@@ -1,11 +1,12 @@
+import numpy as np
 import pytest
 
-from empyricalRMT.rmt.construct import generate_eigs
-from empyricalRMT.rmt.eigenvalues import Eigenvalues
+from empyricalRMT.rmt.construct import goe_unfolded
 
 
 @pytest.mark.fast
 def test_levelvariance() -> None:
-    eigs = Eigenvalues(generate_eigs(2000))
-    unfolded = eigs.unfold(smoother="poly", degree=13)
-    unfolded.plot_level_variance(min_L=2, max_L=50, show_progress=True, mode="noblock")
+    unfolded = goe_unfolded(50000)
+    unfolded.plot_level_variance(
+        L=np.arange(2, 100, 0.2), show_progress=True, mode="block"
+    )

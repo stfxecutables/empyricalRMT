@@ -13,9 +13,18 @@ import empyricalRMT.rmt.plot as plot
 from empyricalRMT.rmt._eigvals import EigVals
 from empyricalRMT.rmt.compare import Metric, Compare
 from empyricalRMT.rmt.ensemble import Ensemble
-from empyricalRMT.rmt.observables.levelvariance import level_number_variance
+from empyricalRMT.rmt.observables.levelvariance import (
+    level_number_variance,
+    level_number_variance_stable,
+)
 from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
-from empyricalRMT.rmt.plot import _next_spacings, PlotMode, PlotResult
+from empyricalRMT.rmt.plot import (
+    _next_spacings,
+    _spacings as _plot_spacings,
+    PlotMode,
+    PlotResult,
+)
+from empyricalRMT._validate import make_1d_array
 
 Observables = Literal["nnsd", "nnnsd", "rigidity", "levelvar"]
 
@@ -84,29 +93,26 @@ class Unfolded(EigVals):
 
     def level_variance(
         self,
-        min_L: float = 2,
-        max_L: float = 50,
-        c_iters: int = 50000,
-        L_grid_size: int = None,
+        L: ndarray = np.arange(0.5, 20, 0.2),
+        tol: float = 0.01,
+        max_L_iters: int = 100000,
+        min_L_iters: int = 2000,
         show_progress: bool = False,
     ) -> DataFrame:
         """Compute the level number variance of the current unfolded eigenvalues.
 
         Parameters
         ----------
-        min_L: int
-            The lowest possible L value for which to compute the spectral
-            rigidity.
-        max_L: int
-            The largest possible L value for which to compute the spectral
-            rigidity.
-        c_iters: int
-            How many times the location of the center, c, of the interval
-            [c - L/2, c + L/2] should be chosen uniformly at random for
-            each L in order to compute the estimate of the number level
-            variance.
-        L_grid_size: int
-            The number of values of L to generate betwen min_L and max_L.
+        L: ndarray
+            The grid of L values for which to compute the level variance.
+        tol: float
+            Stop iterating when the last `min_L_iters` computed values of the
+            level variance have a range (i.e. max - min) < tol.
+        max_L_iters: int
+            Stop computing values for the level variance once max_L_iters values
+            have been computed for each L value.
+        min_L_iters: int
+            Minimum number of iterations for each L value.
         show_progress: bool
             Whether or not to display computation progress in stdout.
 
@@ -116,14 +122,22 @@ class Unfolded(EigVals):
             A dataframe with columns "L", the L values generated based on the
             input arguments, and "sigma", the computed level variances for each
             value of L.
+
+        Notes
+        -----
+        Computes the level number variance by randomly selecting a point c in
+        the interval [unfolded.min(), unfolded.max()], and counts the number
+        of unfolded eigenvalues in (c - L/2, c + L/2) to determine a value for
+        the level number variance, sigma(L). The process is repeated until the
+        running averages stabilize, and the final running average is returned.
         """
         unfolded = self.values
-        L, sigma = level_number_variance(
+        L, sigma = level_number_variance_stable(
             unfolded=unfolded,
-            c_iters=c_iters,
-            L_grid_size=L_grid_size,
-            min_L=min_L,
-            max_L=max_L,
+            L=L,
+            tol=tol,
+            max_L_iters=max_L_iters,
+            min_L_iters=min_L_iters,
             show_progress=show_progress,
         )
         return DataFrame({"L": L, "sigma": sigma})
@@ -135,7 +149,7 @@ class Unfolded(EigVals):
         metric: Metric = "msqd",
         spacings: Tuple[float, float] = (0.5, 2.5),
         kde_gridsize: int = 5000,
-        L_rigidity: ndarray = np.arange(2, 50, 0.5),
+        L_rigidity: ndarray = np.arange(2, 50, 0.2),
         L_levelvar: ndarray = np.arange(1, 20, 0.5),
         show_progress: bool = False,
     ) -> pd.DataFrame:
@@ -236,9 +250,9 @@ class Unfolded(EigVals):
 
         if "levelvar" in observables:
             min_L, max_L, n_L = L_levelvar.min(), L_levelvar.max(), len(L_levelvar)
-            levelvar = self.level_variance(
-                min_L=min_L, max_L=max_L, L_grid_size=n_L, show_progress=show_progress
-            )["sigma"]
+            levelvar = self.level_variance(L=L_rigidity, show_progress=show_progress)[
+                "sigma"
+            ]
             levelvar_exp = ensemble.level_variance(
                 min_L=min_L, max_L=max_L, L_grid_size=n_L
             )
@@ -292,7 +306,7 @@ class Unfolded(EigVals):
         (fig, axes): (Figure, Axes)
             The handles to the matplotlib objects, only if `mode` is "return".
         """
-        return _next_spacings(
+        return _plot_spacings(
             unfolded=self.vals,
             bins=bins,
             kde=kde,
@@ -447,10 +461,11 @@ class Unfolded(EigVals):
 
     def plot_level_variance(
         self,
-        min_L: float = 2,
-        max_L: float = 50,
-        c_iters: int = 50000,
-        L_grid_size: int = None,
+        L: ndarray = np.arange(0.5, 20, 0.2),
+        sigma: ndarray = None,
+        tol: float = 0.01,
+        max_L_iters: int = 50000,
+        min_L_iters: int = 1000,
         title: str = "Level Number Variance",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -462,19 +477,19 @@ class Unfolded(EigVals):
 
         Parameters
         ----------
-        min_L: int
-            The lowest possible L value for which to compute the spectral
-            rigidity.
-        max_L: int
-            The largest possible L value for which to compute the spectral
-            rigidity.
-        c_iters: int
-            How many times the location of the center, c, of the interval
-            [c - L/2, c + L/2] should be chosen uniformly at random for
-            each L in order to compute the estimate of the number level
-            variance.
-        L_grid_size: int
-            The number of values of L to generate betwen min_L and max_L.
+        L: ndarray
+            The grid of L values for which to compute the level variance.
+        sigma: ndarray
+            If the number level variance has already been computed, pass it in
+            to `sigma` to save the values being re-computed.
+        tol: float
+            Stop iterating when the last `min_L_iters` computed values of the
+            level variance have a range (i.e. max - min) < tol.
+        max_L_iters: int
+            Stop computing values for the level variance once max_L_iters values
+            have been computed for each L value.
+        min_L_iters: int
+            Minimum number of iterations for each L value.
         title: string
             The plot title string
         mode: "block" (default) | "noblock" | "save" | "return"
@@ -492,7 +507,7 @@ class Unfolded(EigVals):
 
         Returns
         -------
-        L: ndarray
+        L_vals: ndarray
             The L values generated based on the values of L_grid_size,
             min_L, and max_L.
         sigma_squared: ndarray
@@ -502,12 +517,24 @@ class Unfolded(EigVals):
             Otherwise, None.
         """
         unfolded = self.values
-        L, sigma = level_number_variance(
+        if sigma is not None:
+            sigma = make_1d_array(sigma)
+            plot_result = plot._level_number_variance(
+                unfolded=unfolded,
+                data=pd.DataFrame({"L": L, "sigma": sigma}),
+                title=title,
+                mode=mode,
+                outfile=outfile,
+                ensembles=ensembles,
+            )
+            return L, sigma, plot_result
+
+        L_vals, sigma = level_number_variance_stable(
             unfolded=unfolded,
-            c_iters=c_iters,
-            L_grid_size=L_grid_size,
-            min_L=min_L,
-            max_L=max_L,
+            L=L,
+            tol=tol,
+            max_L_iters=max_L_iters,
+            min_L_iters=min_L_iters,
             show_progress=show_progress,
         )
         plot_result = plot._level_number_variance(
@@ -518,7 +545,7 @@ class Unfolded(EigVals):
             outfile=outfile,
             ensembles=ensembles,
         )
-        return L, sigma, plot_result
+        return L_vals, sigma, plot_result
 
     def __get_kde_values(
         self,

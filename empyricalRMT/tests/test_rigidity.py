@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from empyricalRMT.rmt.construct import generate_eigs
@@ -21,10 +22,6 @@ def test_plot_rigidity() -> None:
     unfolded.plot_nnsd(mode="noblock")
     # unfolded.plot_next_nnsd(mode="block")
     unfolded.plot_level_variance(
-        min_L=1,
-        max_L=100,
-        L_grid_size=100,
-        mode="noblock",
-        ensembles=["goe", "poisson"],
+        L=np.arange(0.5, 100, 0.2), mode="noblock", ensembles=["goe", "poisson"]
     )
     unfolded.plot_spectral_rigidity(max_L=200, c_iters=10000, mode="noblock")
