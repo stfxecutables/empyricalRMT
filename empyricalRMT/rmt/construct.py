@@ -11,7 +11,6 @@ from typing_extensions import Literal
 from warnings import warn
 
 from empyricalRMT.rmt.unfold import Unfolded
-from empyricalRMT.utils import eprint
 
 
 MatrixKind = Union[
@@ -230,30 +229,3 @@ def _generate_poisson(size: int = 100, seed: int = None) -> ndarray:
     if seed is not None:
         np.random.seed(seed)
     return np.diag(np.random.standard_normal(size))
-
-
-def _generate_random_matrix(size: int = 100) -> ndarray:
-    norm_means = np.abs(np.random.normal(10.0, 2.0, size=size * size))
-    norm_sds = np.abs(np.random.normal(3.0, 0.5, size=size * size))
-    # exp_rates = np.abs(np.random.normal(size=size*size))
-    M = np.empty([size, size])
-    eprint("Initialized matrix distribution data")
-
-    # TODO: generate NaNs and Infs
-
-    it = np.nditer(M, flags=["f_index"], op_flags=["readwrite"])
-    while not it.finished:
-        i = it.index
-        # original formulation
-        # it[0] = np.random.normal(norm_means[i], norm_sds[i], 1) +\
-        #     np.random.exponential(exp_rates[i], 1)
-
-        # independent random normals
-        it[0] = np.random.normal(norm_means[i], norm_sds[i], 1)
-
-        # one random normal
-        it[0] = np.random.normal(0, 1, 1)
-        it.iternext()
-    it.close()
-    eprint("Filled matrix")
-    return M
