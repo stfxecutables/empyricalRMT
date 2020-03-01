@@ -253,9 +253,7 @@ class Unfolded(EigVals):
             levelvar = self.level_variance(L=L_rigidity, show_progress=show_progress)[
                 "sigma"
             ]
-            levelvar_exp = ensemble.level_variance(
-                min_L=min_L, max_L=max_L, L_grid_size=n_L
-            )
+            levelvar_exp = ensemble.level_variance(L=L_rigidity)
             df["levelvar"] = compare(levelvar_exp, levelvar, "levelvar", metric)
         return df
 
