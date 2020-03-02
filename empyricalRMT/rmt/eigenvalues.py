@@ -356,6 +356,8 @@ class Eigenvalues(EigVals):
             outlier_tol=outlier_tol,
         )
         orig_trimmed, unfolded = trimmed._get_autounfold_vals()
+        percent = np.round(100 * len(orig_trimmed) / len(self.values), 1)
+        print(f"Trimmed to {percent}% of original eigenvalues.")
         return Unfolded(orig_trimmed, unfolded)
 
     def unfold(
