@@ -11,6 +11,17 @@ from ..utils import setup_progressbar, flatten_4D
 OUT_DEFAULT = Path.home() / "Desktop" / "corrmat.npy"
 
 
+def p_correlate(arr: ndarray) -> ndarray:
+    N = arr.shape[0]
+    corrs = np.empty([N, N], dtype=np.float64)
+    pbar = setup_progressbar(f"Computing correlations", N).start()
+    for i in range(N):
+        _compute_clean_row_corrs(corrs, arr, i)
+        pbar.update(i)
+    pbar.finish()
+    return corrs
+
+
 def compute_correlations(
     arr: ndarray,
     save: Path = OUT_DEFAULT,
@@ -39,7 +50,7 @@ def compute_correlations(
             if detrended:
                 _compute_detrended_column_corrs(corrs, arr, i)
             else:
-                _compute_clean_column_corrs(corrs, arr, i)
+                _compute_clean_row_corrs(corrs, arr, i)
             if i % 10 == 0:
                 pass
                 pbar.update(i)
@@ -72,7 +83,7 @@ def _compute_corrs(reshaped: ndarray, iters: int) -> ndarray:
     return corrs
 
 
-@jit(nopython=True, parallel=True, cache=True, fastmath=True)
+@jit(nopython=True, fastmath=True, parallel=True)
 def _compute_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
     # compute correlations
     # (!!), inefficient, upper triangle is sufficient
@@ -102,31 +113,28 @@ def _compute_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
 
 
 @jit(nopython=True, parallel=True, fastmath=True)
-def _compute_clean_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
-    # compute correlations
-    # (!!), inefficient, upper triangle is sufficient
-    def clean_correlate(x: ndarray, y: ndarray) -> float:
-        x_norm = x - x.mean()
-        y_norm = y - y.mean()
-        x_mag = np.linalg.norm(x_norm)
-        y_mag = np.linalg.norm(y_norm)
-        numerator = np.dot(x_norm, y_norm)
-        denom = x_mag * y_mag
-        if np.abs(denom) == 0:
-            return 0.0
-        else:
-            return float(numerator / denom)
+def _compute_clean_row_corrs(corrs: ndarray, array: ndarray, i: int) -> None:
+    """Compute correlations of row i of array and save them in row i of corrs.
 
-    voxel_count = reshaped.shape[0]
-    for j in prange(voxel_count):
-        if i > j:  # ignore lower triangle and diagonal
+    Parameters
+    ----------
+    corrs: ndarray
+        The array to store the correlation values. Must be size (N, N) where
+        N == array.shape[0].
+    array: ndarray
+        The N x T matrix of time series.
+    i: int
+        The index of the current row of interest.
+    """
+    N = array.shape[0]
+    for j in prange(N):
+        if i < j:  # ignore upper triangle
             continue
         elif i == j:
             corrs[i, j] = 1
         else:
-            corr = clean_correlate(reshaped[i, :], reshaped[j, :])
+            corr = _clean_correlate(array[i, :], array[j, :])
             corrs[i, j] = corr
-            corrs[j, i] = corr
 
 
 @jit(nopython=True, fastmath=True, cache=True)
@@ -161,19 +169,6 @@ def _fast_r(x: ndarray, y: ndarray) -> float:
     return float((x * y) / np.sqrt(x2 * y2))
 
 
-# @jit(nopython=True, parallel=True, fastmath=True)
-@jit(nopython=True, fastmath=True)
-def _compute_upper_correlations(corrs: ndarray, array: ndarray) -> None:
-    """Compute the upper triangle of correlation coefficients of `array`,
-    and save the values in `corrs`. """
-    n = array.shape[0]
-    for i in range(n):
-        for j in range(n):
-            if i < j:
-                corr = _clean_correlate(array[i, :], array[j, :])
-                corrs[i, j] = corr
-
-
 @jit(nopython=True, fastmath=True)
 def _clean_correlate(x: ndarray, y: ndarray) -> float:
     x_norm = x - x.mean()
@@ -185,3 +180,17 @@ def _clean_correlate(x: ndarray, y: ndarray) -> float:
         return 0.0
     numerator = np.dot(x_norm, y_norm)
     return float(numerator / denom)
+
+
+# @jit(nopython=True, parallel=True, fastmath=True)
+@jit(nopython=True, fastmath=True, cache=True, parallel=True)
+def _compute_upper_correlations(corrs: ndarray, array: ndarray) -> None:
+    """Compute the upper triangle of correlation coefficients of `array`,
+    and save the values in `corrs`. """
+    n = array.shape[0]
+    for i in prange(n):
+        for j in range(n):
+            if i < j:
+                corr = _clean_correlate(array[i, :], array[j, :])
+                corrs[i, j] = corr
+
