@@ -321,6 +321,9 @@ class TrimReport:
             fig = plt.gcf()
             fig.set_size_inches(width * 3, height * 3)
             plt.show(block=mode == "block")
+        elif mode == "test":
+            plt.show(block=False)
+            plt.close()
         elif mode == "return":
             return plt.gca(), plt.gcf()
         else:

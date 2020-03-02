@@ -23,7 +23,7 @@ from empyricalRMT.utils import make_parent_directories
 
 PlotResult = Optional[Tuple[Figure, Axes]]
 PlotMode = Union[
-    Literal["block"], Literal["noblock"], Literal["save"], Literal["return"]
+    Literal["block"], Literal["noblock"], Literal["save"], Literal["return"], Literal["test"]
 ]
 
 RESET = Style.RESET_ALL
@@ -790,6 +790,9 @@ def _handle_plot_mode(
     elif mode == "noblock":
         plt.show(block=False)
         plt.pause(0.001)
+    elif mode == "test":
+        plt.show(block=False)
+        plt.close(fig)
     elif mode == "save":
         if outfile is None:
             raise ValueError("Path not specified for `outfile`.")

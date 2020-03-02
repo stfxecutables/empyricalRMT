@@ -19,9 +19,9 @@ def test_plot_rigidity() -> None:
     eigs = Eigenvalues(generate_eigs(2000, log=True))
     unfolded = eigs.unfold(smoother="poly", degree=19)
 
-    unfolded.plot_nnsd(mode="noblock")
-    # unfolded.plot_next_nnsd(mode="block")
+    unfolded.plot_nnsd(mode="test")
+    # unfolded.plot_next_nnsd(mode="test")
     unfolded.plot_level_variance(
-        L=np.arange(0.5, 100, 0.2), mode="noblock", ensembles=["goe", "poisson"]
+        L=np.arange(0.5, 100, 0.2), mode="test", ensembles=["goe", "poisson"]
     )
-    unfolded.plot_spectral_rigidity(max_L=200, c_iters=10000, mode="noblock")
+    unfolded.plot_spectral_rigidity(max_L=200, c_iters=10000, mode="test")

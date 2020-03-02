@@ -174,7 +174,7 @@ def test_mad() -> None:
     assert df["threes"]["threes"] == 0.0
 
 
-@pytest.mark.fast
+@pytest.mark.slow
 def test_unfold_compare() -> None:
     metrics: List[Metric] = ["msqd", "mad", "corr"]
     print("\n")

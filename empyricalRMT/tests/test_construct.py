@@ -14,6 +14,6 @@ def test_fast_poisson() -> None:
             title="Fast Poisson Spacing Test",
             bins=10,
             kde=True,
-            mode="noblock",
+            mode="test",
             ensembles=["poisson"],
         )
