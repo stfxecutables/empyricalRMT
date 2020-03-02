@@ -6,6 +6,8 @@ import warnings
 
 from colorama import Fore, Style
 from matplotlib.pyplot import Figure, Axes
+from matplotlib.patches import Rectangle
+from matplotlib.legend_handler import HandlerBase
 from numpy import ndarray
 from pathlib import Path
 from scipy.integrate import quad
@@ -236,6 +238,7 @@ def _unfolded_dist(
 
 
 def _unfolded_fit(
+    eigs: ndarray,
     unfolded: ndarray,
     title: str = "Unfolding Fit",
     mode: PlotMode = "block",
@@ -268,11 +271,52 @@ def _unfolded_fit(
         The handles to the matplotlib objects, only if `mode` is "return".
     """
     _configure_sbn_style()
+    # cmap = plt.cm.cividis
+    cmap = plt.cm.gist_heat
     fig, axes = _setup_plotting(fig, axes)
     N = len(unfolded)
-    df = pd.DataFrame({"Step Function": np.arange(1, N + 1), "Unfolded λ": unfolded})
-    axes = sbn.lineplot(data=df, ax=axes)
-    axes.set(title=title)
+    step_vals = np.arange(0, N)
+    df_line = pd.DataFrame({"Step Function": step_vals, "Unfolded λ": unfolded})
+    # df_scatter = pd.DataFrame({"Step Function": steps, "Outlier": np.abs(unfolded)})
+    sbn.lineplot(data=df_line, ax=axes)
+    mean = np.mean(np.abs(unfolded))
+
+    # 0 is left of cmap, color_max is right of cmap
+    color = (5 * np.abs(unfolded) / mean) ** 2
+    size = (10 * (np.abs(unfolded) - mean) / mean) ** 2
+    inlier = np.abs(unfolded - step_vals) < 5
+    color[inlier] = color.min()
+    min_size = 0.5
+    size[inlier] = min_size
+    size[size < 1] = min_size
+    axes.scatter(
+        x=step_vals,
+        y=unfolded,
+        s=size,  # size of points
+        c=color,  # color of points
+        cmap=cmap,  # should be color blind safe
+        marker="o",
+        # color="red",
+        edgecolors="white",
+        linewidths=0.1,
+        label="Outlier",
+        alpha=0.4,
+    )
+    # plt.setp(ax_scatter, label="Outlier")
+    axes.set(title=title, xlabel="Eigenvalue Index", ylabel="Unfolded Value")
+    handles, labels = axes.get_legend_handles_labels()
+    line_handles, line_labels = handles[:-1], labels[:-1]
+    # axes.legend(line_handles, line_labels)
+    cmap_handles = [Rectangle((0, 0), 1, 1)]
+    # seems you only need a handler map for legend element that need a custom handler
+    handler_map = dict(zip(cmap_handles, [HandlerColormap(cmap, num_stripes=16)]))
+    labels = [line_labels[0], line_labels[1], "Inlier / Outlier"]
+    axes.legend(
+        handles=line_handles + cmap_handles,
+        labels=labels,
+        handler_map=handler_map,
+        fontsize=12,
+    ).set_visible(True)
     return _handle_plot_mode(mode, fig, axes, outfile)
 
 
@@ -778,3 +822,28 @@ def _validate_bin_sizes(vals: ndarray, bins: int) -> None:
                 f"{Fore.YELLOW}Overfull bin {i}: {Fore.RED}{np.round(counts[i]/L, 2)}% {RESET} of values."
             )
             warn("Distribution likely too skewed to generate interpretable histogram")
+
+
+# shameless theft from https://stackoverflow.com/a/55501861
+# https://stackoverflow.com/questions/55501860/how-to-put-multiple-colormap-patches-in-a-matplotlib-legend
+class HandlerColormap(HandlerBase):
+    def __init__(self, cmap: plt.cm, num_stripes: int = 8, **kw: Any):
+        HandlerBase.__init__(self, **kw)
+        self.cmap = cmap
+        self.num_stripes = num_stripes
+
+    def create_artists(
+        self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
+    ):
+        stripes = []
+        for i in range(self.num_stripes):
+            s = Rectangle(
+                [xdescent + i * width / self.num_stripes, ydescent],
+                width / self.num_stripes,
+                height,
+                fc=self.cmap((2 * i + 1) / (2 * self.num_stripes)),
+                transform=trans,
+                edgecolor="none",
+            )
+            stripes.append(s)
+        return stripes

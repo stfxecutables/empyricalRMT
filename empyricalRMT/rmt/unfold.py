@@ -18,6 +18,7 @@ from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
 from empyricalRMT.rmt.plot import (
     _next_spacings,
     _spacings as _plot_spacings,
+    _unfolded_fit,
     PlotMode,
     PlotResult,
 )
@@ -264,6 +265,16 @@ class Unfolded(EigVals):
                     levelvar_exp, levelvar, "levelvar", metric
                 )
         return df
+
+    def plot_fit(
+        self,
+        title: str = "Unfolding Fit",
+        mode: PlotMode = "block",
+        outfile: Path = None,
+    ) -> PlotResult:
+        return _unfolded_fit(
+            self.original_eigs, self.vals, title=title, mode=mode, outfile=outfile
+        )
 
     def plot_nnsd(
         self,
