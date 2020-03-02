@@ -5,6 +5,7 @@ import seaborn as sbn
 import warnings
 
 from colorama import Fore, Style
+from matplotlib.pyplot import Figure, Axes
 from numpy import ndarray
 from pathlib import Path
 from scipy.integrate import quad
@@ -18,7 +19,7 @@ from empyricalRMT.rmt.ensemble import Poisson, GOE
 from empyricalRMT.rmt.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
 
-PlotResult = Optional[Tuple[plt.Figure, plt.Axes]]
+PlotResult = Optional[Tuple[Figure, Axes]]
 PlotMode = Union[
     Literal["block"], Literal["noblock"], Literal["save"], Literal["return"]
 ]
@@ -34,6 +35,8 @@ def _raw_eig_dist(
     kde: bool = True,
     mode: PlotMode = "block",
     outfile: Path = None,
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Plot a histogram of the raw eigenvalues.
 
@@ -63,7 +66,7 @@ def _raw_eig_dist(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     sbn.distplot(
         eigs,
         norm_hist=True,
@@ -89,6 +92,8 @@ def _step_function(
     title: str = "Eigenvalue Step Function",
     mode: PlotMode = "block",
     outfile: Path = None,
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Compute the step function vaues over a grid, and plot the resulting curve.
 
@@ -115,7 +120,7 @@ def _step_function(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     grid = np.linspace(eigs.min(), eigs.max(), gridsize)
     steps = _step_function_fast(eigs, grid)
     df = pd.DataFrame({"Cumulative Value": steps, "Raw eigenvalues λ": grid})
@@ -130,6 +135,8 @@ def _raw_eig_sorted(
     mode: PlotMode = "block",
     outfile: Path = None,
     kind: Union[Literal["scatter"], Literal["line"]] = "scatter",
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Plot a curve or scatterplot of the raw eigenvalues.
 
@@ -155,7 +162,7 @@ def _raw_eig_sorted(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     if kind == "scatter":
         sbn.scatterplot(data=eigs, ax=axes)
     elif kind == "line":
@@ -173,6 +180,8 @@ def _unfolded_dist(
     title: str = "Unfolded Eigenvalues",
     mode: PlotMode = "block",
     outfile: Path = None,
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Plot a histogram of the unfolded eigenvalues.
 
@@ -202,7 +211,7 @@ def _unfolded_dist(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     sbn.distplot(
         unfolded,
         norm_hist=True,
@@ -227,6 +236,8 @@ def _unfolded_fit(
     title: str = "Unfolding Fit",
     mode: PlotMode = "block",
     outfile: Path = None,
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Plot the unfolding fit against the step function.
 
@@ -252,7 +263,7 @@ def _unfolded_fit(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     N = len(unfolded)
     df = pd.DataFrame({"Step Function": np.arange(1, N + 1), "Unfolded λ": unfolded})
     axes = sbn.lineplot(data=df, ax=axes)
@@ -271,6 +282,8 @@ def _spacings(
     mode: PlotMode = "block",
     outfile: Path = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Plots a histogram of the Nearest-Neighbors Spacing Distribution
 
@@ -308,7 +321,7 @@ def _spacings(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     _spacings = np.sort(unfolded[1:] - unfolded[:-1])
     all_spacings = np.copy(_spacings)
     if trim > 0.0:
@@ -373,6 +386,8 @@ def _next_spacings(
     mode: PlotMode = "block",
     outfile: Path = None,
     ensembles: List[str] = ["goe", "poisson"],
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Plots a histogram of the next Nearest-Neighbors Spacing Distribution
 
@@ -410,7 +425,7 @@ def _next_spacings(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     _spacings = np.sort((unfolded[2:] - unfolded[:-2]) / 2)
     all_spacings = np.copy(_spacings)
     if trim > 0.0:
@@ -463,6 +478,8 @@ def _spectral_rigidity(
     mode: PlotMode = "block",
     outfile: Path = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Plot the computed spectral rigidity against the various expected spectral
     rigidity curves for the classical ensembles.
@@ -492,7 +509,7 @@ def _spectral_rigidity(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     df = pd.DataFrame(data, columns=["L", "delta"])
     # sbn.relplot(x="L", y="delta", data=df, ax=axes)
     sbn.scatterplot(x="L", y="delta", data=df, ax=axes)
@@ -536,6 +553,8 @@ def _level_number_variance(
     mode: PlotMode = "block",
     outfile: Path = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
+    fig: Figure = None,
+    axes: Axes = None,
 ) -> PlotResult:
     """Plot the computed level number variance against the various expected number
     level variance curves for the classical ensembles.
@@ -565,7 +584,7 @@ def _level_number_variance(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    fig, axes = _setup_plotting()
+    fig, axes = _setup_plotting(fig, axes)
     df = pd.DataFrame(data, columns=["L", "sigma"])
     # sbn.relplot(x="L", y="sigma", data=df, ax=axes)
     sbn.scatterplot(x="L", y="sigma", data=df, ax=axes)
@@ -632,7 +651,33 @@ def _level_number_variance(
     return _handle_plot_mode(mode, fig, axes, outfile)
 
 
-def _setup_plotting() -> Tuple[plt.Figure, plt.Axes]:
+def _observables(
+    unfolded: ndarray,
+    rigidity_df: pd.DataFrame,
+    levelvar_df: pd.DataFrame,
+    ensembles: List[str] = ["goe", "poisson"],
+    suptitle: str = "Spectral Observables",
+    mode: PlotMode = "block",
+    outfile: Path = None,
+) -> PlotResult:
+    _setup_plotting(init=True)
+    fig, axes = plt.subplots(2, 2, sharex="none", sharey="none")
+    fig.set_size_inches(fig.get_size_inches()*2)
+    fig.suptitle(suptitle)
+    _unfolded_fit(unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="noblock")
+    _spacings(unfolded, fig=fig, axes=axes[0, 1], mode="noblock", ensembles=ensembles)
+    _spectral_rigidity(
+        unfolded, data=rigidity_df, fig=fig, axes=axes[1, 0], mode="noblock", ensembles=ensembles
+    )
+    _level_number_variance(
+        unfolded, data=levelvar_df, fig=fig, axes=axes[1, 1], mode="noblock", ensembles=ensembles
+    )
+    return _handle_plot_mode(mode, fig, axes, outfile)
+
+
+def _setup_plotting(
+    fig: Figure = None, axes: Axes = None, init: bool = False
+) -> Tuple[Optional[Figure], Optional[Axes]]:
     global PLOTTING_READY
     if not PLOTTING_READY:
         PALETTE = sbn.color_palette("dark").copy()
@@ -640,11 +685,16 @@ def _setup_plotting() -> Tuple[plt.Figure, plt.Axes]:
         sbn.set()
         sbn.set_palette(PALETTE)
         PLOTTING_READY = True
-    fig, axes = plt.subplots()  # IMPORTANT! Prevents sbn overlapping
-    return fig, axes
+    if init:
+        return None, None
+    if fig is None or axes is None:
+        fig, axes = plt.subplots()
+        return fig, axes
+    else:
+        return fig, axes
 
 
-def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes) -> None:
+def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
     """
     calculate KDE for observed spacings
     we are doing this manually because we want to ensure consistency of the KDE
@@ -671,8 +721,8 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes) -> None:
 
 
 def _handle_plot_mode(
-    mode: str, fig: plt.Figure, axes: plt.Axes, outfile: Path = None
-) -> Optional[PlotResult]:
+    mode: str, fig: Figure, axes: Axes, outfile: Path = None
+) -> Union[Optional[PlotResult], Axes]:
     if mode == "block":
         plt.show(block=True)
     elif mode == "noblock":
