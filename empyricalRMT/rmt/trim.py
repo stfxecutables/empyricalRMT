@@ -432,7 +432,7 @@ class TrimReport:
                 is_outlier = np.zeros(is_outlier.shape, dtype=bool)
 
             df["cluster"] = ["outlier" if label else "inlier" for label in is_outlier]
-            unfolded, steps = Smoother(df["eigs"]).fit()
+            unfolded, steps, closure = Smoother(df["eigs"]).fit()
             df["unfolded"] = unfolded
             df["sqe"] = (unfolded - steps) ** 2
 
@@ -492,7 +492,7 @@ class TrimReport:
             trimmed = np.array(trim["eigs"])
             lower_trim_length = find_first(eigs, trimmed[0])
             upper_trim_length = len(eigs) - 1 - find_last(eigs, trimmed[-1])
-            trim_unfolds, sqes = Smoother(trimmed).fit_all(
+            trim_unfolds, sqes, smoother_map = Smoother(trimmed).fit_all(
                 poly_degrees, spline_smooths, spline_degrees, gompertz
             )
             all_trim_unfolds.append(trim_unfolds)
@@ -586,13 +586,13 @@ class Trimmed(EigVals):
             the step-function values
         """
         eigs = self.values
-        unfolded, _ = Smoother(eigs).fit(
+        unfolded, _, closure = Smoother(eigs).fit(
             smoother=smoother,
             degree=degree,
             spline_smooth=spline_smooth,
             emd_detrend=emd_detrend,
         )
-        return Unfolded(originals=eigs, unfolded=unfolded)
+        return Unfolded(originals=eigs, unfolded=unfolded, smoother=closure)
 
     def unfold_auto(
         self,

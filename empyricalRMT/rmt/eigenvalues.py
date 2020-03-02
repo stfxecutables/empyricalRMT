@@ -392,13 +392,14 @@ class Eigenvalues(EigVals):
             return self.unfold_goe()
 
         eigs = self.eigs
-        unfolded, _ = Smoother(eigs).fit(
+        unfolded, _, closure = Smoother(eigs).fit(
             smoother=smoother,
             degree=degree,
             spline_smooth=spline_smooth,
             emd_detrend=emd_detrend,
+            return_callable=True,
         )
-        return Unfolded(originals=eigs, unfolded=np.sort(unfolded))
+        return Unfolded(originals=eigs, unfolded=np.sort(unfolded), smoother=closure)
 
     def unfold_goe(self, a: float = None) -> Unfolded:
         # eigs = self.eigs

@@ -6,7 +6,7 @@ from numpy.polynomial.polynomial import polyfit, polyval
 from pandas import DataFrame
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import curve_fit
-from typing import Any, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
@@ -54,7 +54,8 @@ class Smoother:
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         emd_detrend: bool = False,
-    ) -> ndarray:
+        return_callable: bool = False,
+    ) -> Tuple[ndarray, ndarray, Optional[Callable[[ndarray], ndarray]]]:
         """Computer the specified smoothing function values for a set of eigenvalues.
 
         Parameters
@@ -67,6 +68,9 @@ class Smoother:
             the degree of the polynomial or spline
         spline_smooth: float
             the smoothing factors passed into scipy.interpolate.UnivariateSpline
+        return_callable: bool
+            If true, return a function that closes over the fit parameters so
+            that, e.g., additional values can be fit later.
 
         Returns
         -------
@@ -85,7 +89,9 @@ class Smoother:
         if smoother == "poly":
             poly_coef = polyfit(eigs, steps, degree)
             unfolded = polyval(eigs, poly_coef)
-            return unfolded, steps
+            if return_callable:
+                return unfolded, steps, lambda x: polyval(x, poly_coef)
+            return unfolded, steps, None
 
         if smoother == "spline":
             k = DEFAULT_SPLINE_DEGREE
@@ -106,13 +112,17 @@ class Smoother:
                     "Unreachable: All possible spline_smooth arguments should have been handled."
                 )
                 spline = USpline(eigs, steps, k=k, s=spline_smooth)
-            return spline(eigs), steps
+            if return_callable:
+                return spline(eigs), steps, lambda x: spline(x)
+            return spline(eigs), steps, None
 
         if smoother == "gompertz":
             # use steps[end] as guess for the asymptote, a, of gompertz curve
             [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[-1], 1, 1))
-            return gompertz(eigs, a, b, c), steps
-        raise NotImplementedError
+            if return_callable:
+                return gompertz(eigs, a, b, c), steps, lambda x: gompertz(x, a, b, c)
+            return gompertz(eigs, a, b, c), steps, None
+        raise RuntimeError("Unreachable!")
 
     def fit_all(
         self,
@@ -121,7 +131,7 @@ class Smoother:
         spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
         gompertz: bool = False,
         dry_run: bool = False,
-    ) -> Union[List[str], Tuple[DataFrame, DataFrame]]:
+    ) -> Union[List[str], Tuple[DataFrame, DataFrame, Dict[str, Callable]]]:
         """unfold eigenvalues for all specified smoothers
 
         Parameters
@@ -155,7 +165,10 @@ class Smoother:
             indicating the fitting parameters and smoother, with the values of
             the column being the squared residuals of the fit
         col_names: list
-            If `dry_run` is True, return only the column names for the given arguments.
+            If `dry_run` is True, return only the column names for the given
+            arguments.
+        smoother_map: dict
+            A dict of {col_name: closure} for accessing the fitted smoothers later.
         """
         col_names = self.__get_smoother_names(
             poly_degrees=poly_degrees,
@@ -168,11 +181,15 @@ class Smoother:
 
         # construct dataframes to hold all info
         unfoldeds, sqes = pd.DataFrame(), pd.DataFrame()
+        smoother_map = {}
         for d in poly_degrees:
             col_name = f"poly_{d}"
-            unfolded, steps = self.fit(smoother="poly", degree=d)
+            unfolded, steps, closure = self.fit(
+                smoother="poly", degree=d, return_callable=True
+            )
             unfoldeds[col_name] = unfolded
             sqes[col_name] = (unfolded - steps) ** 2
+            smoother_map[col_name] = closure
 
         if spline_smooths == "heuristic":
             for s in DEFAULT_SPLINE_SMOOTHS:
@@ -180,26 +197,37 @@ class Smoother:
                     col_name = f"{_spline_name(d)}-spline_" "{:1.2f}_heuristic".format(
                         s
                     )
-                    unfolded, steps = self.fit(
-                        smoother="spline", spline_smooth=len(self._eigs) ** s, degree=d
+                    unfolded, steps, closure = self.fit(
+                        smoother="spline",
+                        spline_smooth=len(self._eigs) ** s,
+                        degree=d,
+                        return_callable=True,
                     )
                     unfoldeds[col_name] = unfolded
                     sqes[col_name] = (unfolded - steps) ** 2
+                    smoother_map[col_name] = closure
         else:
             for s in spline_smooths:  # type: ignore
                 for d in spline_degrees:
                     col_name = f"{_spline_name(d)}-spline_" "{:1.3f}".format(s)
-                    unfolded, steps = self.fit(
-                        smoother="spline", spline_smooth=s, degree=d
+                    unfolded, steps, closure = self.fit(
+                        smoother="spline",
+                        spline_smooth=s,
+                        degree=d,
+                        return_callable=True,
                     )
                     unfoldeds[col_name] = unfolded
                     sqes[col_name] = (unfolded - steps) ** 2
+                    smoother_map[col_name] = closure
 
         if gompertz:
-            unfolded, steps = self.fit(smoother="gompertz")
+            unfolded, steps, closure = self.fit(
+                smoother="gompertz", return_callable=True
+            )
             unfoldeds["gompertz"] = unfolded
             sqes["gompertz"] = (unfolded - steps) ** 2
-        return unfoldeds, sqes
+            smoother_map[col_name] = closure
+        return unfoldeds, sqes, smoother_map  # type: ignore
 
     def __get_smoother_names(
         self,
@@ -295,3 +323,4 @@ class Smoother:
             pass
         else:
             raise ValueError("`method` must be one of 'auto', 'manual', or 'None'")
+

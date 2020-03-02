@@ -5,7 +5,7 @@ from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import Any, List, Optional, Tuple, Type
+from typing import Any, Callable, List, Optional, Tuple, Type
 from typing_extensions import Literal
 
 import empyricalRMT.rmt.plot as plot
@@ -22,15 +22,22 @@ from empyricalRMT.rmt.plot import (
     PlotMode,
     PlotResult,
 )
+from empyricalRMT.rmt.smoother import Smoother
 from empyricalRMT._validate import make_1d_array
 
 Observables = Literal["nnsd", "nnnsd", "rigidity", "levelvar"]
 
 
 class Unfolded(EigVals):
-    def __init__(self, originals: ndarray, unfolded: ndarray):
+    def __init__(
+        self,
+        originals: ndarray,
+        unfolded: ndarray,
+        smoother: Callable[[ndarray], ndarray] = None,
+    ):
         super().__init__(originals)
         self._vals = np.array(unfolded)
+        self._smoother = smoother
 
     @property
     def values(self) -> ndarray:
@@ -39,6 +46,14 @@ class Unfolded(EigVals):
     @property
     def vals(self) -> ndarray:
         return self._vals
+
+    def evaluate_smoother(self, x: ndarray) -> ndarray:
+        if self._smoother is None:
+            raise NotImplementedError(
+                "Your unfolded eigenvalues were probably constructed by auto-trimming."
+                "Acquiring the smoother from this method is currently unsupported."
+            )
+        return self._smoother(x)
 
     def spectral_rigidity(
         self,
