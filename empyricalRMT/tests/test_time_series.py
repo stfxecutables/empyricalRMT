@@ -22,13 +22,13 @@ def unfold_and_plot(eigs: ndarray, suptitle: str) -> None:
     unfolded = Eigenvalues(eigs).trim_unfold_auto(
         max_trim=0.5, max_iters=9, poly_degrees=[13], gompertz=False
     )
-    trimmed = np.round(100 * len(unfolded.vals) / len(eigs), 1)
+    trimmed = np.round(100 - 100 * len(unfolded.vals) / len(eigs), 1)
 
     _observables(
         unfolded=unfolded.vals,
         rigidity_df=unfolded.spectral_rigidity(c_iters=10000, show_progress=True),
         levelvar_df=unfolded.level_variance(show_progress=True),
-        suptitle=suptitle + f" ({100 - trimmed}% removed)",
+        suptitle=suptitle + f" ({trimmed}% removed)",
         mode="noblock",
     )
     # unfolded.plot_steps(mode="noblock")
@@ -51,15 +51,15 @@ def test_gaussian_noise() -> None:
 
 @pytest.mark.plot
 def test_correlated_gaussian_noise() -> None:
-    var = 0.5
+    var = 0.1
     for percent in [25, 50, 75, 95]:
-        A = np.random.standard_normal([1000, 250])
+        A = np.random.standard_normal([1000, 500])
         correlated = np.random.permutation(A.shape[0] - 1) + 1  # don't select first row
         last = int(np.floor((percent / 100) * A.shape[0]))
         corr_indices = correlated[:last]
         # introduce correlation in A
         for i in corr_indices:
-            A[i, :] = np.random.uniform(0, 1) * A[0, :] + np.random.normal(
+            A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(
                 0, var, size=A.shape[1]
             )
         M = p_correlate(A)
