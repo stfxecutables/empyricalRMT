@@ -5,7 +5,7 @@ from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import List, Optional, Tuple, Type
+from typing import Any, List, Optional, Tuple, Type
 from typing_extensions import Literal
 
 import empyricalRMT.rmt.plot as plot
@@ -382,6 +382,10 @@ class Unfolded(EigVals):
             outfile=outfile,
             ensembles=ensembles,
         )
+
+    def plot_nnnsd(self, *args: Any, **kwargs: Any) -> PlotResult:
+        """Alias for Unfolded.plot_next_nnsd(). """
+        return self.plot_next_nnsd(*args, **kwargs)
 
     def plot_spectral_rigidity(
         self,
