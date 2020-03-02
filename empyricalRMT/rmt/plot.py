@@ -63,8 +63,8 @@ def _raw_eig_dist(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
-    axes = sbn.distplot(
+    fig, axes = _setup_plotting()
+    sbn.distplot(
         eigs,
         norm_hist=True,
         bins=bins,  # doane
@@ -72,15 +72,15 @@ def _raw_eig_dist(
         label="Raw Eigenvalue Distribution",
         axlabel="Eigenvalue",
         color="black",
+        ax=axes,
     )
     if kde:
         grid = np.linspace(eigs.min(), eigs.max(), 10000)
         _kde_plot(eigs, grid, axes)
 
-    plt.ylabel("Density")
-    plt.title(title)
-    plt.legend()
-    return _handle_plot_mode(mode, axes, outfile)
+    axes.set(title=title, ylabel="Density")
+    axes.legend().set_visible(True)
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
 
 def _step_function(
@@ -115,13 +115,13 @@ def _step_function(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
+    fig, axes = _setup_plotting()
     grid = np.linspace(eigs.min(), eigs.max(), gridsize)
     steps = _step_function_fast(eigs, grid)
     df = pd.DataFrame({"Cumulative Value": steps, "Raw eigenvalues λ": grid})
-    axes = sbn.lineplot(data=df, x="Raw eigenvalues λ", y="Cumulative Value")
-    plt.title(title)
-    return _handle_plot_mode(mode, axes, outfile)
+    axes = sbn.lineplot(data=df, x="Raw eigenvalues λ", y="Cumulative Value", ax=axes)
+    axes.set(title=title)
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
 
 def _raw_eig_sorted(
@@ -155,17 +155,15 @@ def _raw_eig_sorted(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
+    fig, axes = _setup_plotting()
     if kind == "scatter":
-        axes = sbn.scatterplot(data=eigs)
+        sbn.scatterplot(data=eigs, ax=axes)
     elif kind == "line":
-        axes = sbn.lineplot(data=eigs)
+        sbn.lineplot(data=eigs, ax=axes)
     else:
         raise ValueError("Invalid plot kind. Must be 'scatter' or 'line'.")
-    plt.xlabel("Eigenvalue index")
-    plt.ylabel("Eigenvalue")
-    plt.title(title)
-    return _handle_plot_mode(mode, axes, outfile)
+    axes.set(title=title, xlabel="Eigenvalue index", ylabel="Eigenvalue")
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
 
 def _unfolded_dist(
@@ -204,8 +202,8 @@ def _unfolded_dist(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
-    axes = sbn.distplot(
+    fig, axes = _setup_plotting()
+    sbn.distplot(
         unfolded,
         norm_hist=True,
         bins=bins,  # doane
@@ -213,15 +211,15 @@ def _unfolded_dist(
         label="Unfolded Eigenvalue Distribution",
         axlabel="Eigenvalue",
         color="black",
+        ax=axes,
     )
     if kde:
         grid = np.linspace(unfolded.min(), unfolded.max(), 10000)
         _kde_plot(unfolded, grid, axes)
 
-    plt.ylabel("Density")
-    plt.title(title)
-    plt.legend()
-    return _handle_plot_mode(mode, axes, outfile)
+    axes.set(title=title, ylabel="Density")
+    axes.legend().set_visible(True)
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
 
 def _unfolded_fit(
@@ -254,12 +252,12 @@ def _unfolded_fit(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
+    fig, axes = _setup_plotting()
     N = len(unfolded)
     df = pd.DataFrame({"Step Function": np.arange(1, N + 1), "Unfolded λ": unfolded})
-    axes = sbn.lineplot(data=df)
-    plt.title(title)
-    return _handle_plot_mode(mode, axes, outfile)
+    axes = sbn.lineplot(data=df, ax=axes)
+    axes.set(title=title)
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
 
 # this essentially plots the nearest-neighbors spacing distribution
@@ -310,7 +308,7 @@ def _spacings(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
+    fig, axes = _setup_plotting()
     _spacings = np.sort(unfolded[1:] - unfolded[:-1])
     all_spacings = np.copy(_spacings)
     if trim > 0.0:
@@ -326,6 +324,7 @@ def _spacings(
         label="Empirical Spacing Distribution",
         axlabel="spacing (s)",
         color="black",
+        ax=axes,
     )
 
     # fmt: off
@@ -343,7 +342,7 @@ def _spacings(
         plt.setp(gue, color="#0066FF")
     if "gse" in ensembles:
         gse = (2**18 / (3**6 * p**3)) * (s**4) * np.exp(-((64 / (9 * p)) * (s * s)))
-        gse = plt.plot(s, gse, label="Gaussian Symplectic")
+        gse = axes.plot(s, gse, label="Gaussian Symplectic")
         plt.setp(gse, color="#EA00FF")
     # fmt: on
 
@@ -353,16 +352,15 @@ def _spacings(
         else:
             _kde_plot(all_spacings, s, axes)
 
-    plt.ylabel("Density p(s)")
-    plt.title(title)
-    plt.legend()
     # adjusting the right bounds can be necessary when / if there are
     # many large eigenvalue spacings
     # axes.set_xlim(left=0, right=np.percentile(_spacings, 99))
     axes.set_ylim(top=1.5, bottom=0)
     axes.set_xlim(left=0, right=2.5)
+    axes.set(title=title, ylabel="Density p(s)")
+    axes.legend().set_visible(True)
 
-    return _handle_plot_mode(mode, axes, outfile)
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
 
 def _next_spacings(
@@ -412,7 +410,7 @@ def _next_spacings(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
+    fig, axes = _setup_plotting()
     _spacings = np.sort((unfolded[2:] - unfolded[:-2]) / 2)
     all_spacings = np.copy(_spacings)
     if trim > 0.0:
@@ -429,6 +427,7 @@ def _next_spacings(
         label="next NNSD",
         axlabel="spacing (s_2)",
         color="black",
+        ax=axes,
     )
 
     if kde is True:
@@ -447,15 +446,14 @@ def _next_spacings(
         poisson = axes.plot(s, poisson, label="Poisson")
         plt.setp(poisson, color="#08FD4F")
 
-    plt.ylabel("Density p(s)")
-    plt.title(title)
-    plt.legend()
     # adjusting the right bounds can be necessary when / if there are
     # many large eigenvalue spacings
     axes.set_ylim(top=2.0, bottom=0)
     axes.set_xlim(left=0, right=2.5)
+    axes.set(title=title, ylabel="Density p(s)")
+    axes.legend().set_visible(True)
 
-    return _handle_plot_mode(mode, axes, outfile)
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
 
 def _spectral_rigidity(
@@ -494,12 +492,14 @@ def _spectral_rigidity(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
+    fig, axes = _setup_plotting()
     df = pd.DataFrame(data, columns=["L", "delta"])
-    axes = sbn.relplot(x="L", y="delta", data=df)
+    # sbn.relplot(x="L", y="delta", data=df, ax=axes)
+    sbn.scatterplot(x="L", y="delta", data=df, ax=axes)
     ensembles = set(ensembles)  # type: ignore
 
-    _, right = plt.xlim()
+    # _, right = plt.xlim()
+    _, right = axes.get_xlim()
 
     L = df["L"]
     p, y = np.pi, np.euler_gamma
@@ -509,27 +509,24 @@ def _spectral_rigidity(
 
     if "poisson" in ensembles:
         poisson = L / 15 / 2
-        poisson = plt.plot(L, poisson, label="Poisson")
+        poisson = axes.plot(L, poisson, label="Poisson")
         plt.setp(poisson, color="#08FD4F")
     if "goe" in ensembles:
         goe = (1 / (p ** 2)) * (np.log(2 * p * s) + y - 5 / 4 - (p ** 2) / 8)
-        goe = plt.plot(L, goe, label="Gaussian Orthogonal")
+        goe = axes.plot(L, goe, label="Gaussian Orthogonal")
         plt.setp(goe, color="#FD8208")
     if "gue" in ensembles:
         gue = (1 / (2 * (p ** 2))) * (np.log(2 * p * s) + y - 5 / 4)
-        gue = plt.plot(L, gue, label="Gaussian Unitary")
+        gue = axes.plot(L, gue, label="Gaussian Unitary")
         plt.setp(gue, color="#0066FF")
     if "gse" in ensembles:
         gse = (1 / (4 * (p ** 2))) * (np.log(4 * p * s) + y - 5 / 4 + (p ** 2) / 8)
-        gse = plt.plot(L, gse, label="Gaussian Symplectic")
+        gse = axes.plot(L, gse, label="Gaussian Symplectic")
         plt.setp(gse, color="#EA00FF")
 
-    plt.xlabel("L")
-    plt.ylabel("∆3(L)")
-    plt.title(title)
-    plt.legend()
-
-    return _handle_plot_mode(mode, axes, outfile)
+    axes.set(title=title, xlabel="L", ylabel="∆3(L)")
+    axes.legend().set_visible(True)
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
 
 def _level_number_variance(
@@ -568,12 +565,14 @@ def _level_number_variance(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
-    _setup_plotting()
+    fig, axes = _setup_plotting()
     df = pd.DataFrame(data, columns=["L", "sigma"])
-    axes = sbn.relplot(x="L", y="sigma", data=df)
+    # sbn.relplot(x="L", y="sigma", data=df, ax=axes)
+    sbn.scatterplot(x="L", y="sigma", data=df, ax=axes)
     ensembles = set(ensembles)  # type: ignore
 
-    _, right = plt.xlim()
+    # _, right = plt.xlim()
+    _, right = axes.get_xlim()
 
     L = df["L"]
     p, y = np.pi, np.euler_gamma
@@ -600,7 +599,7 @@ def _level_number_variance(
 
     if "poisson" in ensembles:
         poisson = L / 2  # waste of time, too large very often
-        poisson = plt.plot(L, poisson, label="Poisson")
+        poisson = axes.plot(L, poisson, label="Poisson")
         plt.setp(poisson, color="#08FD4F")
     if "goe" in ensembles:
         goe = np.zeros(s.shape)
@@ -613,35 +612,36 @@ def _level_number_variance(
                     goe[i] = (2 / (p ** 2)) * (
                         np.log(2 * p * s_val) + y + 1 - (p ** 2) / 8
                     )
-        goe = plt.plot(L, goe, label="Gaussian Orthogonal")
+        goe = axes.plot(L, goe, label="Gaussian Orthogonal")
         plt.setp(goe, color="#FD8208")
     if "gue" in ensembles:
         gue = (1 / (p ** 2)) * (np.log(2 * p * s) + y + 1)
-        gue = plt.plot(L, gue, label="Gaussian Unitary")
+        gue = axes.plot(L, gue, label="Gaussian Unitary")
         plt.setp(gue, color="#0066FF")
     if "gse" in ensembles:
         gse = (1 / (2 * (p ** 2))) * (np.log(4 * p * s) + y + 1 + (p ** 2) / 8)
-        gse = plt.plot(L, gse, label="Gaussian Symplectic")
+        gse = axes.plot(L, gse, label="Gaussian Symplectic")
         plt.setp(gse, color="#EA00FF")
 
-    plt.xlabel("L")
-    plt.ylabel("Sigma^2(L)")
-    plt.title(f"Level Number Variance - {title} unfolding")
-    plt.legend()
+    axes.set(
+        title=f"Level Number Variance - {title} unfolding",
+        xlabel="L",
+        ylabel="Sigma^2(L)",
+    )
+    axes.legend().set_visible(True)
+    return _handle_plot_mode(mode, fig, axes, outfile)
 
-    return _handle_plot_mode(mode, axes, outfile)
 
-
-def _setup_plotting() -> None:
+def _setup_plotting() -> Tuple[plt.Figure, plt.Axes]:
     global PLOTTING_READY
-    plt.figure()  # IMPORTANT! Prevents sbn overlapping
-    if PLOTTING_READY:
-        return
-    PALETTE = sbn.color_palette("dark").copy()
-    PALETTE.insert(0, (0.0, 0.0, 0.0))
-    sbn.set()
-    sbn.set_palette(PALETTE)
-    PLOTTING_READY = True
+    if not PLOTTING_READY:
+        PALETTE = sbn.color_palette("dark").copy()
+        PALETTE.insert(0, (0.0, 0.0, 0.0))
+        sbn.set()
+        sbn.set_palette(PALETTE)
+        PLOTTING_READY = True
+    fig, axes = plt.subplots()  # IMPORTANT! Prevents sbn overlapping
+    return fig, axes
 
 
 def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes) -> None:
@@ -671,7 +671,7 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: plt.Axes) -> None:
 
 
 def _handle_plot_mode(
-    mode: str, axes: plt.Axes, outfile: Path = None
+    mode: str, fig: plt.Figure, axes: plt.Axes, outfile: Path = None
 ) -> Optional[PlotResult]:
     if mode == "block":
         plt.show(block=True)
@@ -687,9 +687,8 @@ def _handle_plot_mode(
             raise ValueError("Cannot interpret outfile path.") from e
         make_parent_directories(outfile)
         print(f"Saving figure to {outfile}")
-        plt.savefig(outfile)
+        fig.savefig(outfile)
     elif mode == "return":
-        fig = plt.gcf()
         return fig, axes
     else:
         raise ValueError("Invalid plotting mode.")
