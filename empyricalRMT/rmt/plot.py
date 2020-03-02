@@ -634,6 +634,7 @@ def _level_number_variance(
 
 def _setup_plotting() -> None:
     global PLOTTING_READY
+    plt.figure()  # IMPORTANT! Prevents sbn overlapping
     if PLOTTING_READY:
         return
     PALETTE = sbn.color_palette("dark").copy()
@@ -676,6 +677,7 @@ def _handle_plot_mode(
         plt.show(block=True)
     elif mode == "noblock":
         plt.show(block=False)
+        plt.pause(0.001)
     elif mode == "save":
         if outfile is None:
             raise ValueError("Path not specified for `outfile`.")
