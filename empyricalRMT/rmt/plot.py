@@ -66,6 +66,7 @@ def _raw_eig_dist(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     sbn.distplot(
         eigs,
@@ -120,6 +121,7 @@ def _step_function(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     grid = np.linspace(eigs.min(), eigs.max(), gridsize)
     steps = _step_function_fast(eigs, grid)
@@ -162,6 +164,7 @@ def _raw_eig_sorted(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     if kind == "scatter":
         sbn.scatterplot(data=eigs, ax=axes)
@@ -211,6 +214,7 @@ def _unfolded_dist(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     sbn.distplot(
         unfolded,
@@ -263,6 +267,7 @@ def _unfolded_fit(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     N = len(unfolded)
     df = pd.DataFrame({"Step Function": np.arange(1, N + 1), "Unfolded λ": unfolded})
@@ -321,6 +326,7 @@ def _spacings(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     _spacings = np.sort(unfolded[1:] - unfolded[:-1])
     all_spacings = np.copy(_spacings)
@@ -425,6 +431,7 @@ def _next_spacings(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     _spacings = np.sort((unfolded[2:] - unfolded[:-2]) / 2)
     all_spacings = np.copy(_spacings)
@@ -509,6 +516,7 @@ def _spectral_rigidity(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     df = pd.DataFrame(data, columns=["L", "delta"])
     # sbn.relplot(x="L", y="delta", data=df, ax=axes)
@@ -660,7 +668,7 @@ def _observables(
     mode: PlotMode = "block",
     outfile: Path = None,
 ) -> PlotResult:
-    _setup_plotting(init=True)
+    _configure_sbn_style()
     fig, axes = plt.subplots(2, 2, sharex="none", sharey="none")
     fig.set_size_inches(fig.get_size_inches()*2)
     fig.suptitle(suptitle)
@@ -675,9 +683,8 @@ def _observables(
     return _handle_plot_mode(mode, fig, axes, outfile)
 
 
-def _setup_plotting(
-    fig: Figure = None, axes: Axes = None, init: bool = False
-) -> Tuple[Optional[Figure], Optional[Axes]]:
+def _configure_sbn_style() -> None:
+    """Ensure *once* that seaborn style has been set."""
     global PLOTTING_READY
     if not PLOTTING_READY:
         PALETTE = sbn.color_palette("dark").copy()
@@ -685,8 +692,8 @@ def _setup_plotting(
         sbn.set()
         sbn.set_palette(PALETTE)
         PLOTTING_READY = True
-    if init:
-        return None, None
+
+def _setup_plotting(fig: Figure = None, axes: Axes = None) -> Tuple[Figure, Axes]:
     if fig is None or axes is None:
         fig, axes = plt.subplots()
         return fig, axes
