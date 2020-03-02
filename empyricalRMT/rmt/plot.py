@@ -670,15 +670,25 @@ def _observables(
 ) -> PlotResult:
     _configure_sbn_style()
     fig, axes = plt.subplots(2, 2, sharex="none", sharey="none")
-    fig.set_size_inches(fig.get_size_inches()*2)
+    fig.set_size_inches(fig.get_size_inches() * 2)
     fig.suptitle(suptitle)
     _unfolded_fit(unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="noblock")
     _spacings(unfolded, fig=fig, axes=axes[0, 1], mode="noblock", ensembles=ensembles)
     _spectral_rigidity(
-        unfolded, data=rigidity_df, fig=fig, axes=axes[1, 0], mode="noblock", ensembles=ensembles
+        unfolded,
+        data=rigidity_df,
+        fig=fig,
+        axes=axes[1, 0],
+        mode="noblock",
+        ensembles=ensembles,
     )
     _level_number_variance(
-        unfolded, data=levelvar_df, fig=fig, axes=axes[1, 1], mode="noblock", ensembles=ensembles
+        unfolded,
+        data=levelvar_df,
+        fig=fig,
+        axes=axes[1, 1],
+        mode="noblock",
+        ensembles=ensembles,
     )
     return _handle_plot_mode(mode, fig, axes, outfile)
 
@@ -692,6 +702,7 @@ def _configure_sbn_style() -> None:
         sbn.set()
         sbn.set_palette(PALETTE)
         PLOTTING_READY = True
+
 
 def _setup_plotting(fig: Figure = None, axes: Axes = None) -> Tuple[Figure, Axes]:
     if fig is None or axes is None:
