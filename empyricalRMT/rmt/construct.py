@@ -10,6 +10,7 @@ from typing import Union
 from typing_extensions import Literal
 from warnings import warn
 
+from empyricalRMT.rmt.correlater import p_correlate
 from empyricalRMT.rmt.unfold import Unfolded
 
 
@@ -141,6 +142,24 @@ def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
     eigs_remain = np.linalg.eigvalsh(_generate_GOE_matrix(size=last_matsize))
     eigs = list(eigs_submats.flatten()) + list(eigs_remain)
     eigs = np.sort(eigs)
+    return eigs
+
+
+def time_series_eigs(
+    n: int = 1000, t: int = 200, dist: str = "normal", log: bool = True
+) -> ndarray:
+    if dist == "normal":
+        M_time = np.random.standard_normal([n, t])
+
+    if log:
+        print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing correlations...")
+    # M = np.corrcoef(M_time)
+    M = p_correlate(M_time)
+    if log:
+        print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
+    eigs = np.linalg.eigvalsh(M)
+    if log:
+        print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues...")
     return eigs
 
 
