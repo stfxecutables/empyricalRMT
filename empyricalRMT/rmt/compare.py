@@ -28,12 +28,16 @@ class Compare:
             A list of unidimensional numpy arrays of values to compare. For most
             comparison methods besides some piecewise / quantile comparison methods, the
             curves must have identical lengths.
+
         labels: List[str]
-            A list of strings identifying each curve. Must be the same length as curves,
-            and labels[i] must be the label for curves[i], for all valid values of i.
+            A list of strings identifying each curve. Must be the same length as
+            curves, and labels[i] must be the label for curves[i], for all valid
+            values of i.
+
         base_curve: ndarray
             The base curve against which each curve of `curves` will be compared, if the
             desire is to compare multiple curves only to one single curve.
+
         base_label: str
             The label for identifying the base_curve.
         """
@@ -125,8 +129,10 @@ class Compare:
         -------
         counts1: ndarray
             The bin counts for curve1.
+
         counts2: ndarray
             The bin counts for curve2.
+
         endpoints: ndarray
             The (sorted) ndarray of bin endpoints.
         """

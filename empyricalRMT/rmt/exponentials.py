@@ -20,8 +20,23 @@ def derivative(x: ndarray, y: ndarray) -> ndarray:
 
 @jit(nopython=True, fastmath=True)
 def inverse_gompertz(x: ndarray, a: float, b: float, c: float) -> ndarray:
-    """a - asymptote, should be close to max(eigs)
-    b - center, must be greater than zero
+    """
+    Parameters
+    ----------
+    x: ndarray
+        Values over which to compute the inverse gompertz.
+
+    a: float
+        asymptote, should be close to max(eigs)
+
+    b: float
+        center, must be greater than zero
+
+
+    Returns
+    -------
+    results: ndarray
+        computed values
     """
     # return np.log(b / np.log(1 / t)) / c
     # return np.log((np.log(x/ a) - np.log(a)) / -b2) / np.log(b3)
@@ -35,6 +50,5 @@ def gompertz(x: ndarray, a: float, b: float, c: float) -> ndarray:
 
 @jit(nopython=True, fastmath=True)
 def exponential(x: ndarray, a: float, b: float, c: float, d: float) -> ndarray:
-    """b is intercept,
-    """
+    """b is intercept """
     return b - a * np.exp(-c * x ** (1 / d))

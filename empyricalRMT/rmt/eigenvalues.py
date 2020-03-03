@@ -24,6 +24,7 @@ class Eigenvalues(EigVals):
     def __init__(self, eigenvalues: Sized):
         """Construct an Eigenvalues object.
 
+
         Parameters
         ----------
         eigs: Sized
@@ -80,8 +81,10 @@ class Eigenvalues(EigVals):
         gompertz: bool = True,
         outlier_tol: float = 0.1,
     ) -> TrimReport:
-        """Compute multiple trim regions iteratively via histogram-based outlier detection, perform
-        unfolding for each trim region, and summarize the resultant spacings and trimmings.
+        """Compute multiple trim regions iteratively via histogram-based outlier
+        detection, perform unfolding for each trim region, and summarize the
+        resultant spacings and trimmings.
+
 
         Parameters
         ----------
@@ -89,26 +92,34 @@ class Eigenvalues(EigVals):
             Float in (0, 1). The maximum allowable portion of eigenvalues to be trimmed.
             E.g. `max_trim=0.8` means to allow up to 80% of the original eigenvalues to
             be trimmed away.
+
         max_iters: int
             The maximum allowable number of iterations of outlier detection to run.
             Setting `max_iters=0` will not allow any trimming / outlier detection, and so
             will simply evaluate unfolding for different smoothers on the original raw
             eigenvalues. Typically, you would want this to be >= 4, to allow for trimming
             both some of the most extreme positive and negative eigenvalues.
+
         poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5,
+            6, 7, 8, 9, 10, 11]
+
         spline_smooths: List[float]
             the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
             Default np.linspace(1, 2, num=11)
+
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
+
         gompertz: bool
             Whether or not to use a gompertz curve as one of the smoothers.
+
         outlier_tol: float
             A float between 0 and 1, and which is passed as the tolerance paramater for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
+
 
         Returns
         -------
@@ -144,28 +155,35 @@ class Eigenvalues(EigVals):
         which has an unfolding that is most GOE-like in terms of its local
         spacings.
 
+
         Parameters
         ----------
         max_trim: float
             Float in (0, 1). The maximum allowable portion of eigenvalues to be trimmed.
             E.g. `max_trim=0.8` means to allow up to 80% of the original eigenvalues to
             be trimmed away.
+
         max_iters: int
             The maximum allowable number of iterations of outlier detection to run.
             Setting `max_iters=0` will not allow any trimming / outlier detection, and so
             will simply evaluate unfolding for different smoothers on the original raw
             eigenvalues. Typically, you would want this to be >= 4, to allow for trimming
             both some of the most extreme positive and negative eigenvalues.
+
         smoother: "poly" | "spline" | "gompertz" | lambda
             the type of smoothing function used to fit the step function
+
         degree: int
             the degree of the polynomial or spline
+
         spline_smooth: float
             the smoothing factors passed into scipy.interpolate.UnivariateSpline
+
         outlier_tol: float
             A float between 0 and 1, and which is passed as the tolerance paramater for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
+
 
         Returns
         -------
@@ -260,35 +278,45 @@ class Eigenvalues(EigVals):
         Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
         percent and smoother according to GOE score.
 
+
         Parameters
         ----------
         max_trim: float
             Float in (0, 1). The maximum allowable portion of eigenvalues to be trimmed.
             E.g. `max_trim=0.8` means to allow up to 80% of the original eigenvalues to
             be trimmed away.
+
         max_iters: int
             The maximum allowable number of iterations of outlier detection to run.
             Setting `max_iters=0` will not allow any trimming / outlier detection, and so
             will simply evaluate unfolding for different smoothers on the original raw
             eigenvalues. Typically, you would want this to be >= 4, to allow for trimming
             both some of the most extreme positive and negative eigenvalues.
+
         poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5,
+            6, 7, 8, 9, 10, 11]
+
         spline_smooths: List[float]
             the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
             Default np.linspace(1, 2, num=11)
+
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
+
         gompertz: bool
             Whether or not to use a gompertz curve as one of the smoothers.
+
         prioritize_smoother: bool
             Whether or not to select the optimal smoother before selecting the optimal
             trim region. See notes. Default: True.
+
         outlier_tol: float
             A float between 0 and 1, and which is passed as the tolerance paramater for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
+
 
         Notes
         -----
@@ -342,8 +370,6 @@ class Eigenvalues(EigVals):
 
         5. Assume that the best smoother is the one which results in the most GOE-like
            spacing distribution across all trims and all smoothers
-
-
         """
         trimmed = TrimReport(
             self.values,
@@ -372,12 +398,16 @@ class Eigenvalues(EigVals):
         ----------
         eigs: ndarray
             sorted eigenvalues
+
         smoother: "poly" | "spline" | "gompertz" | "goe" | lambda
             the type of smoothing function used to fit the step function
+
         degree: int
             the degree of the polynomial or spline
+
         spline_smooth: float
             the smoothing factors passed into scipy.interpolate.UnivariateSpline
+
 
         Returns
         -------
@@ -412,8 +442,7 @@ class Eigenvalues(EigVals):
         # a = 1
 
         def explicit(E: float) -> Any:
-            """
-            See the section on Asymptotic Level Densities for the closed form
+            """See the section on Asymptotic Level Densities for the closed form
             function below.
 
             Abul-Magd, A. A., & Abul-Magd, A. Y. (2014). Unfolding of the spectrum

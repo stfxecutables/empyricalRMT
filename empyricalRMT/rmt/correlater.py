@@ -116,13 +116,16 @@ def _compute_column_corrs(corrs: ndarray, reshaped: ndarray, i: int) -> None:
 def _compute_clean_row_corrs(corrs: ndarray, array: ndarray, i: int) -> None:
     """Compute correlations of row i of array and save them in row i of corrs.
 
+
     Parameters
     ----------
     corrs: ndarray
         The array to store the correlation values. Must be size (N, N) where
         N == array.shape[0].
+
     array: ndarray
         The N x T matrix of time series.
+
     i: int
         The index of the current row of interest.
     """

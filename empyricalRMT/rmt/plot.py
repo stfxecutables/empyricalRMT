@@ -23,7 +23,11 @@ from empyricalRMT.utils import make_parent_directories
 
 PlotResult = Optional[Tuple[Figure, Axes]]
 PlotMode = Union[
-    Literal["block"], Literal["noblock"], Literal["save"], Literal["return"], Literal["test"]
+    Literal["block"],
+    Literal["noblock"],
+    Literal["save"],
+    Literal["return"],
+    Literal["test"],
 ]
 
 RESET = Style.RESET_ALL
@@ -46,22 +50,30 @@ def _raw_eig_dist(
     ----------
     eigs: ndarray
         The eigenvalues to plot.
+
     bins: int
         the number of (equal-sized) bins to display and use for the histogram
+
     kde: boolean
         If False (default), do not display a kernel density estimate. If true, use
         [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
-        with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+        with arguments {kernel="gau", bw="scott", cut=0} to compute and display
+        the kde
+
     title: string
         The plot title string
+
     mode: "block" (default) | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
 
     Returns
     -------
@@ -104,19 +116,25 @@ def _step_function(
     ----------
     eigs: ndarray
         The eigenvalues to plot.
+
     gridsize: int
         The number of points to evaluate the step function over. The grid will be
         generated as np.linspace(eigs.min(), eigs.max(), gridsize).
+
     title: string
         The plot title string
+
     mode: "block" (default) | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
 
     Returns
     -------
@@ -148,18 +166,24 @@ def _raw_eig_sorted(
     ----------
     eigs: ndarray
         The eigenvalues to plot.
+
     title: string
         The plot title string
+
     mode: "block" (default) | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
     kind: "scatter" (default) | "line"
         Whether to use a scatterplot or line plot.
+
 
     Returns
     -------
@@ -194,22 +218,30 @@ def _unfolded_dist(
     ----------
     unfolded: ndarray
         The unfolded eigenvalues to plot.
+
     bins: int
         the number of (equal-sized) bins to display and use for the histogram
+
     kde: boolean
         If False (default), do not display a kernel density estimate. If true, use
         [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
-        with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+        with arguments {kernel="gau", bw="scott", cut=0} to compute and display
+        the kde
+
     title: string
         The plot title string
+
     mode: "block" (default) | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
 
     Returns
     -------
@@ -252,18 +284,24 @@ def _unfolded_fit(
     ----------
     unfolded: ndarray
         The unfolded eigenvalues to plot.
+
     title: string
         The plot title string
+
     mode: "block" (default) | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
     kind: "scatter" (default) | "line"
         Whether to use a scatterplot or line plot.
+
 
     Returns
     -------
@@ -340,30 +378,41 @@ def _spacings(
     ----------
     unfolded: ndarray
         the unfolded eigenvalues
+
     bins: int
         the number of (equal-sized) bins to display and use for the histogram
+
     kde: boolean
         If False (default), do not display a kernel density estimate. If true, use
         [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
-        with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+        with arguments {kernel="gau", bw="scott", cut=0} to compute and display
+        the kde
+
     trim: float
         If True, only use spacings <= `trim` for computing the KDE and plotting.
         Useful for when large spacings distort the histogram.
+
     trim_kde: bool
         If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
         KDE using all available spacings.
+
     title: string
         The plot title string
+
     mode: "block" | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
     ensembles: ["poisson", "goe", "gue", "gse"]
         Which ensembles to display the expected NNSD curves for.
+
 
     Returns
     -------
@@ -445,30 +494,41 @@ def _next_spacings(
     ----------
     unfolded: ndarray
         the unfolded eigenvalues
+
     bins: int
         the number of (equal-sized) bins to display and use for the histogram
+
     kde: boolean
         If False (default), do not display a kernel density estimate. If true, use
         [statsmodels.nonparametric.kde.KDEUnivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kde.KDEUnivariate.html#statsmodels.nonparametric.kde.KDEUnivariate)
-        with arguments {kernel="gau", bw="scott", cut=0} to compute and display the kde
+        with arguments {kernel="gau", bw="scott", cut=0} to compute and display
+        the kde
+
     trim: float
         If True, only use spacings <= `trim` for computing the KDE and plotting.
         Useful for when large spacings distort the histogram.
+
     trim_kde: bool
         If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
         KDE using all available spacings.
+
     title: string
         The plot title string
+
     mode: "block" | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
     ensembles: List["poisson", "goe"]
         Which ensembles to display the expected next-NNSD curves for.
+
 
     Returns
     -------
@@ -539,21 +599,28 @@ def _spectral_rigidity(
     ----------
     unfolded: ndarray
         The unfolded eigenvalues to plot.
+
     data: DataFrame
         `data` argument is pd.DataFrame({"L": L_vals, "delta": delta3})
         TODO: fix this
+
     title: string
         The plot title string
+
     mode: "block" (default) | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
     ensembles: ["poisson", "goe", "gue", "gse"]
         Which ensembles to display the expected spectral rigidity curves for comparison against.
+
 
     Returns
     -------
@@ -615,21 +682,29 @@ def _level_number_variance(
     ----------
     unfolded: ndarray
         The unfolded eigenvalues to plot.
+
     data: DataFrame
         `data` argument is pd.DataFrame({"L": L_vals, "sigma": sigma}), where sigma
-        are the values computed from observables.levelvariance.level_number_variance
+        are the values computed from
+        observables.levelvariance.level_number_variance
+
     title: string
         The plot title string
+
     mode: "block" (default) | "noblock" | "save" | "return"
         If "block", call plot.plot() and display plot in a blocking fashion.
         If "noblock", attempt to generate plot in nonblocking fashion.
         If "save", save plot to pathlib Path specified in `outfile` argument
-        If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
     ensembles: ["poisson", "goe", "gue", "gse"]
         Which ensembles to display the expected number level variance curves for comparison against.
+
 
     Returns
     -------
@@ -768,8 +843,10 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
     ----------
     values: ndarray
         the values used to compute (fit) the kernel density estimate
+
     grid: ndarray
         the grid of values over which to evaluate the computed KDE curve
+
     axes: pyplot.Axes
         the current axes object to be modified
     """

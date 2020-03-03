@@ -34,12 +34,15 @@ def generate_eigs(
     ----------
     matsize: int
         The width (or height) of a the square matrix that will be generated.
+
     mean: float
         If `kind` is "goe", the mean of the normal distribution used to generate
         the normally-distributed values.
+
     sd: float
         If `kind` is "goe", the s.d. of the normal distribution used to generate
         the normally-distributed values.
+
     kind: "goe" | "gue" | "poisson" | "uniform"
         The kind of matrix to generate.
     """
@@ -121,10 +124,13 @@ def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
     """Use independence and fact that eigvalsh is bottleneck to more quickly generate
     eigenvalues. E.g. if matsize == 1024, sub_matsize == 100, generate 10 (100x100)
     matrices and one (24x24) matrix, can concatenate the resultant eigenvalues.
+
+
     Parameters
     ----------
     matsize: int
         the desired size of the square matrix, or number of eigenvalues
+
     sub_matsize: int
         the size of the smaller matrices to use to speed eigenvalue calculation
     """

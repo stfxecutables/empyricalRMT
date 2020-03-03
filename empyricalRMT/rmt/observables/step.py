@@ -13,6 +13,7 @@ def step_values(eigs: ndarray, x: Union[float, ndarray]) -> Union[float, ndarray
     ----------
     eigs: ndarray
         The eigenvalues from which to compute the step function.
+
     x: float | ndarray
         Value or array of values for which to compute the step function.
 

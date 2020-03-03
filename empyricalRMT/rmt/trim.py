@@ -88,8 +88,8 @@ class TrimReport:
         spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
         gompertz: bool = True,
     ) -> DataFrame:
-        """Computes unfoldings for the smoothing parameters specified in the arguments, across the
-        multiple trim regions.
+        """Computes unfoldings for the smoothing parameters specified in the
+        arguments, across the multiple trim regions.
 
         Returns
         -------
@@ -106,7 +106,8 @@ class TrimReport:
     def summarize_trim_unfoldings(
         self
     ) -> Tuple[Dict[Union[str, int], str], DataFrame, List[Tuple[int, int]], List[str]]:
-        """Computes GOE fit scores for the unfoldings performed, and returns various "best" fits.
+        """Computes GOE fit scores for the unfoldings performed, and returns various
+        "best" fits.
 
         Returns
         -------
@@ -224,16 +225,21 @@ class TrimReport:
         ----------
         title: string
             The plot title string
+
         mode: "block" (default) | "noblock" | "save" | "return"
             If "block", call plot.plot() and display plot in a blocking fashion.
             If "noblock", attempt to generate plot in nonblocking fashion.
             If "save", save plot to pathlib Path specified in `outfile` argument
-            If "return", return (fig, axes), the matplotlib figure and axes object for modification.
+            If "return", return (fig, axes), the matplotlib figure and axes
+            object for modification.
+
         outfile: Path
             If mode="save", save generated plot to Path specified in `outfile` argument.
             Intermediate directories will be created if needed.
+
         log_info: boolean
             If True, print additional information about each trimming to stdout.
+
 
         Returns
         -------
@@ -359,11 +365,14 @@ class TrimReport:
         ----------
         tolerance: float
             tolerance level for HBOS
+
         max_trim: float
             Value in (0,1) representing the maximum allowable proportion of eigenvalues
             trimmed.
+
         max_iters: int
             Maximum number of iterations (times) to perform HBOS outlier detection.
+
 
         Returns
         -------
@@ -456,10 +465,13 @@ class TrimReport:
         Parameters
         ----------
         poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5,
+            6, 7, 8, 9, 10, 11]
+
         spline_smooths: List[float]
             the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
             Default np.linspace(1, 2, num=11)
+
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
@@ -570,10 +582,13 @@ class Trimmed(EigVals):
         ----------
         eigs: ndarray
             sorted eigenvalues
+
         smoother: "poly" | "spline" | "gompertz" | lambda
             the type of smoothing function used to fit the step function
+
         degree: int
             the degree of the polynomial or spline
+
         spline_smooth: float
             the smoothing factors passed into scipy.interpolate.UnivariateSpline
 
@@ -612,18 +627,24 @@ class Trimmed(EigVals):
         Parameters
         ----------
         poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5,
+            6, 7, 8, 9, 10, 11]
+
         spline_smooths: List[float]
             the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
             Default np.linspace(1, 2, num=11)
+
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
+
         gompertz: bool
             Whether or not to use a gompertz curve as one of the smoothers.
+
         prioritize_smoother: bool
             Whether or not to select the optimal smoother before selecting the optimal
             trim region. See notes. Default: True.
+
         outlier_tol: float
             A float between 0 and 1, and which is passed as the tolerance paramater for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)

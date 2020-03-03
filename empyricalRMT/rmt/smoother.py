@@ -62,15 +62,20 @@ class Smoother:
         ----------
         eigs: ndarray
             sorted eigenvalues
+
         smoother: "poly" | "spline" | "gompertz" | lambda
             the type of smoothing function used to fit the step function
+
         degree: int
             the degree of the polynomial or spline
+
         spline_smooth: float
             the smoothing factors passed into scipy.interpolate.UnivariateSpline
+
         return_callable: bool
             If true, return a function that closes over the fit parameters so
             that, e.g., additional values can be fit later.
+
 
         Returns
         -------
@@ -148,18 +153,21 @@ class Smoother:
             an increasing number of practically-identical, redundant splines will be fit
             with this option, and manual inspection or non-heuristic specification of
             spline smoothing factors is strongly recommended.
+
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
         dry_run: boolean
             If True, only return a list of column names needed for the current arguments.
 
-        Returns:
-        --------
+
+        Returns
+        -------
         unfoldeds: DataFrame
             DataFrame of unfolded eigenvalues for each set of fit parameters, e.g. where
             each column contains a name indicating the fitting parameters, with the values
             of that column being the (sorted) unfolded eigenvalues.
+
         sqes: DataFrame
             DataFrame of mean-squared error of fits, where each column contains a name
             indicating the fitting parameters and smoother, with the values of
@@ -167,6 +175,7 @@ class Smoother:
         col_names: list
             If `dry_run` is True, return only the column names for the given
             arguments.
+
         smoother_map: dict
             A dict of {col_name: closure} for accessing the fitted smoothers later.
         """
@@ -323,4 +332,3 @@ class Smoother:
             pass
         else:
             raise ValueError("`method` must be one of 'auto', 'manual', or 'None'")
-

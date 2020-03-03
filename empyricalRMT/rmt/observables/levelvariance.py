@@ -26,29 +26,33 @@ def level_number_variance(
     ----------
     unfolded: ndarray
         The unfolded eigenvalues.
+
     L_grid_size: int
         The number of values of L to generate betwen min_L and max_L.
+
     min_L: int
-        The lowest possible L value for which to compute the spectral
-        rigidity.
+        The lowest possible L value for which to compute the spectral rigidit
+
     max_L: int
-        The largest possible L value for which to compute the spectral
-        rigidity.
+        The largest possible L value for which to compute the spectral rigidit
+
     c_iters: int
         How many times the location of the center, c, of the interval
         [c - L/2, c + L/2] should be chosen uniformly at random for
         each L in order to compute the estimate of the number level
-        variance.
+        varianc
+
     show_progress: bool
-        Show a pretty progress bar while computing.
+        Show a pretty progress bar while computin
 
     Returns
     -------
     L : ndarray
         The L values generated based on the values of L_grid_size,
-        min_L, and max_L.
+        min_L, and max_
+
     sigma_sq : ndarray
-        The computed number level variance values for each of L.
+        The computed number level variance values for each of
 
     References
     ----------
@@ -127,14 +131,18 @@ def level_number_variance_stable(
     ----------
     L: ndarray
         The grid of L values for which to compute the level variance.
+
     tol: float
         Stop iterating when the last `min_L_iters` computed values of the
         level variance have a range (i.e. max - min) < tol.
+
     max_L_iters: int
         Stop computing values for the level variance once max_L_iters values
         have been computed for each L value.
+
     min_L_iters: int
         Minimum number of iterations for each L value.
+
     show_progress: bool
         Whether or not to display computation progress in stdout.
 
@@ -142,6 +150,7 @@ def level_number_variance_stable(
     -------
     L_vals: ndarray
         The L_values for which the number level variance was computed.
+
     sigma: ndarray
         The computed number level variance values.
     """
@@ -183,14 +192,18 @@ def _sigma_iter_converge(
     ----------
     L: ndarray
         The grid of L values for which to compute the level variance.
+
     tol: float
         Stop iterating when the last `min_L_iters` computed values of the
         level variance have a range (i.e. max - min) < tol.
+
     max_L_iters: int
         Stop computing values for the level variance once max_L_iters values
         have been computed for each L value.
+
     min_L_iters: int
         Minimum number of iterations for each L value.
+
     show_progress: bool
         Whether or not to display computation progress in stdout.
 
@@ -198,6 +211,7 @@ def _sigma_iter_converge(
     -------
     L_vals: ndarray
         The L_values for which the number level variance was computed.
+
     sigma: ndarray
         The computed number level variance values.
     """
@@ -226,16 +240,21 @@ def _sigma_iter_converge_L(
     ----------
     L: float
         The current L value to use for computation.
+
     tol: float
         Stop iterating when the last `min_iters` computed values of the
-        level variance have a range (i.e. max - min) < tol.
+        level variance have a range (i.e. max - min) < tol
+
     max_iters: int
         Stop computing values for the level variance once max_iters values
         have been computed
+
     min_iters: int
         Minimum number of iterations
+
     show_progress: bool
         Whether or not to display computation progress in stdout.
+
 
     Returns
     -------

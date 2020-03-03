@@ -57,19 +57,24 @@ def spectral_rigidity(
     ----------
     unfolded: ndarray
         The unfolded eigenvalues.
+
     L_grid_size: int
         The number of values of L to generate betwen min_L and max_L.
+
     min_L: int
         The lowest possible L value for which to compute the spectral
         rigidity. Default 2.
+
     max_L: int
         The largest possible L value for which to compute the spectral
         rigidity. Default 50.
+
     c_iters: int
         How many times the location of the center, c, of the interval
         [c - L/2, c + L/2] should be chosen uniformly at random for
         each L in order to compute the estimate of the spectral
         rigidity. Default 10000.
+
     integration: "simps" | "trapz"
         Whether to use the trapezoidal or simpson's rule for integration. Default
         `simps`.
@@ -79,6 +84,7 @@ def spectral_rigidity(
     L : ndarray
         The L values generated based on the values of L_grid_size,
         min_L, and max_L.
+
     delta3 : ndarray
         The computed spectral rigidity values for each of L.
 
@@ -157,13 +163,17 @@ def _spectral_iter(
     ----------
     unfolded: ndarray
         The sorted unfolded eigenvalues.
+
     delta3_L_vals: ndarray
         The array to store all the c_iters computed L values.
+
     L: float
         The current L value for which the spectral rigidity is being calculated.
+
     c_iters: int
         The number of centre-points (c) to choose (i.e. the number of L values to
         compute).
+
     interval_gridsize: int
         The number of points for which to evaluate the deviation from a straight
         line on [c - L/2, c + L/2].
@@ -229,6 +239,7 @@ def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
     ----------
     grid: list or np.array of floats
             Sampling points for the function values
+
     vals: list or np.array of floats
             Function values at the sampling points
 
@@ -267,12 +278,16 @@ def _sq_lin_deviation(
     ----------
     eigs: ndarray
         The raw, sorted eigenvalues
+
     steps: ndarray
         The step function values which were computed on `grid`.
+
     K: float
         The calculated slope of the line of best fit.
+
     w: float
         The calculated intercept.
+
     grid: ndarray
         The grid of values for which the step function was evaluated.
 
