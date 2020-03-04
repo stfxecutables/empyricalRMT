@@ -25,6 +25,7 @@ def unfold_and_plot(eigs: ndarray, suptitle: str) -> None:
     trimmed = np.round(100 - 100 * len(unfolded.vals) / len(eigs), 1)
 
     _observables(
+        eigs=unfolded.original_eigs,
         unfolded=unfolded.vals,
         rigidity_df=unfolded.spectral_rigidity(c_iters=10000, show_progress=True),
         levelvar_df=unfolded.level_variance(show_progress=True),

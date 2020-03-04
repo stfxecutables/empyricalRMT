@@ -779,6 +779,7 @@ def _level_number_variance(
 
 
 def _observables(
+    eigs: ndarray,
     unfolded: ndarray,
     rigidity_df: pd.DataFrame,
     levelvar_df: pd.DataFrame,
@@ -791,7 +792,7 @@ def _observables(
     fig, axes = plt.subplots(2, 2, sharex="none", sharey="none")
     fig.set_size_inches(fig.get_size_inches() * 2)
     fig.suptitle(suptitle)
-    _unfolded_fit(unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="noblock")
+    _unfolded_fit(eigs=eigs, unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="noblock")
     _spacings(unfolded, fig=fig, axes=axes[0, 1], mode="noblock", ensembles=ensembles)
     _spectral_rigidity(
         unfolded,
