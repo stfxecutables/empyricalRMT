@@ -41,9 +41,7 @@ from empyricalRMT.rmt.observables.step import _step_function_fast
 #    datapoints (L, ∆3(L)).
 def spectral_rigidity(
     unfolded: ndarray,
-    L_grid_size: int = None,
-    min_L: float = 2,
-    max_L: float = 50,
+    L: ndarray = np.arange(2, 50, 10000),
     c_iters: int = 10000,
     integration: Literal["simps", "trapz"] = "simps",
     show_progress: bool = True,
@@ -58,16 +56,8 @@ def spectral_rigidity(
     unfolded: ndarray
         The unfolded eigenvalues.
 
-    L_grid_size: int
-        The number of values of L to generate betwen min_L and max_L.
-
-    min_L: int
-        The lowest possible L value for which to compute the spectral
-        rigidity. Default 2.
-
-    max_L: int
-        The largest possible L value for which to compute the spectral
-        rigidity. Default 50.
+    L: ndarray
+        The values of L to compute the rigidity.
 
     c_iters: int
         How many times the location of the center, c, of the interval
@@ -113,9 +103,8 @@ def spectral_rigidity(
     ----------
     .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier
     """
-    if L_grid_size is None:
-        L_grid_size = int(2 * np.abs((np.floor(max_L) - np.floor(min_L))))
-    L_vals = np.linspace(min_L, max_L, L_grid_size)
+    L_vals = np.copy(L)
+    L_grid_size = len(L_vals)
     delta3 = np.zeros(L_vals.shape)
     if show_progress:
         pbar_widgets = [

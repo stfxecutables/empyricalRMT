@@ -57,10 +57,8 @@ class Unfolded(EigVals):
 
     def spectral_rigidity(
         self,
-        min_L: float = 2,
-        max_L: float = 50,
-        L_grid_size: int = None,
-        c_iters: int = 50000,
+        L: ndarray = np.arange(2, 50, 0.5),
+        c_iters: int = 10000,
         integration: Literal["simps", "trapz"] = "simps",
         show_progress: bool = False,
     ) -> DataFrame:
@@ -68,23 +66,18 @@ class Unfolded(EigVals):
 
         Parameters
         ----------
-        min_L: int
-            The lowest possible L value for which to compute the spectral
-            rigidity. Default 2.
-
-        max_L: int = 20
-            The largest possible L value for which to compute the spectral
-            rigidity.
-
-        L_grid_size: int
-            The number of values of L to generate betwen min_L and max_L. Default
-            2 * (max_L - min_L).
+        L: ndarray
+            The values for which to compute the spectral rigidity.
 
         c_iters: int = 50
             How many times the location of the center, c, of the interval
             [c - L/2, c + L/2] should be chosen uniformly at random for
             each L in order to compute the estimate of the spectral
             rigidity. Not a particularly significant effect on performance.
+
+        integration: "simps" | "trapz"
+            Numerical integration method. "trapz" might be faster in some cases,
+            at the cost of significant accuracy.
 
         show_progress: bool
             Whether or not to display computation progress in stdout.
@@ -98,16 +91,14 @@ class Unfolded(EigVals):
             df["delta"] contains the computed spectral rigidity values for each of L.
         """
         unfolded = self.values
-        L, delta = spectral_rigidity(
+        L_vals, delta = spectral_rigidity(
             unfolded,
             c_iters=c_iters,
-            L_grid_size=L_grid_size,
-            min_L=min_L,
-            max_L=max_L,
+            L=L,
             integration=integration,
             show_progress=show_progress,
         )
-        return pd.DataFrame({"L": L, "delta": delta})
+        return pd.DataFrame({"L": L_vals, "delta": delta})
 
     def level_variance(
         self,
@@ -173,8 +164,8 @@ class Unfolded(EigVals):
         metrics: List[Metric] = ["msqd"],
         spacings: Tuple[float, float] = (0.5, 2.5),
         kde_gridsize: int = 5000,
-        L_rigidity: ndarray = np.arange(2, 50, 0.2),
-        L_levelvar: ndarray = np.arange(1, 20, 0.5),
+        L_rigidity: ndarray = np.arange(2, 50, 0.5),
+        L_levelvar: ndarray = np.arange(0.2, 20, 0.2),
         show_progress: bool = False,
     ) -> pd.DataFrame:
         """Compute various spectral observables for the unfolded eigenvalues
@@ -274,24 +265,20 @@ class Unfolded(EigVals):
                 df["nnnsd"][metric] = compare(nnnsd_exp, nnnsd, "nnnsd", metric)
 
         if "rigidity" in observables:
-            min_L, max_L, n_L = L_rigidity.min(), L_rigidity.max(), len(L_rigidity)
             rigidity = self.spectral_rigidity(
-                min_L=min_L, max_L=max_L, L_grid_size=n_L, show_progress=show_progress
+                L=L_rigidity, show_progress=show_progress
             )["delta"]
-            rigidity_exp = ensemble.spectral_rigidity(
-                min_L=min_L, max_L=max_L, L_grid_size=n_L
-            )
+            rigidity_exp = ensemble.spectral_rigidity(L=L_rigidity)
             for metric in metrics:
                 df["rigidity"][metric] = compare(
                     rigidity_exp, rigidity, "rigidity", metric
                 )
 
         if "levelvar" in observables:
-            min_L, max_L, n_L = L_levelvar.min(), L_levelvar.max(), len(L_levelvar)
-            levelvar = self.level_variance(L=L_rigidity, show_progress=show_progress)[
+            levelvar = self.level_variance(L=L_levelvar, show_progress=show_progress)[
                 "sigma"
             ]
-            levelvar_exp = ensemble.level_variance(L=L_rigidity)
+            levelvar_exp = ensemble.level_variance(L=L_levelvar)
             for metric in metrics:
                 df["levelvar"][metric] = compare(
                     levelvar_exp, levelvar, "levelvar", metric
@@ -456,10 +443,8 @@ class Unfolded(EigVals):
 
     def plot_spectral_rigidity(
         self,
-        min_L: float = 2,
-        max_L: float = 50,
-        L_grid_size: int = None,
-        c_iters: int = 50000,
+        L: ndarray = np.arange(2, 50, 0.5),
+        c_iters: int = 10000,
         integration: Literal["simps", "trapz"] = "simps",
         title: str = "Spectral Rigidity",
         mode: PlotMode = "block",
@@ -471,17 +456,8 @@ class Unfolded(EigVals):
 
         Parameters
         ----------
-        min_L: int
-            The lowest possible L value for which to compute the spectral
-            rigidity. Default 2.
-
-        max_L: int = 20
-            The largest possible L value for which to compute the spectral
-            rigidity.
-
-        L_grid_size: int
-            The number of values of L to generate betwen min_L and max_L. Default
-            2 * (max_L - min_L).
+        L: ndarray
+            The values for which to compute the spectral rigidity.
 
         c_iters: int = 50
             How many times the location of the center, c, of the interval
@@ -530,18 +506,16 @@ class Unfolded(EigVals):
         .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier.
         """
         unfolded = self.values
-        L, delta = spectral_rigidity(
+        L_vals, delta = spectral_rigidity(
             unfolded,
+            L=L,
             c_iters=c_iters,
-            L_grid_size=L_grid_size,
-            min_L=min_L,
-            max_L=max_L,
             integration=integration,
             show_progress=show_progress,
         )
         plot_result = plot._spectral_rigidity(
             unfolded,
-            pd.DataFrame({"L": L, "delta": delta}),
+            pd.DataFrame({"L": L_vals, "delta": delta}),
             title,
             mode,
             outfile,
