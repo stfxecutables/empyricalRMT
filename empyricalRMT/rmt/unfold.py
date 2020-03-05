@@ -17,6 +17,7 @@ from empyricalRMT.rmt.observables.levelvariance import level_number_variance_sta
 from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
 from empyricalRMT.rmt.plot import (
     _next_spacings,
+    _observables,
     _spacings as _plot_spacings,
     _unfolded_fit,
     PlotMode,
@@ -624,6 +625,35 @@ class Unfolded(EigVals):
             ensembles=ensembles,
         )
         return L_vals, sigma, plot_result
+
+    def plot_observables(
+        self,
+        rigidity_L: ndarray = np.arange(2, 50, 0.5),
+        rigidity_iters: int = 50000,
+        levelvar_L: ndarray = np.arange(0.2, 20, 0.2),
+        ensembles: List[str] = ["goe", "poisson"],
+        title: str = "Spectral Observables",
+        mode: PlotMode = "block",
+        outfile: Path = None,
+        show_progress: bool = True,
+        **levelvar_kwargs: Any,
+    ) -> PlotResult:
+        rigidity = self.spectral_rigidity(
+            L=rigidity_L, c_iters=rigidity_iters, show_progress=show_progress
+        )
+        levelvar = self.level_variance(
+            L=levelvar_L, show_progress=show_progress, **levelvar_kwargs
+        )
+        return _observables(
+            eigs=self.original_eigs,
+            unfolded=self.vals,
+            rigidity_df=rigidity,
+            levelvar_df=levelvar,
+            ensembles=ensembles,
+            suptitle=title,
+            mode=mode,
+            outfile=outfile,
+        )
 
     def __get_kde_values(
         self,
