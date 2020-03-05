@@ -1,13 +1,28 @@
-import matplotlib.pyplot as plt
+"""
+Motivation for this module
+
+Trimming is ultimately inextricably entangled with the smoothing process. We
+trim because extreme eigenvalues act as leverage points for most fitting
+procedures, but the extent to which a trimming is "bad" can only be determined
+by evaluating whether a particular fit is still being unduly influenced by some
+of the trimmed values. That is, trimming is *truly* actually a *supervised*
+procedure.
+
+Nevertheless, unsupervised outlier detection methods allow us to identify
+contiguous sections of eigenvalues that are *very likely* to result in poorly
+conditioned fits. So it makes sense to identify a set of likely trims first,
+and then check the fits from there.
+"""
+
 import numpy as np
 import pandas as pd
-import seaborn as sbn
 
 from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
 from pyod.models.hbos import HBOS
-from typing import Dict, List, Optional, Tuple, Union
+from scipy.stats import trim_mean
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from empyricalRMT.rmt._constants import (
     EXPECTED_GOE_MEAN,
@@ -18,12 +33,13 @@ from empyricalRMT.rmt._constants import (
     DEFAULT_SPLINE_SMOOTHS,
     DEFAULT_SPLINE_DEGREES,
 )
-from empyricalRMT.rmt._eigvals import EigVals
-from empyricalRMT.rmt.observables.step import _step_function_fast
-from empyricalRMT.rmt.plot import _setup_plotting, PlotMode, PlotResult
+
+# from empyricalRMT.rmt._eigvals import EigVals
+import empyricalRMT.rmt._eigvals as _eigvals
+from empyricalRMT.rmt.plot import _plot_trim_iters, PlotMode, PlotResult
 from empyricalRMT.rmt.smoother import Smoother, SmoothMethod
 from empyricalRMT.rmt.unfold import Unfolded
-from empyricalRMT.utils import find_first, find_last, mkdirp
+from empyricalRMT.utils import find_first, find_last
 
 
 class TrimReport:
@@ -37,43 +53,39 @@ class TrimReport:
         spline_degrees: List[int] = [],
         gompertz: bool = True,
         outlier_tol: float = 0.1,
+        show_progress: bool = False,
     ):
         eigenvalues = np.sort(eigenvalues)
         self._untrimmed: ndarray = eigenvalues
         self._unfold_info: Optional[DataFrame] = None
         self._all_unfolds: Optional[List[DataFrame]] = None
 
-        self._trim_steps = self.__get_trim_iters(
-            tolerance=outlier_tol, max_trim=max_trim, max_iters=max_iters
+        self._trim_iters: List[TrimIter] = self.__get_trim_iters(
+            tolerance=outlier_tol,
+            max_trim=max_trim,
+            max_iters=max_iters,
+            poly_degrees=poly_degrees,
+            spline_smooths=spline_smooths,
+            spline_degrees=spline_degrees,
+            gompertz=gompertz,
+            show_progress=show_progress,
         )
         # set self._unfold_info, self._all_unfolds
-        self._unfold_info, self._all_unfolds = self.__unfold_across_trims(
+        self._summary = self.__summarize_iters(
             poly_degrees, spline_smooths, spline_degrees, gompertz
         )
 
     @property
     def trim_indices(self) -> List[Tuple[int, int]]:
-        trim_steps = self._trim_steps
-        untrimmed = self._untrimmed
-
-        indices = []
-        for i, df in enumerate(trim_steps):
-            if i == 0:
-                indices.append((0, len(untrimmed)))
-                continue
-            eigs_list = list(untrimmed)
-            start = eigs_list.index(list(df["eigs"])[0])
-            end = eigs_list.index(list(df["eigs"])[-1])
-            indices.append((start, end))
-        return indices
+        return list(map(lambda trim: trim.trim_indices, self._trim_iters))
 
     @property
     def untrimmed(self) -> ndarray:
         return self._untrimmed
 
     @property
-    def unfold_info(self) -> DataFrame:
-        return self._unfold_info
+    def summary(self) -> DataFrame:
+        return self._summary
 
     @property
     def unfoldings(self) -> List[DataFrame]:
@@ -81,29 +93,24 @@ class TrimReport:
             raise RuntimeError("TrimReport inrrectly initialized.")
         return self._all_unfolds
 
-    def compare_trim_unfolds(
-        self,
-        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
-        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
-        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
-        gompertz: bool = True,
-    ) -> DataFrame:
-        """Computes unfoldings for the smoothing parameters specified in the
-        arguments, across the multiple trim regions.
+    def evaluate(self, criterion: Any, minimize_trim: bool = True) -> Any:
+        """TODO: Implement various sensible criteria here.
 
-        Returns
-        -------
-        report: DataFrame
-            A pandas DataFrame with various summary information about the different trims
-            and smoothing fits
+        E.g:
+
+        # Criteria
+
+        - "fit"
+            - basically, choose the most flexible smoother and most agressive
+              trim
+        - "goe"
+            - choose the trim and unfolding that result in spacing mean and
+              variance closest to that expected for GOE matrices
+        - ""
+
         """
-        self._unfold_info, self._all_unfolds = self.__unfold_across_trims(
-            poly_degrees, spline_smooths, spline_degrees, gompertz
-        )
 
-        return self._unfold_info
-
-    def summarize_trim_unfoldings(
+    def best_overall(
         self
     ) -> Tuple[Dict[Union[str, int], str], DataFrame, List[Tuple[int, int]], List[str]]:
         """Computes GOE fit scores for the unfoldings performed, and returns various
@@ -166,7 +173,7 @@ class TrimReport:
         )  # get indices of best three rows
         best_trim_indices = []
         for i, row_id in enumerate(best_three):
-            best_trim_eigs = np.array(self._trim_steps[row_id]["eigs"])
+            best_trim_eigs = np.array(self._trim_iters[row_id]["eigs"])
             best_start, best_end = best_trim_eigs[0], best_trim_eigs[-1]
             best_indices = (
                 list(self._untrimmed).index(best_start),
@@ -214,6 +221,7 @@ class TrimReport:
 
     def plot_trim_steps(
         self,
+        width: int = 4,
         title: str = "Trim fits",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -246,129 +254,59 @@ class TrimReport:
         (fig, axes): (Figure, Axes)
             The handles to the matplotlib objects, only if `mode` is "return".
         """
-        trim_steps = self._trim_steps
-        untrimmed = self._untrimmed
-
         if log_info:
-            log = []
-            for i, df in enumerate(trim_steps):
-                if i == 0:
-                    continue
-                trim_percent = np.round(
-                    100 * (1 - len(df["cluster"] == "inlier") / len(untrimmed)), 2
-                )
-                eigs_list = list(untrimmed)
-                unfolded = df["unfolded"].to_numpy()
-                spacings = unfolded[1:] - unfolded[:-1]
-                info = "Iteration {:d}: {:4.1f}% trimmed. <s> = {:6.6f}, var(s) = {:04.5f} MSQE: {:5.5f}. Trim indices: ({:d},{:d})".format(  # noqa E501
-                    i,
-                    trim_percent,
-                    np.mean(spacings),
-                    np.var(spacings, ddof=1),
-                    np.mean(df["sqe"]),
-                    eigs_list.index(list(df["eigs"])[0]),
-                    eigs_list.index(list(df["eigs"])[-1]),
-                )
-                log.append(info)
-            print("\n".join(log))
-            print(
-                "MSQE, average spacing <s>, and spacings variance var(s)"
-                f"calculated for polynomial degree {DEFAULT_POLY_DEGREE} unfolding."
-            )
+            for trim in self._trim_iters:
+                print(trim.summary()[0])
+            print(self._trim_iters[0].summary()[1])  # print legend
 
-        _setup_plotting()
+        return _plot_trim_iters(
+            self._trim_iters, width=width, title=title, mode=mode, outfile=outfile
+        )
 
-        width = 5  # 5 plots
-        height = np.ceil(len(trim_steps) / width)
-        # fig, axs = plt.subplots(height, width)
-        for i, df in enumerate(trim_steps):
-            df = df.rename(index=str, columns={"eigs": "λ", "steps": "N(λ)"})
-            trim_percent = np.round(
-                100 * (1 - len(df["cluster"] == "inlier") / len(untrimmed)), 2
-            )
-            plt.subplot(height, width, i + 1, label=f"plot_{i}")
-            spacings = np.sort(np.array(df["unfolded"]))
-            spacings = spacings[1:] - spacings[:-1]
-            sbn.scatterplot(
-                data=df,
-                x="λ",
-                y="N(λ)",
-                hue="cluster",
-                style="cluster",
-                style_order=["inlier", "outlier"],
-                linewidth=0,
-                legend="brief",
-                markers=[".", "X"],
-                palette=["black", "red"],
-                hue_order=["inlier", "outlier"],
-                label=f"plot_{i}",
-            )
-            subtitle = "No trim" if i == 0 else "Trim {:.2f}%".format(trim_percent)
-            info = "<s> {:.4f} var(s) {:.4f}".format(
-                np.mean(spacings), np.var(spacings, ddof=1)
-            )
-            plt.title(f"{subtitle}\n{info}")
-        plt.subplots_adjust(wspace=0.8, hspace=0.8)
-        plt.suptitle(title)
-
-        if mode == "save":
-            if outfile is None:
-                raise ValueError("Path not specified for `outfile`.")
-            try:
-                outfile = Path(outfile)
-            except BaseException as e:
-                raise ValueError("Cannot interpret outfile path.") from e
-            mkdirp(outfile.parent)
-            fig = plt.gcf()
-            fig.set_size_inches(width * 3, height * 3)
-            plt.savefig(outfile, dpi=100)
-            print(f"Saved {outfile.name} to {str(outfile.parent.absolute())}")
-        elif mode == "block" or mode == "noblock":
-            fig = plt.gcf()
-            fig.set_size_inches(width * 3, height * 3)
-            plt.show(block=mode == "block")
-        elif mode == "test":
-            plt.show(block=False)
-            plt.close()
-        elif mode == "return":
-            return plt.gca(), plt.gcf()
-        else:
-            raise ValueError("Invalid plotting mode.")
-        return None
+    def to_csv(self, *args: Any, **kwargs: Any) -> None:
+        """A simple wrapper around pd.DataFrame.to_csv()"""
+        self.summary.to_csv(*args, **kwargs)
 
     def _get_autounfold_vals(self) -> Tuple[ndarray, ndarray]:
-        scores = self.unfold_info.filter(regex="score").abs()
+        scores = self.summary.filter(regex="score").abs()
         mean_best = (
             scores[scores < scores.quantile(0.9)]
             .mean()
             .sort_values()[:5]
             .index.to_list()
         )
-        best_trim_scores = self.unfold_info.filter(
+        best_trim_scores = self.summary.filter(
             regex=mean_best[0]  # e.g. regex="poly_3--score"
         )
         best_trim_id = int(best_trim_scores.abs().idxmin())
         best_unfolded = self.unfoldings[best_trim_id][
             mean_best[0].replace("--score", "")
         ]
-        orig_trimmed = self._trim_steps[best_trim_id]["eigs"]
+        orig_trimmed = self._trim_iters[best_trim_id].eigs
         return np.array(orig_trimmed), np.array(best_unfolded)
 
     def __get_trim_iters(
-        self, tolerance: float = 0.1, max_trim: float = 0.5, max_iters: int = 7
+        self,
+        tolerance: float = 0.1,
+        max_trim: float = 0.5,
+        max_iters: int = 7,
+        show_progress: bool = False,
+        **smoother_kwargs: Any,
     ) -> List[DataFrame]:
         """Helper function to iteratively perform histogram-based outlier detection
         until reaching either max_trim or max_iters, saving outliers identified at
         each step.
 
-        Paramaters
+        Parameters
         ----------
         tolerance: float
             tolerance level for HBOS
 
         max_trim: float
             Value in (0,1) representing the maximum allowable proportion of eigenvalues
-            trimmed.
+            that can be trimmed *away*. E.g. setting `max_trim` == 0.2 means we
+            are allowed to trim *up to* 20% of the eigenvalues away, resulting
+            in a set of trimmed eigenvalues with length 80% of the original eigenvalues.
 
         max_iters: int
             Maximum number of iterations (times) to perform HBOS outlier detection.
@@ -399,68 +337,28 @@ class TrimReport:
             trim_iters[i] is a DataFrame of the eigenvalues, step function values,
             unfolded values, and inlier/outlier labels at iteration `i`.
         """
-        eigs = self._untrimmed
-        steps = _step_function_fast(eigs, eigs)
-        unfolded = Smoother(eigs).fit()[0]
-        iter_results = [  # zeroth iteration is just the full set of values, none considered outliers
-            pd.DataFrame(
-                {
-                    "eigs": eigs,
-                    "steps": steps,
-                    "unfolded": unfolded,
-                    "sqe": (unfolded - steps) ** 2,
-                    "cluster": ["inlier" for _ in eigs],
-                }
-            )
-        ]
-        # terminate if we have trimmed max_trim
-        iters_run = 1
-        while ((len(iter_results[-1]) / len(eigs)) > max_trim) and (
-            iters_run < max_iters
-        ):
-            iters_run += 1
-            # because eigs are sorted, HBOS will usually identify outliers at one of the
-            # two ends of the eigenvalues, which is what we want
-            df = iter_results[-1].copy(deep=True)
-            df = df[df["cluster"] == "inlier"]
-            hb = HBOS(tol=tolerance)
-            is_outlier = np.array(
-                hb.fit(df[["eigs", "steps"]]).labels_, dtype=bool
-            )  # outliers get "1"
-
-            # check we haven't removed middle values:
-            if is_outlier[0]:
-                start = find_first(is_outlier, False)
-                for i in range(start, len(is_outlier)):
-                    is_outlier[i] = False
-            if is_outlier[-1]:
-                stop = find_last(is_outlier, False)
-                for i in range(stop):
-                    is_outlier[i] = False
-            if not is_outlier[0] and not is_outlier[-1]:  # force a break later
-                is_outlier = np.zeros(is_outlier.shape, dtype=bool)
-
-            df["cluster"] = ["outlier" if label else "inlier" for label in is_outlier]
-            unfolded, steps, closure = Smoother(df["eigs"]).fit()
-            df["unfolded"] = unfolded
-            df["sqe"] = (unfolded - steps) ** 2
-
-            iter_results.append(df)
-            if np.alltrue(~is_outlier):
+        eigs = np.copy(self._untrimmed)
+        trim_iters = [TrimIter(eigs, eigs, tolerance, **smoother_kwargs)]
+        for i in range(max_iters):
+            if show_progress:
+                print(f"Completed trim-unfold iteration: {i}.")
+            trim = trim_iters[-1].next_iter()
+            if trim.proportion_removed > max_trim:
                 break
+            trim_iters.append(trim)
+            if trim.is_all_inliers():
+                break
+        return trim_iters
 
-        return iter_results
-
-    def __unfold_across_trims(
+    def __summarize_iters(
         self,
         poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
         spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
         spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
         gompertz: bool = True,
-    ) -> Tuple[DataFrame, DataFrame]:
+    ) -> DataFrame:
         """Generate a dataframe showing the unfoldings that results from different
-        trim percentages, and different choices of smoothing functions. This should be run
-        in the constructor.
+        trim percentages, and different choices of smoothing functions.
 
         Parameters
         ----------
@@ -473,73 +371,65 @@ class TrimReport:
             Default np.linspace(1, 2, num=11)
 
         spline_degrees: List[int]
-            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
-            fits. Default [3]
+            A list of ints determining the degrees of
+            scipy.interpolate.UnivariateSpline fits. Default [3]
+
+        Returns
+        -------
+        trim_report: DataFrame
+            A pandas DataFrame with a row for each iteration of trimming, and
+            columns with various summary statistics (mean spacing, variance of
+            the spacings, msqe of the smoother fit, and GOE score) for each
+            unfolding for that trim.
+
         """
         # save args for later
         self.__poly_degrees = poly_degrees
         self.__spline_smooths = spline_smooths
         self.__spline_degrees = spline_degrees
+        trim_iters = self._trim_iters
 
-        trims = self._trim_steps
-        eigs = self._untrimmed
-
-        # trim_percents = [np.round(100*(1 - len(trim["eigs"]) / len(self.eigs)), 3) for trim in trims]
-        col_names_base = Smoother(eigs).fit_all(
-            dry_run=True,
+        colnames = Smoother._get_smoother_names(
             poly_degrees=poly_degrees,
             spline_smooths=spline_smooths,
             spline_degrees=spline_degrees,
             gompertz=gompertz,
         )
-        height = len(trims)
-        width = (
-            len(col_names_base) * 4 + 3
-        )  # entry for [mean, var, msqe, score] + [trim_percent, trim_low, trim_high]
+        height = len(trim_iters)
+        # entry for [mean, var, msqe, score] + [trim_percent, trim_low, trim_high]
+        width = len(colnames) * 4 + 3
 
         # arr will be converted into the final DataFrame
         arr = np.zeros([height, width], dtype=np.float32)
-        all_trim_unfolds = []
-        for i, trim in enumerate(trims):
-            trimmed = np.array(trim["eigs"])
-            lower_trim_length = find_first(eigs, trimmed[0])
-            upper_trim_length = len(eigs) - 1 - find_last(eigs, trimmed[-1])
-            trim_unfolds, sqes, smoother_map = Smoother(trimmed).fit_all(
-                poly_degrees, spline_smooths, spline_degrees, gompertz
-            )
-            all_trim_unfolds.append(trim_unfolds)
-            msqes = sqes.mean()  # type: ignore
-            trim_percent = np.round(100 * (1 - len(trimmed) / len(eigs)), 3)
-            lower_trim_percent = 100 * lower_trim_length / len(eigs)
-            upper_trim_percent = 100 * upper_trim_length / len(eigs)
-
+        index = []
+        for i, trim in enumerate(trim_iters):
+            index.append(trim.id)
             # 3 columns of values per trim
-            arr[i, 0] = trim_percent
-            arr[i, 1] = lower_trim_percent
-            arr[i, 2] = upper_trim_percent
+            arr[i, 0] = trim.percent_removed
+            arr[i, 1] = trim.lower_percent_removed
+            arr[i, 2] = trim.upper_percent_removed
 
-            for j, col in enumerate(
-                trim_unfolds
-            ):  # get summary starts for each unfolding by smoother
-                unfolded = np.array(trim_unfolds[col])
+            # get summary stats for each unfolding by smoother
+            for j, col in enumerate(trim.unfolds):
+                unfolded = np.array(trim.unfolds[col])
                 mean, var, score = self.__evaluate_unfolding(unfolded)
-                # arr[i, 0] is trim_percent, [i,1] is lower_trim_percent, etc, up tp
-                # arr[i, 2], which has the upper_trim_percent
-                # 4 additional columns of values per smoother:
+                # arr[i, 0] is trim_percent, [i,1] is lower_trim_percent, etc, up to
+                # arr[i, 2], which has the upper_trim_percent. Thus ultimately 4
+                # additional columns of values per smoother:
                 arr[i, 4 * j + 3] = mean
                 arr[i, 4 * j + 4] = var
-                arr[i, 4 * j + 5] = msqes[col]
+                arr[i, 4 * j + 5] = trim.msqes[col]
                 arr[i, 4 * j + 6] = score
 
         col_names_final = ["trim_percent", "trim_low", "trim_high"]
         # much match order added above
-        for name in col_names_base:
+        for name in colnames:
             col_names_final.append(f"{name}--mean_spacing")
             col_names_final.append(f"{name}--var_spacing")
             col_names_final.append(f"{name}--msqe")
             col_names_final.append(f"{name}--score")
-        trim_report = pd.DataFrame(data=arr, columns=col_names_final)
-        return trim_report, all_trim_unfolds
+        trim_report = pd.DataFrame(data=arr, columns=col_names_final, index=index)
+        return trim_report
 
     @staticmethod
     def __evaluate_unfolding(unfolded: ndarray) -> Tuple[float, float, float]:
@@ -558,7 +448,96 @@ class TrimReport:
         return mean, var, score
 
 
-class Trimmed(EigVals):
+class TrimIter:
+    """Helper class for storing data and improving code readability of trimming
+    process"""
+
+    def __init__(
+        self, origs: ndarray, eigs: ndarray, outlier_tol: float, **smoother_kwargs: Any
+    ):
+        self.origs = origs
+        self.eigs = eigs
+        self.id = 0
+        self.tol = outlier_tol
+        self.kwargs = smoother_kwargs
+        self.steps = np.arange(1, len(eigs) + 1)
+        self.clusters = np.array(_get_outlier_labels(eigs, tol=outlier_tol))
+        unfolds, spacings, msqes, smoothers = Smoother(eigs).fit_all(**smoother_kwargs)
+        self.unfolds: DataFrame = unfolds
+        self.spacings: DataFrame = spacings
+        self.msqes: DataFrame = msqes
+        self.smoothers: Dict[str, Callable] = smoothers
+
+    @property
+    def inlier_length(self) -> int:
+        return int(np.count_nonzero(self.clusters == "inlier"))
+
+    @property
+    def outlier_length(self) -> int:
+        return int(np.count_nonzero(self.clusters == "outlier"))
+
+    @property
+    def proportion_kept(self) -> float:
+        return self.inlier_length / len(self.origs)
+
+    @property
+    def proportion_removed(self) -> float:
+        return 1 - len(self.eigs) / len(self.origs)
+
+    @property
+    def percent_removed(self) -> float:
+        return float(np.round(100.0 - 100.0 * len(self.eigs) / len(self.origs), 1))
+
+    @property
+    def lower_percent_removed(self) -> float:
+        lower_trim_length = find_first(self.origs, self.eigs[0])
+        return float(np.round(100 * lower_trim_length / len(self.origs), 1))
+
+    @property
+    def upper_percent_removed(self) -> float:
+        upper_trim_length = len(self.origs) - 1 - find_last(self.origs, self.eigs[-1])
+        return float(np.round(100 * upper_trim_length / len(self.origs), 1))
+
+    @property
+    def trim_indices(self) -> Tuple[int, int]:
+        start = find_first(self.origs, self.eigs[0])
+        end = find_last(self.origs, self.eigs[-1])
+        return (start, end)
+
+    @property
+    def inliers(self) -> ndarray:
+        return np.copy(self.eigs[self.clusters == "inlier"])
+
+    def is_all_inliers(self) -> bool:
+        return bool(np.alltrue(self.clusters == "inlier"))
+
+    def next_iter(self) -> "TrimIter":
+        trim = TrimIter(self.origs, self.inliers, self.tol, **self.kwargs)
+        trim.id = self.id + 1
+        return trim
+
+    def summary(self) -> Tuple[str, str]:
+        percent = self.percent_removed
+        start, end = self.trim_indices
+        mean = float(trim_mean(self.spacings.mean(), 0.2))
+        var = float(trim_mean(self.spacings.var(ddof=1), 0.2))
+        mmsqe = float(trim_mean(self.msqes, 0.2, axis=1))
+        iter_info = "Iteration {:d}:".format(self.id)
+        trim_info = "{:4.1f}% trimmed - Trim indices: ({:d},{:d})".format(
+            percent, start, end
+        )
+        fit_info = "<s> = {:1.6f}, var(s) = {:04.5f}, <MSQE>: {:5.5f}.".format(
+            mean, var, mmsqe
+        )
+        legend = (
+            "\n<MSQE>: 20% trimmed mean MSQE across unfoldings.\n"
+            "<s>: 20% trimmed mean of mean spacings across unfoldings.\n"
+            "var(s): 20% trimmed mean of spacings variance across unfoldings.\n"
+        )
+        return f"{iter_info} {trim_info} - {fit_info}", legend
+
+
+class Trimmed(_eigvals.EigVals):
     def __init__(self, trimmed: ndarray):
         super().__init__(trimmed)
 
@@ -663,3 +642,27 @@ class Trimmed(EigVals):
         )
         orig_trimmed, unfolded = trimmed._get_autounfold_vals()
         return Unfolded(orig_trimmed, unfolded)
+
+
+def _get_outlier_labels(eigs: ndarray, tol: float) -> List[str]:
+    """Identify the outliers of eigs with HBOS."""
+    hb = HBOS(tol=tol)
+    steps = np.arange(0, len(eigs))
+    X = np.vstack([eigs, steps]).T  # data array
+    is_outlier = np.array(hb.fit(X).labels_, dtype=bool)  # outliers get "1"
+
+    # because eigs are sorted, HBOS will *usually* identify outliers at one of
+    # the two ends of the eigenvalues, which is what we want. But this is not
+    # always the case, so we need to de-identify those values as outliers.
+    if is_outlier[0]:
+        start = find_first(is_outlier, False)
+        for i in range(start, len(is_outlier)):
+            is_outlier[i] = False
+    if is_outlier[-1]:
+        stop = find_last(is_outlier, False)
+        for i in range(stop):
+            is_outlier[i] = False
+    if not is_outlier[0] and not is_outlier[-1]:  # force a break later
+        is_outlier = np.zeros(is_outlier.shape, dtype=bool)
+
+    return ["outlier" if label else "inlier" for label in is_outlier]

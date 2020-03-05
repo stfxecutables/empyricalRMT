@@ -86,7 +86,8 @@ class Smoother:
             the step-function values
         """
         eigs = self._eigs
-        steps = _step_function_fast(eigs, eigs)
+        # steps = _step_function_fast(eigs, eigs)
+        steps = np.arange(0, len(eigs)) + 1
         self.__validate_args(
             smoother=smoother, degree=degree, spline_smooth=spline_smooth
         )
@@ -135,14 +136,15 @@ class Smoother:
         spline_smooths: SmoothArg = [],
         spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
         gompertz: bool = False,
-        dry_run: bool = False,
-    ) -> Union[List[str], Tuple[DataFrame, DataFrame, Dict[str, Callable]]]:
+    ) -> Tuple[DataFrame, DataFrame, DataFrame, Dict[str, Callable]]:
         """unfold eigenvalues for all specified smoothers
 
         Parameters
         ----------
         poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+            the polynomial degrees for which to compute fits.
+            Default [3, 4, 5, 6, 7, 8, 9, 10, 11]
+
         spline_smooths: List[float] | "heuristic"
             If a list of floats, the smoothing factors, s, passed into
             scipy.interpolate.UnivariateSpline.
@@ -157,8 +159,6 @@ class Smoother:
         spline_degrees: List[int]
             A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
             fits. Default [3]
-        dry_run: boolean
-            If True, only return a list of column names needed for the current arguments.
 
 
         Returns
@@ -171,33 +171,24 @@ class Smoother:
         sqes: DataFrame
             DataFrame of mean-squared error of fits, where each column contains a name
             indicating the fitting parameters and smoother, with the values of
-            the column being the squared residuals of the fit
-        col_names: list
-            If `dry_run` is True, return only the column names for the given
-            arguments.
+            the column being the mean of the squared residuals of the fit
 
         smoother_map: dict
             A dict of {col_name: closure} for accessing the fitted smoothers later.
         """
-        col_names = self.__get_smoother_names(
-            poly_degrees=poly_degrees,
-            spline_smooths=spline_smooths,
-            spline_degrees=spline_degrees,
-            gompertz=gompertz,
-        )
-        if dry_run:  # early return strings of colums names
-            return col_names
-
         # construct dataframes to hold all info
-        unfoldeds, sqes = pd.DataFrame(), pd.DataFrame()
+        col_names, unfoldeds, spacings, sqes = [], [], [], []
         smoother_map = {}
         for d in poly_degrees:
             col_name = f"poly_{d}"
             unfolded, steps, closure = self.fit(
                 smoother="poly", degree=d, return_callable=True
             )
-            unfoldeds[col_name] = unfolded
-            sqes[col_name] = (unfolded - steps) ** 2
+            col_names.append(col_name)
+            sqes.append(np.mean((unfolded - steps) ** 2))
+            unfolded = np.sort(unfolded)  # Important!
+            unfoldeds.append(unfolded)
+            spacings.append(np.diff(unfolded))
             smoother_map[col_name] = closure
 
         if spline_smooths == "heuristic":
@@ -212,8 +203,11 @@ class Smoother:
                         degree=d,
                         return_callable=True,
                     )
-                    unfoldeds[col_name] = unfolded
-                    sqes[col_name] = (unfolded - steps) ** 2
+                    col_names.append(col_name)
+                    sqes.append(np.mean((unfolded - steps) ** 2))
+                    unfolded = np.sort(unfolded)
+                    unfoldeds.append(unfolded)
+                    spacings.append(np.diff(unfolded))
                     smoother_map[col_name] = closure
         else:
             for s in spline_smooths:  # type: ignore
@@ -225,21 +219,29 @@ class Smoother:
                         degree=d,
                         return_callable=True,
                     )
-                    unfoldeds[col_name] = unfolded
-                    sqes[col_name] = (unfolded - steps) ** 2
+                    col_names.append(col_name)
+                    sqes.append(np.mean((unfolded - steps) ** 2))
+                    unfolded = np.sort(unfolded)
+                    unfoldeds.append(unfolded)
+                    spacings.append(np.diff(unfolded))
                     smoother_map[col_name] = closure
-
         if gompertz:
             unfolded, steps, closure = self.fit(
                 smoother="gompertz", return_callable=True
             )
-            unfoldeds["gompertz"] = unfolded
-            sqes["gompertz"] = (unfolded - steps) ** 2
-            smoother_map[col_name] = closure
-        return unfoldeds, sqes, smoother_map  # type: ignore
+            col_names.append("gompertz")
+            sqes.append(np.mean((unfolded - steps) ** 2))
+            unfolded = np.sort(unfolded)
+            unfoldeds.append(unfolded)
+            spacings.append(np.diff(unfolded))
+            smoother_map["gompertz"] = closure
+        unfoldeds = pd.DataFrame(data=unfoldeds, index=col_names).T
+        spacings = pd.DataFrame(data=spacings, index=col_names).T
+        sqes = pd.DataFrame(data=sqes, index=col_names).T
+        return unfoldeds, spacings, sqes, smoother_map  # type: ignore
 
-    def __get_smoother_names(
-        self,
+    @staticmethod
+    def _get_smoother_names(
         poly_degrees: List[int],
         spline_smooths: SmoothArg,
         spline_degrees: List[int] = [3],

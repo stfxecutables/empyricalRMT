@@ -76,10 +76,11 @@ class Eigenvalues(EigVals):
         max_trim: float = 0.5,
         max_iters: int = 7,
         poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
-        spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
-        spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
+        spline_smooths: List[float] = [],
+        spline_degrees: List[int] = [],
         gompertz: bool = True,
         outlier_tol: float = 0.1,
+        show_progress: bool = False,
     ) -> TrimReport:
         """Compute multiple trim regions iteratively via histogram-based outlier
         detection, perform unfolding for each trim region, and summarize the
@@ -139,6 +140,7 @@ class Eigenvalues(EigVals):
             spline_degrees,
             gompertz,
             outlier_tol,
+            show_progress,
         )
 
     def get_best_trimmed(
@@ -214,7 +216,7 @@ class Eigenvalues(EigVals):
         else:
             raise ValueError("Unknown smoother.")
 
-        _, _, best_indices, _ = report.summarize_trim_unfoldings()
+        _, _, best_indices, _ = report.best_overall()
         start, end = best_indices[0][0], best_indices[0][1]
         return self.trim_manually(start, end)
 

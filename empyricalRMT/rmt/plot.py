@@ -12,6 +12,7 @@ from numpy import ndarray
 from pathlib import Path
 from scipy.integrate import quad
 from scipy.special import sici
+from scipy.stats import trim_mean
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing import Any, List, Optional, Tuple, Union
 from typing_extensions import Literal
@@ -20,6 +21,11 @@ from warnings import warn
 from empyricalRMT.rmt.ensemble import Poisson, GOE
 from empyricalRMT.rmt.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from empyricalRMT.rmt.trim import TrimIter
 
 PlotResult = Optional[Tuple[Figure, Axes]]
 PlotMode = Union[
@@ -711,6 +717,7 @@ def _level_number_variance(
     (fig, axes): (Figure, Axes)
         The handles to the matplotlib objects, only if `mode` is "return".
     """
+    _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
     df = pd.DataFrame(data, columns=["L", "sigma"])
     # sbn.relplot(x="L", y="sigma", data=df, ax=axes)
@@ -792,7 +799,9 @@ def _observables(
     fig, axes = plt.subplots(2, 2, sharex="none", sharey="none")
     fig.set_size_inches(fig.get_size_inches() * 2)
     fig.suptitle(suptitle)
-    _unfolded_fit(eigs=eigs, unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="noblock")
+    _unfolded_fit(
+        eigs=eigs, unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="noblock"
+    )
     _spacings(unfolded, fig=fig, axes=axes[0, 1], mode="noblock", ensembles=ensembles)
     _spectral_rigidity(
         unfolded,
@@ -811,6 +820,65 @@ def _observables(
         ensembles=ensembles,
     )
     return _handle_plot_mode(mode, fig, axes, outfile)
+
+
+def _plot_trim_iters(
+    trims: List["TrimIter"],
+    width: int = 4,
+    title: str = "Trim fits",
+    mode: PlotMode = "block",
+    outfile: Path = None,
+) -> PlotResult:
+    """Plot the trim regions.
+
+    Parameters
+    ----------
+    trims: List[TrimIter]
+        The trim iterations.
+
+    width: int
+        The desired number of columns in the multiplot.
+    """
+    _configure_sbn_style()
+    height = int(np.ceil(len(trims) / width))
+    width = int(width)
+    fig, axes = plt.subplots(height, width)
+    for trim, ax in zip(trims, axes.flat):
+        start, end = trim.trim_indices
+        mean = float(trim_mean(trim.spacings.mean(), 0.2))
+        var = float(trim_mean(trim.spacings.var(ddof=1), 0.2))
+        cut = trim.percent_removed
+        subtitle = "No trim" if trim.id == 0 else "{:.2f}% removed".format(cut)
+        info = "<s> {:.4f} var(s) {:.4f}".format(mean, var)
+        ax_title = f"{subtitle}\n{info}"
+        df = pd.DataFrame(
+            {
+                "λ": trim.eigs,
+                "N(λ)": np.arange(1, len(trim.eigs) + 1),
+                "Cluster": trim.clusters,
+            }
+        )
+        sbn.scatterplot(
+            data=df,
+            x="λ",
+            y="N(λ)",
+            hue="Cluster",
+            style="Cluster",
+            style_order=["inlier", "outlier"],
+            linewidth=0,
+            markers=[".", "X"],
+            palette=["black", "red"],
+            hue_order=["inlier", "outlier"],
+            legend="brief",
+            ax=ax,
+        )
+        ax.set(title=ax_title)
+    for i in range(len(trims), len(axes.flat)):
+        fig.delaxes(axes.flat[i])
+    fig.subplots_adjust(wspace=0.8, hspace=0.8)
+    fig.suptitle(title)
+    fig.set_size_inches(width * 3, height * 3)
+    return _handle_plot_mode(mode, fig, axes, outfile, 100)
 
 
 def _configure_sbn_style() -> None:
@@ -861,7 +929,7 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
 
 
 def _handle_plot_mode(
-    mode: str, fig: Figure, axes: Axes, outfile: Path = None
+    mode: str, fig: Figure, axes: Axes, outfile: Path = None, save_dpi: int = None
 ) -> Union[Optional[PlotResult], Axes]:
     if mode == "block":
         plt.show(block=True)
@@ -880,7 +948,7 @@ def _handle_plot_mode(
             raise ValueError("Cannot interpret outfile path.") from e
         make_parent_directories(outfile)
         print(f"Saving figure to {outfile}")
-        fig.savefig(outfile)
+        fig.savefig(outfile, dpi=save_dpi)
     elif mode == "return":
         return fig, axes
     else:
@@ -913,7 +981,7 @@ class HandlerColormap(HandlerBase):
         self.cmap = cmap
         self.num_stripes = num_stripes
 
-    def create_artists(
+    def create_artists(  # type: ignore
         self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
     ):
         stripes = []

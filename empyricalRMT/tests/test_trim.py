@@ -2,23 +2,33 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from pathlib import Path
+
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
 from empyricalRMT.rmt.construct import generate_eigs
-from empyricalRMT.rmt.trim import TrimReport
+from empyricalRMT.rmt.trim import TrimIter, TrimReport
 
 
 @pytest.mark.fast
 @pytest.mark.trim
 def test_init_sanity() -> None:
-    for i in range(10):
-        vals = generate_eigs(100)
-        trim = TrimReport(vals, poly_degrees=[5, 7], max_iters=5)
-        assert np.allclose(trim._untrimmed, vals)
-        assert isinstance(trim.unfold_info, pd.DataFrame)
-        assert isinstance(trim.unfoldings, list)
-        assert isinstance(trim.unfoldings[0], pd.DataFrame)
-        assert isinstance(trim._trim_steps, list)
-        assert isinstance(trim._trim_steps[0], pd.DataFrame)
+    eigs = Eigenvalues(generate_eigs(1000))
+    report = eigs.trim_report(
+        max_iters=9,
+        poly_degrees=[5, 7, 9],
+        spline_degrees=[],
+        spline_smooths=[],
+        show_progress=True,
+    )
+    assert np.allclose(report._untrimmed, eigs.original_eigenvalues)
+    assert isinstance(report.summary, pd.DataFrame)
+    assert isinstance(report._trim_iters, list)
+    assert isinstance(report._trim_iters[0], TrimIter)
+    path = Path(".") / "trim_report.csv"
+    report.to_csv(path)
+    assert path.exists()
+    path.unlink()
+    report.plot_trim_steps(mode="block")
 
 
 @pytest.mark.fast
@@ -36,10 +46,10 @@ def test_trim_manual() -> None:
 @pytest.mark.fast
 @pytest.mark.trim
 def test_trim_reports() -> None:
-    eigs = generate_eigs(2000, seed=2)
-    report = TrimReport(eigs)
+    eigs = Eigenvalues(generate_eigs(2000, seed=2))
+    report = eigs.trim_report()
     best_smoothers, best_unfolds, best_indices, consistent_smoothers = (
-        report.summarize_trim_unfoldings()
+        report.best_overall()
     )
     assert np.array_equal(
         np.sort(consistent_smoothers), np.sort(["poly_7", "poly_8", "poly_9"])
@@ -49,4 +59,4 @@ def test_trim_reports() -> None:
     report.plot_trim_steps(mode="test")
 
 
-# test_trim_reports()
+test_init_sanity()
