@@ -6,7 +6,7 @@ from numpy import ndarray
 from scipy.integrate import quad
 from scipy.linalg import eigvalsh_tridiagonal
 from scipy.sparse import diags
-from typing import Union
+from typing import Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
@@ -118,6 +118,34 @@ def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
     unfolded_eigs = np.sort(np.vectorize(smooth_goe)(eigs))
     print("Done!")
     return Unfolded(originals=eigs, unfolded=unfolded_eigs)
+
+
+def correlated_eigs(
+    percent: float = 25,
+    shape: Tuple[int, int] = (1000, 500),
+    noise: float = 0.1,
+    log: bool = True,
+) -> Tuple[ndarray, float, float]:
+    A = np.random.standard_normal(shape)
+    correlated = np.random.permutation(A.shape[0] - 1) + 1  # don't select first row
+    last = int(np.floor((percent / 100) * A.shape[0]))
+    corr_indices = correlated[:last]
+    # introduce correlation in A
+    for i in corr_indices:
+        A[i, :] = np.random.choice([-1, 1]) * np.random.uniform(1, 2) * A[
+            0, :
+        ] + np.random.normal(0, noise, size=A.shape[1])
+    M = p_correlate(A)
+    if log:
+        print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
+    eigs = np.linalg.eigvalsh(M)
+    if log:
+        print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
+    n, t = shape
+    eig_min, eig_max = (1-np.sqrt(n/t))**2, (1+np.sqrt(n/t))**2
+    print(f"Eigenvalues in ({eig_min},{eig_max}) are likely noise-related.")
+
+    return eigs, eig_min, eig_max
 
 
 def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
