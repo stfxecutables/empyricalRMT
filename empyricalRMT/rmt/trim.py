@@ -42,6 +42,113 @@ from empyricalRMT.rmt.unfold import Unfolded
 from empyricalRMT.utils import find_first, find_last
 
 
+class Trimmed(_eigvals.EigVals):
+    def __init__(self, trimmed: ndarray):
+        super().__init__(trimmed)
+
+    @property
+    def values(self) -> ndarray:
+        return self._vals
+
+    @property
+    def vals(self) -> ndarray:
+        return self._vals
+
+    def unfold(
+        self,
+        smoother: SmoothMethod = "poly",
+        degree: int = DEFAULT_POLY_DEGREE,
+        spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
+        emd_detrend: bool = False,
+    ) -> Unfolded:
+        """
+        Parameters
+        ----------
+        eigs: ndarray
+            sorted eigenvalues
+
+        smoother: "poly" | "spline" | "gompertz" | lambda
+            the type of smoothing function used to fit the step function
+
+        degree: int
+            the degree of the polynomial or spline
+
+        spline_smooth: float
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline
+
+        Returns
+        -------
+        unfolded: ndarray
+            the unfolded eigenvalues
+
+        steps: ndarray
+            the step-function values
+        """
+        eigs = self.values
+        unfolded, _, closure = Smoother(eigs).fit(
+            smoother=smoother,
+            degree=degree,
+            spline_smooth=spline_smooth,
+            emd_detrend=emd_detrend,
+        )
+        return Unfolded(originals=eigs, unfolded=unfolded, smoother=closure)
+
+    def unfold_auto(
+        self,
+        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
+        spline_smooths: List[float] = [],
+        spline_degrees: List[int] = [],
+        gompertz: bool = True,
+        outlier_tol: float = 0.1,
+    ) -> Unfolded:
+        """Exhaustively compare mutliple trim regions and smoothers based on their "GOE score"
+        and unfold the eigenvalues, using the trim region and smoothing parameters
+        determined to be "most GOE" based on the exhaustive process.
+
+        Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
+        percent and smoother according to GOE score.
+
+        Parameters
+        ----------
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5,
+            6, 7, 8, 9, 10, 11]
+
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
+
+        gompertz: bool
+            Whether or not to use a gompertz curve as one of the smoothers.
+
+        prioritize_smoother: bool
+            Whether or not to select the optimal smoother before selecting the optimal
+            trim region. See notes. Default: True.
+
+        outlier_tol: float
+            A float between 0 and 1, and which is passed as the tolerance paramater for
+            [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
+            histogram-based outlier detection
+        """
+
+        trimmed = TrimReport(
+            eigenvalues=self.values,
+            max_trim=0.0,
+            max_iters=0,
+            poly_degrees=poly_degrees,
+            spline_smooths=spline_smooths,
+            spline_degrees=spline_degrees,
+            gompertz=gompertz,
+            outlier_tol=outlier_tol,
+        )
+        orig_trimmed, unfolded = trimmed._get_autounfold_vals()
+        return Unfolded(orig_trimmed, unfolded)
+
+
 class TrimReport:
     def __init__(
         self,
@@ -71,7 +178,7 @@ class TrimReport:
             show_progress=show_progress,
         )
         # set self._unfold_info, self._all_unfolds
-        self._summary = self.__summarize_iters(
+        self._summary = self.__iters_to_dataframe(
             poly_degrees, spline_smooths, spline_degrees, gompertz
         )
 
@@ -92,6 +199,13 @@ class TrimReport:
         if self._all_unfolds is None:
             raise RuntimeError("TrimReport inrrectly initialized.")
         return self._all_unfolds
+
+    def use_trim_iteration(self, iteration: int) -> Trimmed:
+        from empyricalRMT.rmt.eigenvalues import Trimmed
+
+        if iteration > (len(self._trim_iters) - 1):
+            raise ValueError(f"Largest trim iteration is {len(self._trim_iters) - 1}")
+        return Trimmed(self._trim_iters[iteration].eigs)
 
     def evaluate(self, criterion: Any, minimize_trim: bool = True) -> Any:
         """TODO: Implement various sensible criteria here.
@@ -350,7 +464,7 @@ class TrimReport:
                 break
         return trim_iters
 
-    def __summarize_iters(
+    def __iters_to_dataframe(
         self,
         poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
         spline_smooths: List[float] = DEFAULT_SPLINE_SMOOTHS,
@@ -535,113 +649,6 @@ class TrimIter:
             "var(s): 20% trimmed mean of spacings variance across unfoldings.\n"
         )
         return f"{iter_info} {trim_info} - {fit_info}", legend
-
-
-class Trimmed(_eigvals.EigVals):
-    def __init__(self, trimmed: ndarray):
-        super().__init__(trimmed)
-
-    @property
-    def values(self) -> ndarray:
-        return self._vals
-
-    @property
-    def vals(self) -> ndarray:
-        return self._vals
-
-    def unfold(
-        self,
-        smoother: SmoothMethod = "poly",
-        degree: int = DEFAULT_POLY_DEGREE,
-        spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
-        emd_detrend: bool = False,
-    ) -> Unfolded:
-        """
-        Parameters
-        ----------
-        eigs: ndarray
-            sorted eigenvalues
-
-        smoother: "poly" | "spline" | "gompertz" | lambda
-            the type of smoothing function used to fit the step function
-
-        degree: int
-            the degree of the polynomial or spline
-
-        spline_smooth: float
-            the smoothing factors passed into scipy.interpolate.UnivariateSpline
-
-        Returns
-        -------
-        unfolded: ndarray
-            the unfolded eigenvalues
-
-        steps: ndarray
-            the step-function values
-        """
-        eigs = self.values
-        unfolded, _, closure = Smoother(eigs).fit(
-            smoother=smoother,
-            degree=degree,
-            spline_smooth=spline_smooth,
-            emd_detrend=emd_detrend,
-        )
-        return Unfolded(originals=eigs, unfolded=unfolded, smoother=closure)
-
-    def unfold_auto(
-        self,
-        poly_degrees: List[int] = DEFAULT_POLY_DEGREES,
-        spline_smooths: List[float] = [],
-        spline_degrees: List[int] = [],
-        gompertz: bool = True,
-        outlier_tol: float = 0.1,
-    ) -> Unfolded:
-        """Exhaustively compare mutliple trim regions and smoothers based on their "GOE score"
-        and unfold the eigenvalues, using the trim region and smoothing parameters
-        determined to be "most GOE" based on the exhaustive process.
-
-        Exhaustively trim and unfold for various smoothers, and select the "best" overall trim
-        percent and smoother according to GOE score.
-
-        Parameters
-        ----------
-        poly_degrees: List[int]
-            the polynomial degrees for which to compute fits. Default [3, 4, 5,
-            6, 7, 8, 9, 10, 11]
-
-        spline_smooths: List[float]
-            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
-            Default np.linspace(1, 2, num=11)
-
-        spline_degrees: List[int]
-            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
-            fits. Default [3]
-
-        gompertz: bool
-            Whether or not to use a gompertz curve as one of the smoothers.
-
-        prioritize_smoother: bool
-            Whether or not to select the optimal smoother before selecting the optimal
-            trim region. See notes. Default: True.
-
-        outlier_tol: float
-            A float between 0 and 1, and which is passed as the tolerance paramater for
-            [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
-            histogram-based outlier detection
-        """
-
-        trimmed = TrimReport(
-            eigenvalues=self.values,
-            max_trim=0.0,
-            max_iters=0,
-            poly_degrees=poly_degrees,
-            spline_smooths=spline_smooths,
-            spline_degrees=spline_degrees,
-            gompertz=gompertz,
-            outlier_tol=outlier_tol,
-        )
-        orig_trimmed, unfolded = trimmed._get_autounfold_vals()
-        return Unfolded(orig_trimmed, unfolded)
 
 
 def _get_outlier_labels(eigs: ndarray, tol: float) -> List[str]:
