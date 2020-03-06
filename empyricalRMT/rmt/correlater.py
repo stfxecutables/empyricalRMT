@@ -13,7 +13,7 @@ OUT_DEFAULT = Path.home() / "Desktop" / "corrmat.npy"
 
 def p_correlate(arr: ndarray) -> ndarray:
     N = arr.shape[0]
-    corrs = np.empty([N, N], dtype=np.float64)
+    corrs = np.zeros([N, N], dtype=np.float64)
     pbar = setup_progressbar(f"Computing correlations", N).start()
     for i in range(N):
         _compute_clean_row_corrs(corrs, arr, i)
