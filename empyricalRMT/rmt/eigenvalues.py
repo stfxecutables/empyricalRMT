@@ -1,7 +1,8 @@
 import numpy as np
 
 from numpy import ndarray
-from typing import Any, List, Sized
+from scipy.integrate import quad
+from typing import Any, List, Sized, TypeVar, Type
 from warnings import warn
 
 from empyricalRMT.rmt._constants import (
@@ -18,6 +19,9 @@ from empyricalRMT.rmt.unfold import Unfolded
 
 
 _WARNED_SMALL = False
+
+# see https://stackoverflow.com/a/44644576, for class methods
+Eigens = TypeVar("Eigens", bound="Eigenvalues")
 
 
 class Eigenvalues(EigVals):
@@ -50,6 +54,69 @@ class Eigenvalues(EigVals):
             )
 
         super().__init__(eigenvalues)
+
+    @classmethod
+    def from_correlations(
+        cls: Type[Eigens],
+        data: ndarray,
+        atol: float = 1e3 * np.finfo(np.float).eps,
+        lower: bool = True,
+    ) -> Eigens:
+        """Use positive semi-definiteness to identify likely zero-valued eigenvalues
+        due to floating point imprecision.
+
+        Parameters
+        ----------
+        data: ndarray
+            Either a 2-dimensional symmetric correlation matrix, or the
+            1-dimensional computed eigenvalues from such a matrix.
+
+        atol: float
+            Absolute tolerance. Eigenvalues with absolute value less than _atol_
+            will be considered equal to zero.
+
+        lower: bool
+            If _lower_ is True (default), use only the lower triangle to compute
+            the eigenvalues. Otherwise, use the upper triangle.
+
+
+        Returns
+        -------
+        eigenvalues: Eigenvalues
+            The Eigenvalues object, with values close to zero pre-trimmed away.
+        """
+        if len(data.shape) > 2:
+            raise ValueError(
+                "`data` must be either flat, 1-dimensional, or 2-dimensional."
+            )
+        if len(data.shape) == 2 and np.min(data.shape) > 1:
+            eigs = np.linalg.eigvalsh(data, "L" if lower else "U")
+        eigs = data.reshape(-1)  # equivalent to ravel but less likely to copy
+        return cls(eigs[np.abs(eigs) < atol])
+
+    @classmethod
+    def from_time_series(cls: Type[Eigens], data: ndarray, time_dim: int = 1) -> Eigens:
+        """Use Marchenko-Pastur and positive semi-definiteness to identify likely noise
+        values and zero-valued eigenvalues due to floating point imprecision
+
+        Parameters
+        ----------
+        data: ndarray
+            A 2-dimensional matrix of time-series data.
+
+        time_dim: int
+            If 0, assumes the data.shape == (n, T), where n is the number of
+            features / variables, and T is the length (number of points) in each
+            time series.
+
+
+        Returns
+        -------
+        eigenvalues: Eigenvalues
+            The Eigenvalues object, with extra time-series relevant data:
+            - Eigenvalues.marcenko_endpoints: (float, float)
+        """
+        raise NotImplementedError()
 
     @property
     def values(self) -> ndarray:
@@ -438,34 +505,22 @@ class Eigenvalues(EigVals):
         # unfolded = eigs / np.mean(np.diff(eigs))
         # return Unfolded(eigs, unfolded)
 
-        N = len(self.eigenvalues)
-        if a is None:
-            a = 2 * np.sqrt(N)
-        # a = 1
-
-        def explicit(E: float) -> Any:
-            """See the section on Asymptotic Level Densities for the closed form
-            function below.
-
-            Abul-Magd, A. A., & Abul-Magd, A. Y. (2014). Unfolding of the spectrum
-            for chaotic and mixed systems. Physica A: Statistical Mechanics and its
-            Applications, 396, 185-194, section A
-            """
-            if np.abs(E) <= a:
-                t1 = (E / (np.pi * a * a)) * np.sqrt(a * a - E * E)  # type: ignore
-                t2 = (1 / np.pi) * np.arctan(E / np.sqrt(a * a - E * E))  # type: ignore
-
-                return 0.5 + t1 + t2
-            if E < a:  # type: ignore
-                return 0
-            if E > a:  # type: ignore
-                return 1
-
-            raise ValueError("Unreachable!")
-
         eigs = self.eigenvalues
-        unfolded = np.empty([N])
-        for i in range(N):
-            # multiply N here to prevent overflow issues
-            unfolded[i] = N * explicit(eigs[i])
+        N = len(eigs)
+        end = np.sqrt(2 * N)
+
+        def __R1(x: float) -> np.float64:
+            """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004) """
+            if np.abs(x) < end:
+                return np.float64((1 / np.pi) * np.sqrt(2 * N - x * x))
+            return 0.0
+
+        MAX = quad(__R1, -end, end)[0]
+
+        def smooth_goe(x: float) -> np.float64:
+            if x > end:
+                return MAX
+            return quad(__R1, -end, x)[0]
+
+        unfolded = np.sort(np.vectorize(smooth_goe)(eigs))
         return Unfolded(originals=eigs, unfolded=unfolded)
