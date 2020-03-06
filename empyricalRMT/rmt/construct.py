@@ -6,7 +6,7 @@ from numpy import ndarray
 from scipy.integrate import quad
 from scipy.linalg import eigvalsh_tridiagonal
 from scipy.sparse import diags
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
@@ -125,16 +125,16 @@ def correlated_eigs(
     shape: Tuple[int, int] = (1000, 500),
     noise: float = 0.1,
     log: bool = True,
-) -> Tuple[ndarray, float, float]:
+    return_mats: bool = False,
+) -> Union[ndarray, Tuple[ndarray, ndarray, ndarray]]:
     A = np.random.standard_normal(shape)
     correlated = np.random.permutation(A.shape[0] - 1) + 1  # don't select first row
     last = int(np.floor((percent / 100) * A.shape[0]))
     corr_indices = correlated[:last]
     # introduce correlation in A
+    ch, unif, norm = np.random.choice, np.random.uniform, np.random.normal
     for i in corr_indices:
-        A[i, :] = np.random.choice([-1, 1]) * np.random.uniform(1, 2) * A[
-            0, :
-        ] + np.random.normal(0, noise, size=A.shape[1])
+        A[i, :] = ch([-1, 1]) * unif(1, 2) * (A[0, :] + norm(0, noise, size=A.shape[1]))
     M = p_correlate(A)
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
@@ -142,10 +142,12 @@ def correlated_eigs(
     if log:
         print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
     n, t = shape
-    eig_min, eig_max = (1-np.sqrt(n/t))**2, (1+np.sqrt(n/t))**2
+    eig_min, eig_max = (1 - np.sqrt(n / t)) ** 2, (1 + np.sqrt(n / t)) ** 2
     print(f"Eigenvalues in ({eig_min},{eig_max}) are likely noise-related.")
 
-    return eigs, eig_min, eig_max
+    if return_mats:
+        return eigs, A, M
+    return eigs
 
 
 def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
