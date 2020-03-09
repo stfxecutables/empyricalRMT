@@ -6,7 +6,7 @@ from pathlib import Path
 
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
 from empyricalRMT.rmt.construct import generate_eigs
-from empyricalRMT.rmt.trim import TrimIter, TrimReport
+from empyricalRMT.rmt.trim import TrimIter
 
 
 @pytest.mark.fast

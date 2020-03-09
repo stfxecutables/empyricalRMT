@@ -23,7 +23,6 @@ from empyricalRMT.rmt.plot import (
     PlotMode,
     PlotResult,
 )
-from empyricalRMT.rmt.smoother import Smoother
 from empyricalRMT._validate import make_1d_array
 
 Observables = Literal["nnsd", "nnnsd", "rigidity", "levelvar"]

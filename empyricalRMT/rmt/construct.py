@@ -6,7 +6,7 @@ from numpy import ndarray
 from scipy.integrate import quad
 from scipy.linalg import eigvalsh_tridiagonal
 from scipy.sparse import diags
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 

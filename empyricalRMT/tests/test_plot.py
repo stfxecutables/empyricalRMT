@@ -1,22 +1,13 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import pytest
-import seaborn as sbn
 import time
 
-from matplotlib.pyplot import Figure, Axes
 from numpy import ndarray
-from typing import Any, List, Optional, Tuple, Union
-from typing_extensions import Literal
 
 
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.ensemble import Poisson, GOE
 from empyricalRMT.rmt.construct import goe_unfolded
-from empyricalRMT.rmt.correlater import p_correlate
-from empyricalRMT.rmt.observables.step import _step_function_fast
-from empyricalRMT.utils import make_parent_directories
+from empyricalRMT.rmt.correlater import correlate_fast
 
 
 def get_eigs(arr: ndarray) -> ndarray:
@@ -39,7 +30,7 @@ def test_axes_configuring() -> None:
         A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(
             0, var, size=A.shape[1]
         )
-    M = p_correlate(A)
+    M = correlate_fast(A)
     eigs = get_eigs(M)
     print(f"\nPercent correlated noise: {percent}%")
     unfolded = Eigenvalues(eigs).unfold(degree=13)

@@ -25,7 +25,7 @@ from empyricalRMT.utils import make_parent_directories
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from empyricalRMT.rmt.trim import TrimIter
+    from empyricalRMT.rmt.trim import TrimIter  # noqa: F401
 
 PlotResult = Optional[Tuple[Figure, Axes]]
 PlotMode = Union[

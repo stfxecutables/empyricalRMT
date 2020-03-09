@@ -18,8 +18,7 @@ from empyricalRMT.rmt._constants import (
     DEFAULT_SPLINE_SMOOTHS,
 )
 from empyricalRMT.rmt.exponentials import gompertz
-from empyricalRMT.rmt.detred import emd_detrend
-from empyricalRMT.rmt.observables.step import _step_function_fast
+from empyricalRMT.rmt.detrend import emd_detrend
 
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}

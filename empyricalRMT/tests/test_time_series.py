@@ -5,8 +5,7 @@ import time
 
 from numpy import ndarray
 
-from empyricalRMT.rmt.construct import generate_eigs
-from empyricalRMT.rmt.correlater import p_correlate
+from empyricalRMT.rmt.correlater import correlate_fast
 from empyricalRMT.rmt.eigenvalues import Eigenvalues
 from empyricalRMT.rmt.plot import _observables
 
@@ -45,7 +44,7 @@ def unfold_and_plot(eigs: ndarray, suptitle: str) -> None:
 @pytest.mark.plot
 def test_gaussian_noise() -> None:
     A = np.random.standard_normal([1000, 250])
-    M = p_correlate(A)
+    M = correlate_fast(A)
     eigs = get_eigs(M)
     unfold_and_plot(eigs, "Gaussian Noise")
 
@@ -63,7 +62,7 @@ def test_correlated_gaussian_noise() -> None:
             A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(
                 0, var, size=A.shape[1]
             )
-        M = p_correlate(A)
+        M = correlate_fast(A)
         eigs = get_eigs(M)
         print(f"\nPercent correlated noise: {percent}%")
         unfold_and_plot(eigs, f"\nCorrelated noise: {percent}%")
@@ -73,6 +72,6 @@ def test_correlated_gaussian_noise() -> None:
 @pytest.mark.plot
 def test_uniform_noise() -> None:
     A = np.random.uniform(0, 1, size=[1000, 250])
-    M = p_correlate(A)
+    M = correlate_fast(A)
     eigs = get_eigs(M)
     unfold_and_plot(eigs, "Uniform Noise")

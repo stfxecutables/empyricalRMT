@@ -24,4 +24,6 @@ def test_plot_rigidity() -> None:
     unfolded.plot_level_variance(
         L=np.arange(0.5, 100, 0.2), mode="test", ensembles=["goe", "poisson"]
     )
-    unfolded.plot_spectral_rigidity(max_L=200, c_iters=10000, mode="test")
+    unfolded.plot_spectral_rigidity(
+        L=np.arange(1, 200, 0.5), c_iters=10000, mode="test"
+    )
