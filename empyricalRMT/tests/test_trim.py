@@ -28,7 +28,7 @@ def test_init_sanity() -> None:
     report.to_csv(path)
     assert path.exists()
     path.unlink()
-    report.plot_trim_steps(mode="block")
+    report.plot_trim_steps(mode="test")
 
 
 @pytest.mark.fast

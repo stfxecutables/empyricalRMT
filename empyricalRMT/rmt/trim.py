@@ -226,7 +226,6 @@ class TrimReport:
         """
         eigenvalues = np.sort(eigenvalues)
         self._untrimmed: ndarray = eigenvalues
-        self._unfold_info: Optional[DataFrame] = None
         self._all_unfolds: Optional[List[DataFrame]] = None
 
         self._trim_iters: List[TrimIter] = self.__get_trim_iters(
@@ -240,6 +239,7 @@ class TrimReport:
             detrend=detrend,
             show_progress=show_progress,
         )
+        self._all_unfolds = list(map(lambda trim: trim.unfolds, self._trim_iters))  # type: ignore
         # set self._unfold_info, self._all_unfolds
         self._summary = self.__iters_to_dataframe(
             poly_degrees, spline_smooths, spline_degrees, gompertz
@@ -386,7 +386,7 @@ class TrimReport:
             GOE fit scores across all trimmings. Useful for deciding on a single smoothing
             method to use across a dataset. Consistent smoothers are *not* ordered.
         """
-        report, all_unfolds = self._unfold_info, self._all_unfolds
+        report, all_unfolds = self.summary, self._all_unfolds
         if report is None or all_unfolds is None:
             raise RuntimeError(
                 "Eigenvalues have not yet been unfolded. This should be impossible."
@@ -413,7 +413,7 @@ class TrimReport:
         )  # get indices of best three rows
         best_trim_indices = []
         for i, row_id in enumerate(best_three):
-            best_trim_eigs = np.array(self._trim_iters[row_id]["eigs"])
+            best_trim_eigs = np.array(self._trim_iters[row_id].eigs)
             best_start, best_end = best_trim_eigs[0], best_trim_eigs[-1]
             best_indices = (
                 list(self._untrimmed).index(best_start),
