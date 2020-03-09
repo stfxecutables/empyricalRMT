@@ -57,6 +57,3 @@ def test_trim_reports() -> None:
     assert np.array_equal(best_indices, [(104, 1765), (231, 1765), (104, 2000)])
 
     report.plot_trim_steps(mode="test")
-
-
-test_init_sanity()
