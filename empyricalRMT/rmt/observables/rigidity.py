@@ -67,7 +67,9 @@ def spectral_rigidity(
 
     integration: "simps" | "trapz"
         Whether to use the trapezoidal or simpson's rule for integration. Default
-        `simps`.
+        `simps`. Method "trapz" might be faster in some cases, but final
+        calculations will be considerably more inaccurate.
+
 
     Returns
     -------
@@ -80,24 +82,25 @@ def spectral_rigidity(
 
     Notes
     -----
-    This algorithm is fairly heavily optimized, and executes fast for even
-    high grid densities and a large number of iterations per grid value.
-    Efficiency seems to be roughly O(L_grid_size). Increasing len(unfolded)
-    and increasing c_iters also increases the execution time, but not nearly
-    as much as increasing the grid density. Even for a large number of iterations
-    per L value (e.g. 100000) the algorithm is still quite quick, so large values
-    are generally recommended here. This is especially the case if looking at
-    large L values (e.g. probably for L > 20, definitely for L > 50).
+    This algorithm is fairly heavily optimized (for Python), and executes fast
+    for even high grid densities and a large number of iterations per grid
+    value. Efficiency seems to be roughly O(L_grid_size). Increasing
+    len(unfolded) and increasing c_iters also increases the execution time, but
+    not nearly as much as increasing the grid density. Even for a large number
+    of iterations per L value (e.g. 100000) the algorithm is still quite quick,
+    so large values are generally recommended here. This is especially the case
+    if looking at large L values (e.g. probably for L > 20, definitely for L >
+    50).
 
-    In general, the extent to which observed spectral rigidity values will
-    match those predicted by theory will depend heavily on the choice of
-    unfolding function. In addition, convergence to the expected curves can be
-    quite slow, especially for large L values. E.g. the eigenvalues of an
-    n == 1000 GOE matrix, with polynomial unfolding, will generally only match
-    expected values up to about L == 20. For an n == 5000 GOE matrix, rigidty
-    values will start to deviate from theory by about L == 40 or L == 50. For
-    n == 10000, you will probably start seeing noticable deviation by about
-    L == 60 or L == 70. I.e. convergence is slow.
+    In general, the extent to which observed spectral rigidity values will match
+    those predicted by theory will depend heavily on the choice of unfolding
+    function and the matrix size. In addition, convergence to the expected
+    curves can be quite slow, especially for large L values. E.g. the
+    eigenvalues of an n == 1000 GOE matrix, with polynomial unfolding, will
+    generally only match expected values up to about L == 20. For an n == 5000
+    GOE matrix, rigidity values will start to deviate from theory by about L ==
+    40 or L == 50. For n == 10000, you will probably start seeing noticable
+    deviation by about L == 60 or L == 70.
 
     References
     ----------
@@ -215,45 +218,6 @@ def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
     return integral
 
 
-# fmt: off
-@jit(nopython=True, fastmath=True, cache=True)
-def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
-    """
-    Simpson rule for irregularly spaced data. Copied from
-    https://en.wikipedia.org/w/index.php?title=Simpson%27s_rule&oldid=938527913#Composite_Simpson's_rule_for_irregularly_spaced_data
-    for compilation here with Numba, and to overcome the extremely slow performance
-    problems with scipy.integrate.simps.
-
-    Parameters
-    ----------
-    grid: list or np.array of floats
-            Sampling points for the function values
-
-    vals: list or np.array of floats
-            Function values at the sampling points
-
-    Returns
-    -------
-    float: approximation for the integral
-    """
-    N = len(grid) - 1
-    h = np.diff(grid)
-
-    result = 0.0
-    for i in range(1, N, 2):
-        hph = h[i] + h[i - 1]
-        result += vals[i] * (h[i]**3 + h[i-1]**3 + 3.0*h[i]*h[i-1]*hph) / (6*h[i]*h[i-1])
-        result += vals[i-1] * (2.0*h[i-1]**3 - h[i]**3 + 3.0*h[i]*h[i-1]**2) / (6*h[i-1] * hph)
-        result += vals[i+1] * (2.0*h[i]**3 - h[i-1]**3 + 3.0*h[i-1]*h[i]**2) / (6*h[i] * hph)
-
-    if (N + 1) % 2 == 0:
-        result += vals[N] * (2*h[N-1]**2 + 3.0*h[N-2]*h[N-1]) / (6*(h[N-2] + h[N-1]))
-        result += vals[N-1] * (h[N-1]**2 + 3*h[N-1]*h[N-2]) / (6*h[N-2])
-        result -= vals[N-2] * h[N-1]**3 / (6*h[N-2]*(h[N-2] + h[N-1]))
-    return result
-# fmt: on
-
-
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
 # the outer loops. Adding it inside *dramatically* slows performance.
 @jit(nopython=True, fastmath=True, cache=True)
@@ -291,3 +255,42 @@ def _sq_lin_deviation(
         deviation = n - K * grid[i] - w
         ret[i] = deviation * deviation
     return ret
+
+
+# fmt: off
+@jit(nopython=True, fastmath=True, cache=True)
+def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
+    """
+    Simpson rule for irregularly spaced data. Copied shamelessly from
+    https://en.wikipedia.org/w/index.php?title=Simpson%27s_rule&oldid=938527913#Composite_Simpson's_rule_for_irregularly_spaced_data
+    for compilation here with Numba, and to overcome the extremely slow performance
+    problems with scipy.integrate.simps.
+
+    Parameters
+    ----------
+    grid: list or np.array of floats
+            Sampling points for the function values
+
+    vals: list or np.array of floats
+            Function values at the sampling points
+
+    Returns
+    -------
+    float: approximation for the integral
+    """
+    N = len(grid) - 1
+    h = np.diff(grid)
+
+    result = 0.0
+    for i in range(1, N, 2):
+        hph = h[i] + h[i - 1]
+        result += vals[i] * (h[i]**3 + h[i-1]**3 + 3.0*h[i]*h[i-1]*hph) / (6*h[i]*h[i-1])
+        result += vals[i-1] * (2.0*h[i-1]**3 - h[i]**3 + 3.0*h[i]*h[i-1]**2) / (6*h[i-1] * hph)
+        result += vals[i+1] * (2.0*h[i]**3 - h[i-1]**3 + 3.0*h[i-1]*h[i]**2) / (6*h[i] * hph)
+
+    if (N + 1) % 2 == 0:
+        result += vals[N] * (2*h[N-1]**2 + 3.0*h[N-2]*h[N-1]) / (6*(h[N-2] + h[N-1]))
+        result += vals[N-1] * (h[N-1]**2 + 3*h[N-1]*h[N-2]) / (6*h[N-2])
+        result -= vals[N-2] * h[N-1]**3 / (6*h[N-2]*(h[N-2] + h[N-1]))
+    return result
+# fmt: on

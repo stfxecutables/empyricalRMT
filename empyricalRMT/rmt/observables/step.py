@@ -32,6 +32,8 @@ def step_values(eigs: ndarray, x: Union[float, ndarray]) -> Union[float, ndarray
 
 @jit(nopython=True, fastmath=True, cache=True)
 def _step_function_fast(eigs: ndarray, x: ndarray) -> ndarray:
+    """optimized version that does not repeatedly call np.sum(eigs <= x), since
+    this function needed to be called extensively in rigidity calculation."""
     ret = np.zeros((len(x)), dtype=np.float64)
     if x[-1] <= eigs[0]:  # early return if all values are just zero
         return ret
@@ -59,7 +61,7 @@ def _step_function_fast(eigs: ndarray, x: ndarray) -> ndarray:
             ret[j] = count
             j += 1
 
-    while j < len(x):
+    while j < len(x):  # keep going for any remaining values of x
         ret[j] = count
         j += 1
 
@@ -69,6 +71,7 @@ def _step_function_fast(eigs: ndarray, x: ndarray) -> ndarray:
 # guaranteed to be correct
 @jit(nopython=True, fastmath=True, cache=True, parallel=True)
 def _step_function_correct(eigs: ndarray, x: ndarray) -> ndarray:
+    """Intended primarily for testing _step_function_fast correctness"""
     ret = np.empty((len(x)), dtype=np.float64)
     for i in prange(len(x)):
         ret[i] = np.sum(eigs <= x[i])
@@ -84,7 +87,7 @@ def _step_function_correct(eigs: ndarray, x: ndarray) -> ndarray:
 # necessary or if it becomes a bottleneck
 @jit(nopython=True, fastmath=True, cache=True)
 def _step_function_g(eigs: ndarray, x: float) -> int:
-    """Count the number of eigenvalues <= x."""
+    """[DEPRECATE] Old version. Slow when used repeatedly"""
     cumulative = 0
     for eig in eigs:
         if x <= eig:
@@ -98,6 +101,8 @@ def _step_function_g(eigs: ndarray, x: float) -> int:
 # `eigs` and `x` will be sorted for our use cases.
 @jit(nopython=True, fastmath=True, cache=True)
 def _step_function_slow(eigs: ndarray, x: ndarray) -> ndarray:
+    """[DEPRECATE] Slow (like if n == len(x), O(n**2) or worse complexity)
+    version. Remains for testing only."""
     ret = np.empty((len(x)), dtype=np.float64)
     for i in prange(len(x)):
         ret[i] = _step_function_g(eigs, x[i])

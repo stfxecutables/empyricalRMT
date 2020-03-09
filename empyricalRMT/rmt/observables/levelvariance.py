@@ -17,7 +17,7 @@ def level_number_variance(
     L_grid_size: int = None,
     show_progress: bool = True,
 ) -> Tuple[ndarray, ndarray]:
-    """Compute the level number variance for a particular unfolding.
+    """[DEPRECATE]. This has been supersed by level_number_variance_stable
 
     Computes the level number variance (sigma squared, [1]_) for a
     particular set of eigenvalues and their unfolding.
@@ -99,6 +99,7 @@ def level_number_variance(
 
 @jit(nopython=True, cache=True, fastmath=True, parallel=True)
 def _sigma_iter(unfolded: ndarray, L: float, c_iters: int = 100) -> ndarray:
+    """[DEPRECATE] Use _sigma_iter_converge"""
     c_iters = np.min(np.array([int(L * 2000), int(25000)]))
     levels = np.empty((c_iters), dtype=np.float64)
     levels_sq = np.empty((c_iters), dtype=np.float64)  # levels squared
@@ -204,7 +205,7 @@ def _sigma_iter_converge(
     min_L_iters: int
         Minimum number of iterations for each L value.
 
-    show_progress: bool
+    progress: bool
         Whether or not to display computation progress in stdout.
 
     Returns
@@ -251,9 +252,6 @@ def _sigma_iter_converge_L(
 
     min_iters: int
         Minimum number of iterations
-
-    show_progress: bool
-        Whether or not to display computation progress in stdout.
 
 
     Returns
