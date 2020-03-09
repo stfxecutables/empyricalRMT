@@ -1,5 +1,5 @@
 [flake8]
 ignore = E203,E226,E302,E41,E221,E221,E731
 max-line-length = 120
-# exclude = tests/*
+exclude = tests/test_current.py
 # max-complexity = 10
