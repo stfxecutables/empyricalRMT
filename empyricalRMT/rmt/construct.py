@@ -10,7 +10,7 @@ from typing import Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
-from empyricalRMT.rmt.correlater import p_correlate
+from empyricalRMT.rmt.correlater import correlate_fast
 from empyricalRMT.rmt.unfold import Unfolded
 
 
@@ -135,7 +135,7 @@ def correlated_eigs(
     ch, unif, norm = np.random.choice, np.random.uniform, np.random.normal
     for i in corr_indices:
         A[i, :] = ch([-1, 1]) * unif(1, 2) * (A[0, :] + norm(0, noise, size=A.shape[1]))
-    M = p_correlate(A)
+    M = correlate_fast(A)
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
     eigs = np.linalg.eigvalsh(M)
@@ -189,8 +189,7 @@ def time_series_eigs(
 
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing correlations...")
-    # M = np.corrcoef(M_time)
-    M = p_correlate(M_time)
+    M = correlate_fast(M_time)
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
     eigs = np.linalg.eigvalsh(M)
