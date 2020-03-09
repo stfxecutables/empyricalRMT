@@ -6,8 +6,10 @@ empyricalRMT/plots
 
 ## Testing Remnants
 empyricalRMT/tests/*.csv
+empyricalRMT/tests/data
 test_eigs.npy
 test_current.py
+**/trim_report.csv
 
 ## fMRI-related
 *.nii.gz
