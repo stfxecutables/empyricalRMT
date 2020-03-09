@@ -5,6 +5,7 @@
 empyricalRMT/plots
 
 ## Testing Remnants
+tests/data
 empyricalRMT/tests/*.csv
 empyricalRMT/tests/data
 test_eigs.npy
