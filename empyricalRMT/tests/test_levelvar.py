@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from empyricalRMT.rmt.construct import goe_unfolded
+from empyricalRMT.construct import goe_unfolded
 
 
 @pytest.mark.fast

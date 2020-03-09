@@ -5,16 +5,16 @@ from scipy.integrate import quad
 from typing import List, Sized, TypeVar, Type
 from warnings import warn
 
-from empyricalRMT.rmt._constants import (
+from empyricalRMT._constants import (
     DEFAULT_POLY_DEGREE,
     DEFAULT_SPLINE_SMOOTH,
     DEFAULT_POLY_DEGREES,
 )
-from empyricalRMT.rmt._eigvals import EigVals
-from empyricalRMT.rmt.detrend import emd_detrend
-from empyricalRMT.rmt.smoother import Smoother, SmoothMethod
-from empyricalRMT.rmt.trim import Trimmed, TrimReport
-from empyricalRMT.rmt.unfold import Unfolded
+from empyricalRMT._eigvals import EigVals
+from empyricalRMT.detrend import emd_detrend
+from empyricalRMT.smoother import Smoother, SmoothMethod
+from empyricalRMT.trim import Trimmed, TrimReport
+from empyricalRMT.unfold import Unfolded
 
 
 _WARNED_SMALL = False

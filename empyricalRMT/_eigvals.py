@@ -4,14 +4,9 @@ from numpy import ndarray
 from typing import Sized
 
 from empyricalRMT._validate import make_1d_array
-from empyricalRMT.rmt.observables.step import _step_function_fast
-from empyricalRMT.rmt.plot import _spacings as plotSpacings
-from empyricalRMT.rmt.plot import (
-    _raw_eig_dist,
-    _raw_eig_sorted,
-    _step_function,
-    PlotResult,
-)
+from empyricalRMT.observables.step import _step_function_fast
+from empyricalRMT.plot import _spacings as plotSpacings
+from empyricalRMT.plot import _raw_eig_dist, _raw_eig_sorted, _step_function, PlotResult
 
 
 class EigVals:

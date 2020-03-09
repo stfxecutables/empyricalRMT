@@ -10,8 +10,8 @@ from typing import Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
-from empyricalRMT.rmt.correlater import correlate_fast
-from empyricalRMT.rmt.unfold import Unfolded
+from empyricalRMT.correlater import correlate_fast
+from empyricalRMT.unfold import Unfolded
 
 
 MatrixKind = Union[

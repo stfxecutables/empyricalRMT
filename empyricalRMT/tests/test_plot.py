@@ -5,9 +5,9 @@ import time
 from numpy import ndarray
 
 
-from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.construct import goe_unfolded
-from empyricalRMT.rmt.correlater import correlate_fast
+from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.construct import goe_unfolded
+from empyricalRMT.correlater import correlate_fast
 
 
 def get_eigs(arr: ndarray) -> ndarray:

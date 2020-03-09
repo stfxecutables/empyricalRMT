@@ -7,7 +7,7 @@ from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
 from typing import Tuple
 from typing_extensions import Literal
 
-from empyricalRMT.rmt.observables.step import _step_function_fast
+from empyricalRMT.observables.step import _step_function_fast
 
 
 # spectral rigidity ∆3

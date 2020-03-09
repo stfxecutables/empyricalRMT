@@ -3,10 +3,10 @@ import pytest
 
 from typing import List
 
-from empyricalRMT.rmt.compare import Compare, Metric
-from empyricalRMT.rmt.construct import generate_eigs
-from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.ensemble import GOE, GDE
+from empyricalRMT.compare import Compare, Metric
+from empyricalRMT.construct import generate_eigs
+from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.ensemble import GOE, GDE
 
 
 @pytest.mark.fast

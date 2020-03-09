@@ -8,14 +8,14 @@ from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing import Any, Callable, List, Optional, Tuple, Type
 from typing_extensions import Literal
 
-import empyricalRMT.rmt.plot as plot
+import empyricalRMT.plot as plot
 
-from empyricalRMT.rmt._eigvals import EigVals
-from empyricalRMT.rmt.compare import Metric, Compare
-from empyricalRMT.rmt.ensemble import Ensemble
-from empyricalRMT.rmt.observables.levelvariance import level_number_variance_stable
-from empyricalRMT.rmt.observables.rigidity import spectral_rigidity
-from empyricalRMT.rmt.plot import (
+from empyricalRMT._eigvals import EigVals
+from empyricalRMT.compare import Metric, Compare
+from empyricalRMT.ensemble import Ensemble
+from empyricalRMT.observables.levelvariance import level_number_variance_stable
+from empyricalRMT.observables.rigidity import spectral_rigidity
+from empyricalRMT.plot import (
     _next_spacings,
     _observables,
     _spacings as _plot_spacings,

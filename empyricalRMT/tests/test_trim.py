@@ -4,9 +4,9 @@ import pytest
 
 from pathlib import Path
 
-from empyricalRMT.rmt.eigenvalues import Eigenvalues
-from empyricalRMT.rmt.construct import generate_eigs
-from empyricalRMT.rmt.trim import TrimIter
+from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.construct import generate_eigs
+from empyricalRMT.trim import TrimIter
 
 
 @pytest.mark.fast

@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from empyricalRMT.rmt.construct import generate_eigs
-from empyricalRMT.rmt.eigenvalues import Eigenvalues
+from empyricalRMT.construct import generate_eigs
+from empyricalRMT.eigenvalues import Eigenvalues
 
 
 @pytest.mark.plot

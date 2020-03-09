@@ -10,15 +10,15 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
-from empyricalRMT.rmt._constants import (
+from empyricalRMT._constants import (
     DEFAULT_POLY_DEGREE,
     DEFAULT_SPLINE_DEGREE,
     DEFAULT_SPLINE_DEGREES,
     DEFAULT_SPLINE_SMOOTH,
     DEFAULT_SPLINE_SMOOTHS,
 )
-from empyricalRMT.rmt.exponentials import gompertz
-from empyricalRMT.rmt.detrend import emd_detrend
+from empyricalRMT.exponentials import gompertz
+from empyricalRMT.detrend import emd_detrend
 
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}

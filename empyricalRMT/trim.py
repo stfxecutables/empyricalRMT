@@ -24,7 +24,7 @@ from pyod.models.hbos import HBOS
 from scipy.stats import trim_mean
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from empyricalRMT.rmt._constants import (
+from empyricalRMT._constants import (
     EXPECTED_GOE_MEAN,
     EXPECTED_GOE_VARIANCE,
     DEFAULT_POLY_DEGREE,
@@ -34,11 +34,11 @@ from empyricalRMT.rmt._constants import (
     DEFAULT_SPLINE_DEGREES,
 )
 
-# from empyricalRMT.rmt._eigvals import EigVals
-import empyricalRMT.rmt._eigvals as _eigvals
-from empyricalRMT.rmt.plot import _plot_trim_iters, PlotMode, PlotResult
-from empyricalRMT.rmt.smoother import Smoother, SmoothMethod
-from empyricalRMT.rmt.unfold import Unfolded
+# from empyricalRMT._eigvals import EigVals
+import empyricalRMT._eigvals as _eigvals
+from empyricalRMT.plot import _plot_trim_iters, PlotMode, PlotResult
+from empyricalRMT.smoother import Smoother, SmoothMethod
+from empyricalRMT.unfold import Unfolded
 from empyricalRMT.utils import find_first, find_last
 
 
@@ -239,7 +239,9 @@ class TrimReport:
             detrend=detrend,
             show_progress=show_progress,
         )
-        self._all_unfolds = list(map(lambda trim: trim.unfolds, self._trim_iters))  # type: ignore
+        self._all_unfolds = list(
+            map(lambda trim: trim.unfolds, self._trim_iters)  # type: ignore
+        )
         # set self._unfold_info, self._all_unfolds
         self._summary = self.__iters_to_dataframe(
             poly_degrees, spline_smooths, spline_degrees, gompertz
@@ -327,7 +329,7 @@ class TrimReport:
             A new Trimmed object containing the trimmed (but *not* unfolded)
             eigenvalues.
         """
-        from empyricalRMT.rmt.eigenvalues import Trimmed
+        from empyricalRMT.eigenvalues import Trimmed
 
         if iteration > (len(self._trim_iters) - 1):
             raise ValueError(f"Largest trim iteration is {len(self._trim_iters) - 1}")

@@ -18,14 +18,14 @@ from typing import Any, List, Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
-from empyricalRMT.rmt.ensemble import Poisson, GOE
-from empyricalRMT.rmt.observables.step import _step_function_fast
+from empyricalRMT.ensemble import Poisson, GOE
+from empyricalRMT.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from empyricalRMT.rmt.trim import TrimIter  # noqa: F401
+    from empyricalRMT.trim import TrimIter  # noqa: F401
 
 PlotResult = Optional[Tuple[Figure, Axes]]
 PlotMode = Union[

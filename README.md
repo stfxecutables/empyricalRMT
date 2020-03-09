@@ -23,11 +23,11 @@ pip install empyricalRMT
 # Basic Usage
 ```python
 import empyricalRMT.observables.unfold as unfold
-import empyricalRMT.rmt.plot as plot
+import empyricalRMT.plot as plot
 
 from empyricalRMT.observables.levelvariance import level_number_variance
 from empyricalRMT.observables.rigidty import spectralRigidity
-from empyricalRMT.rmt.construct import generateGOEMatrix, generate_eigs
+from empyricalRMT.construct import generateGOEMatrix, generate_eigs
 
 # generate a new matrix from the Gaussian Orthogonal Ensemble and extract
 # its eigenvalues

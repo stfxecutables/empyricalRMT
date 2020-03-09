@@ -6,14 +6,14 @@ from numpy import ndarray
 from scipy.integrate import simps, trapz
 from typing import Any
 
-from empyricalRMT.rmt.construct import _generate_GOE_tridiagonal, generate_eigs
-from empyricalRMT.rmt.observables.rigidity import (
+from empyricalRMT.construct import _generate_GOE_tridiagonal, generate_eigs
+from empyricalRMT.observables.rigidity import (
     _slope,
     _intercept,
     _integrate_fast,
     _int_simps_nonunif,
 )
-from empyricalRMT.rmt.observables.step import (
+from empyricalRMT.observables.step import (
     _step_function_correct,
     _step_function_fast,
     _step_function_slow,

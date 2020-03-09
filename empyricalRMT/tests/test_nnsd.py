@@ -4,8 +4,8 @@ import pytest
 
 from pathlib import Path
 
-from empyricalRMT.rmt.construct import _generate_GOE_matrix
-from empyricalRMT.rmt.plot import _raw_eig_dist
+from empyricalRMT.construct import _generate_GOE_matrix
+from empyricalRMT.plot import _raw_eig_dist
 from empyricalRMT.utils import eprint
 
 CUR_DIR = Path(__file__).parent
