@@ -15,21 +15,17 @@ test_current.py
 ## fMRI-related
 *.nii.gz
 
-
-
 # Development
 .vscode
 
-
-
 # OS-Related
 **/*.~lock*
-
 
 ## Python
 build
 dist
 env
+venv
 main.py
 .mypy_cache
 *.egg-info

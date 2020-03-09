@@ -1,3 +1,19 @@
+# Table of Contents
+- [Table of Contents](#table-of-contents)
+- [Introduction](#introduction)
+- [Installation](#installation)
+  - [Using `venv` (recommended)](#using-venv-recommended)
+  - [From Source](#from-source)
+  - [From pip](#from-pip)
+  - [Notes on Windows](#notes-on-windows)
+- [Basic Usage](#basic-usage)
+- [Documentation](#documentation)
+- [Development](#development)
+  - [Installation](#installation-1)
+  - [Testing](#testing)
+
+# Introduction
+
 A python library for Random Matrix Theory eigenvalue unfolding and
 computation and plotting of spectral observables.
 
@@ -8,7 +24,27 @@ very likely to change in the near future.
 
 # Installation
 
+As always, using a virtual environment is recommended for proper use.
+However, you _should_ be okay doing a global `pip install empyricalRMT`
+to try out the library.
+
+## Using `venv` (recommended)
+
+Navigate to the project that you wish to use empyricalRMT in.
+
+```bash
+cd MyProject
+```
+
+Create and active the virtual environment. Replace "env" with whatever name
+you prefer.
+
+```bash
+python -m venv env && source env/bin/activate
+```
+
 ## From Source
+
 ```bash
 git clone https://github.com/stfxecutables/empyricalRMT
 cd empyricalRMT
@@ -16,11 +52,24 @@ pip install -e .
 ```
 
 ## From pip
+
 ```bash
 pip install empyricalRMT
 ```
 
+Note that this will install the library "globally" if you haven't activated
+a virtual environment of some kind.
+
+## Notes on Windows
+
+This _should_ still all work on Windows, although you may have to follow
+[modified instructions for setting up the *venv*](https://docs.python.org/3/library/venv.html).
+
+If you run into issues you think might be Windows-related, please do report
+them, but keep in mind I currently can only test on Windows via virtual machine :(
+
 # Basic Usage
+
 ```python
 import empyricalRMT.observables.unfold as unfold
 import empyricalRMT.plot as plot
@@ -63,4 +112,37 @@ plot.levelNumberVariance(unfolded, df, title=f"{kind.upper()} Matrix", mode="blo
 ```
 
 # Documentation
+
 Be sure to read the documentation comments in the [source code](https://github.com/stfxecutables/empyricalRMT/tree/master/empyricalRMT).
+
+# Development
+
+## Installation
+
+Assuming you want your `venv` virtual environment to be named "env":
+
+```bash
+git clone https://github.com/stfxecutables/empyricalRMT
+cd empyricalRMT
+python -m venv env
+source env/bin/activate
+python -m pip install -r requirements-dev.txt
+```
+
+## Testing
+
+To run all tests, run:
+
+```bash
+python -m pytest -v
+```
+
+There are a number of pytest _marks_ labelling different testing aspects.
+Brief descriptions can be found in `pytest.ini`. However, likely most useful
+will be running:
+
+```bash
+python -m pytest -v -m fast
+```
+
+which runs all tests that _shouldn't_ take too long to execute.
