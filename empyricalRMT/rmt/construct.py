@@ -21,11 +21,10 @@ MatrixKind = Union[
 
 def generate_eigs(
     matsize: int,
-    mean: float = 0,
-    sd: float = 1,
     kind: MatrixKind = "goe",
     seed: int = None,
     log: bool = False,
+    use_tridiagonal: bool = True,
 ) -> ndarray:
     """Generate a random matrix as specified by arguments, and compute and return
     the eigenvalues.
@@ -33,18 +32,28 @@ def generate_eigs(
     Parameters
     ----------
     matsize: int
-        The width (or height) of a the square matrix that will be generated.
-
-    mean: float
-        If `kind` is "goe", the mean of the normal distribution used to generate
-        the normally-distributed values.
-
-    sd: float
-        If `kind` is "goe", the s.d. of the normal distribution used to generate
-        the normally-distributed values.
+        The size (e.g. width or height) of the square matrix that will be
+        generated.
 
     kind: "goe" | "gue" | "poisson" | "uniform"
-        The kind of matrix to generate.
+        From which ensemble to sample the matrix:
+        - "goe" is a matrix from the Gaussian Orthogonal Ensemble
+        - "gue" is a matrix from the Gaussian Unitary Ensemble
+        - "poisson" is a "Gaussian Diagonal Ensemble", a diagonal matrix with
+          all entries being samples from a standard normal distribution.
+        - "uniform" is currently unimplemented
+
+    seed: int
+        Seed value for `np.random.seed`. Ensures reproducible results.
+
+    log: bool
+        Whether or not to log start and end times for computing eigenvalues.
+
+    use_tridiagonal: bool
+        For `kind` "gue" only. Generate a tridiagonal matrix with identical
+        eigenvalue distributions to a GOE matrix instead of a full GOE matrix.
+        *Dramatically* speeds up computation of eigenvalues, and is strongly
+        recommended for generating matrices of approximately size N >= 2000.
     """
     if kind == "poisson":
         np.random.seed(seed)
@@ -59,10 +68,10 @@ def generate_eigs(
         A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
         M = (A + A.conjugate().T) / 2
     elif kind == "goe":
-        if matsize > 500:
+        if matsize > 500 and use_tridiagonal:
             M = _generate_GOE_tridiagonal(size=matsize, seed=seed)
         else:
-            M = _generate_GOE_matrix(matsize, mean, sd, seed=seed)
+            M = _generate_GOE_matrix(matsize, seed=seed)
     else:
         kinds = ["goe", "gue", "poisson", "uniform"]
         raise ValueError(f"`kind` must be one of {kinds}")
@@ -76,13 +85,13 @@ def generate_eigs(
 
 
 def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
-    """Perform a smooth / analytic unfolding using the expected limiting distribution,
-    e.g. Wigner's semicricle law.
+    """Generate GOE eigenvalues and perform a smooth / analytic unfolding
+    using the expected limiting distribution, e.g. Wigner's semicricle law.
 
     Parameters
     ----------
     matsize: int
-        The size (e.g. width) of the square GOE matrix.
+        The size (e.g. width) of the square GOE matrix to generate.
     log: bool
         Whether or not to log when starting and completing solving the
         eigenvalue problem. Useful for large matrices on slow machines.
@@ -127,6 +136,8 @@ def correlated_eigs(
     log: bool = True,
     return_mats: bool = False,
 ) -> Union[ndarray, Tuple[ndarray, ndarray, ndarray]]:
+    """[WIP]. Generate a correlated system for examinatino with, e.g.
+    Marcenko-Pastur. """
     A = np.random.standard_normal(shape)
     correlated = np.random.permutation(A.shape[0] - 1) + 1  # don't select first row
     last = int(np.floor((percent / 100) * A.shape[0]))
@@ -150,10 +161,16 @@ def correlated_eigs(
     return eigs
 
 
-def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
+# TODO, WIP This is really only valid for testing e.g. Tracy-Widom and the
+# semi-circle law.
+def fast_goe_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
     """Use independence and fact that eigvalsh is bottleneck to more quickly generate
-    eigenvalues. E.g. if matsize == 1024, sub_matsize == 100, generate 10 (100x100)
+    extreme eigenvalues. E.g. if matsize == 1024, sub_matsize == 100, generate 10 (100x100)
     matrices and one (24x24) matrix, can concatenate the resultant eigenvalues.
+
+    Edelman, A., Sutton, B. D., & Wang, Y. (2014). Random matrix theory,
+    numerical computation and applications. Modern Aspects of Random Matrix
+    Theory, 72, 53, [pg 3., Algorithm 1]
 
 
     Parameters
@@ -181,9 +198,11 @@ def fast_poisson_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
     return eigs
 
 
+# TODO, WIP
 def time_series_eigs(
     n: int = 1000, t: int = 200, dist: str = "normal", log: bool = True
 ) -> ndarray:
+    """Generate a correlation matrix for testing Marcenko-Pastur, other spectral observables."""
     if dist == "normal":
         M_time = np.random.standard_normal([n, t])
 
@@ -204,27 +223,10 @@ def generate_uniform(
     raise NotImplementedError
 
 
-def _almost_identity(size: int = 100) -> ndarray:
-    E = np.random.standard_normal(size * size).reshape(size, size)
-    E = (E + E.T) / np.sqrt(2)
-    M = np.ma.identity(size)
-    return M + E
-
-
-def _random_1vector(size: int = 100) -> ndarray:
-    vals = np.random.standard_normal([size, 1])
-    return vals * vals.T
-
-
-def _generate_GOE_matrix(
-    size: int = 100, mean: float = 0, sd: float = 1, seed: int = None
-) -> ndarray:
+def _generate_GOE_matrix(size: int = 100, seed: int = None) -> ndarray:
     if seed is not None:
         np.random.seed(seed)
-    if mean != 0 or sd != 1:
-        M = np.random.normal(mean, sd, [size, size])
-    else:
-        M = np.random.standard_normal([size, size])
+    M = np.random.standard_normal([size, size])
     return (M + M.T) / np.sqrt(2)
 
 

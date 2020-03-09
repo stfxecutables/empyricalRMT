@@ -15,6 +15,8 @@ from empyricalRMT.rmt.plot import (
 
 
 class EigVals:
+    """Base class, not to be instantiated. """
+
     def __init__(self, eigenvalues: Sized):
         self.__construct_vals: ndarray = make_1d_array(eigenvalues)
         self._steps = None

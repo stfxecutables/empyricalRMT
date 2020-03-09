@@ -5,8 +5,27 @@ from PyEMD import EMD
 
 # detrended unfolding via the Empirical Mode Decomposition and first
 # intrinsic mode function
+# TODO: re-integrate this option into updated API
 def emd_detrend(unfolded: ndarray) -> ndarray:
-    spacings = unfolded[1:] - unfolded[:-1]
+    """'Detrend' the unfolded eigenvalues via Empirical Mode Decomposition.
+
+    Parameters
+    ----------
+    unfolded: ndarray
+        The unfolded eigenvalues.
+
+    Returns
+    -------
+    detrended: ndarray
+        The 'detrended' values (i.e. with last IMF residue removed).
+
+    References
+    ----------
+    Morales, I. O., Landa, E., Stránský, P., & Frank, A. (2011). Improved
+    unfolding by detrending of statistical fluctuations in quantum spectra.
+    Physical Review E, 84(1). doi:10.1103/physreve.84.016203
+    """
+    spacings = np.diff(unfolded)
     s_av = np.average(spacings)
     s_i = spacings - s_av
 

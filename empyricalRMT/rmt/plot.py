@@ -43,8 +43,8 @@ PLOTTING_READY = False
 def _raw_eig_dist(
     eigs: ndarray,
     bins: int = 50,
-    title: str = "Raw Eigenvalue Distribution",
     kde: bool = True,
+    title: str = "Raw Eigenvalue Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
     fig: Figure = None,
@@ -79,6 +79,14 @@ def _raw_eig_dist(
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
 
 
     Returns
@@ -141,6 +149,14 @@ def _step_function(
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
 
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
+
 
     Returns
     -------
@@ -189,6 +205,14 @@ def _raw_eig_sorted(
 
     kind: "scatter" (default) | "line"
         Whether to use a scatterplot or line plot.
+
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
 
 
     Returns
@@ -247,6 +271,14 @@ def _unfolded_dist(
     outfile: Path
         If mode="save", save generated plot to Path specified in `outfile` argument.
         Intermediate directories will be created if needed.
+
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
 
 
     Returns
@@ -307,6 +339,14 @@ def _unfolded_fit(
 
     kind: "scatter" (default) | "line"
         Whether to use a scatterplot or line plot.
+
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
 
 
     Returns
@@ -418,6 +458,14 @@ def _spacings(
 
     ensembles: ["poisson", "goe", "gue", "gse"]
         Which ensembles to display the expected NNSD curves for.
+
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
 
 
     Returns
@@ -535,6 +583,14 @@ def _next_spacings(
     ensembles: List["poisson", "goe"]
         Which ensembles to display the expected next-NNSD curves for.
 
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
+
 
     Returns
     -------
@@ -627,6 +683,14 @@ def _spectral_rigidity(
     ensembles: ["poisson", "goe", "gue", "gse"]
         Which ensembles to display the expected spectral rigidity curves for comparison against.
 
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
+
 
     Returns
     -------
@@ -711,6 +775,14 @@ def _level_number_variance(
     ensembles: ["poisson", "goe", "gue", "gse"]
         Which ensembles to display the expected number level variance curves for comparison against.
 
+    fig: Figure
+        If provided with `axes`, configure plotting with the provided `fig`
+        object instead of creating a new figure. Useful for creating subplots.
+
+    axes: Axes
+        If provided with `fig`, plot to the provided `axes` object. Useful for
+        creating subplots.
+
 
     Returns
     -------
@@ -790,11 +862,43 @@ def _observables(
     unfolded: ndarray,
     rigidity_df: pd.DataFrame,
     levelvar_df: pd.DataFrame,
-    ensembles: List[str] = ["goe", "poisson"],
     suptitle: str = "Spectral Observables",
     mode: PlotMode = "block",
     outfile: Path = None,
+    ensembles: List[str] = ["goe", "poisson"],
 ) -> PlotResult:
+    """Plot some popular spectral observables, as well as a plot of the unfolding
+    fit. For public use, use `Unfolded.plot_observables()`.
+
+    eigs: ndarray
+        The original eigenvalues (for plotting the unfolding fit).
+
+    unfolded: ndarray
+        The unfolded eigenvalues.
+
+    rigidity_df: DataFrame
+        The dataframe returned from unfolded.spectral_rigidity().
+
+    levelvar_df: DataFrame
+        The dataframe returned from unfolded.level_variance().
+
+    suptitle: string
+        The plot title string
+
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+
+    ensembles: ["poisson", "goe", "gue", "gse"]
+        Which ensembles to display the expected number level variance curves for comparison against.
+    """
     _configure_sbn_style()
     fig, axes = plt.subplots(2, 2, sharex="none", sharey="none")
     fig.set_size_inches(fig.get_size_inches() * 2)
@@ -838,6 +942,22 @@ def _plot_trim_iters(
 
     width: int
         The desired number of columns in the multiplot.
+
+    title: str
+        The 'suptitle' for all the subplots.
+
+    mode: "block" (default) | "noblock" | "save" | "return"
+        If "block", call plot.plot() and display plot in a blocking fashion.
+        If "noblock", attempt to generate plot in nonblocking fashion.
+        If "save", save plot to pathlib Path specified in `outfile` argument
+        If "return", return (fig, axes), the matplotlib figure and axes object
+        for modification.
+
+    outfile: Path
+        If mode="save", save generated plot to Path specified in `outfile` argument.
+        Intermediate directories will be created if needed.
+
+
     """
     _configure_sbn_style()
     height = int(np.ceil(len(trims) / width))
@@ -893,6 +1013,7 @@ def _configure_sbn_style() -> None:
 
 
 def _setup_plotting(fig: Figure = None, axes: Axes = None) -> Tuple[Figure, Axes]:
+    """Get new axes and figure objects, or return passed in."""
     if fig is None or axes is None:
         fig, axes = plt.subplots()
         return fig, axes
@@ -901,12 +1022,7 @@ def _setup_plotting(fig: Figure = None, axes: Axes = None) -> Tuple[Figure, Axes
 
 
 def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
-    """
-    calculate KDE for observed spacings
-    we are doing this manually because we want to ensure consistency of the KDE
-    calculation and remove Seaborn control over the process, while also avoiding
-    inconsistent behaviours like https://github.com/mwaskom/seaborn/issues/938 and
-    https://github.com/mwaskom/seaborn/issues/796
+    """Calculate KDE for observed spacings.
 
     Parameters
     ----------
@@ -918,6 +1034,13 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
 
     axes: pyplot.Axes
         the current axes object to be modified
+
+    Notes
+    -----
+    we are doing this manually because we want to ensure consistency of the KDE
+    calculation and remove Seaborn control over the process, while also avoiding
+    inconsistent behaviours like https://github.com/mwaskom/seaborn/issues/938
+    and https://github.com/mwaskom/seaborn/issues/796
     """
     kde = KDE(values)
     kde.fit(kernel="gau", bw="scott", cut=0)
@@ -931,6 +1054,7 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
 def _handle_plot_mode(
     mode: str, fig: Figure, axes: Axes, outfile: Path = None, save_dpi: int = None
 ) -> Union[Optional[PlotResult], Axes]:
+    """Handle the various combinations of plotting arguments."""
     if mode == "block":
         plt.show(block=True)
     elif mode == "noblock":
@@ -973,7 +1097,7 @@ def _validate_bin_sizes(vals: ndarray, bins: int) -> None:
             warn("Distribution likely too skewed to generate interpretable histogram")
 
 
-# shameless theft from https://stackoverflow.com/a/55501861
+# shameless theft from https://stackoverflow.com/a/55501861, i.e.
 # https://stackoverflow.com/questions/55501860/how-to-put-multiple-colormap-patches-in-a-matplotlib-legend
 class HandlerColormap(HandlerBase):
     def __init__(self, cmap: plt.cm, num_stripes: int = 8, **kw: Any):

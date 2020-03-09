@@ -13,6 +13,8 @@ Metric = Literal["mad", "msqd", "corr"]
 
 
 class Compare:
+    """A helper class for implementing various curve comparison methods."""
+
     def __init__(
         self,
         curves: List[ndarray],
@@ -163,6 +165,7 @@ class Compare:
     def __validate_curve_lengths(
         self, message: str = None, check_all_equal: bool = False
     ) -> None:
+        """Ensure curve lengths are appropriate for desired comparison methods."""
         curves = self.curves
         labels = self.labels
 

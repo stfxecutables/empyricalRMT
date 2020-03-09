@@ -43,7 +43,19 @@ from empyricalRMT.utils import find_first, find_last
 
 
 class Trimmed(_eigvals.EigVals):
+    """Class for holding already trimmed eigenvalues and giving access to convenience methods
+    on those values."""
+
     def __init__(self, trimmed: ndarray):
+        """Construct a Trimmed object.
+
+        Parameters
+        ----------
+        trimmed: ndarray
+            An ndarray which has had undesirable eigenvalues (small, large, or
+            both) trimmed away.
+        """
+
         super().__init__(trimmed)
 
     @property
@@ -59,14 +71,11 @@ class Trimmed(_eigvals.EigVals):
         smoother: SmoothMethod = "poly",
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
-        emd_detrend: bool = False,
+        detrend: bool = False,
     ) -> Unfolded:
         """
         Parameters
         ----------
-        eigs: ndarray
-            sorted eigenvalues
-
         smoother: "poly" | "spline" | "gompertz" | lambda
             the type of smoothing function used to fit the step function
 
@@ -76,20 +85,22 @@ class Trimmed(_eigvals.EigVals):
         spline_smooth: float
             the smoothing factors passed into scipy.interpolate.UnivariateSpline
 
+        detrend: bool
+            Whether or not to perform EMD detrending before returning the
+            unfolded eigenvalues.
+
+
         Returns
         -------
-        unfolded: ndarray
-            the unfolded eigenvalues
-
-        steps: ndarray
-            the step-function values
+        unfolded: Unfolded
+            An Unfolded object containing the unfolded eigenvalues.
         """
         eigs = self.values
         unfolded, _, closure = Smoother(eigs).fit(
             smoother=smoother,
             degree=degree,
             spline_smooth=spline_smooth,
-            emd_detrend=emd_detrend,
+            detrend=detrend,
         )
         return Unfolded(originals=eigs, unfolded=unfolded, smoother=closure)
 
@@ -133,6 +144,11 @@ class Trimmed(_eigvals.EigVals):
             A float between 0 and 1, and which is passed as the tolerance paramater for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
+
+        Returns
+        -------
+        unfolded: Unfolded
+            An Unfolded object containing the unfolded eigenvalues.
         """
 
         trimmed = TrimReport(
@@ -150,6 +166,8 @@ class Trimmed(_eigvals.EigVals):
 
 
 class TrimReport:
+    """A class for storing summaries of the various trim iterations."""
+
     def __init__(
         self,
         eigenvalues: ndarray,
@@ -159,9 +177,53 @@ class TrimReport:
         spline_smooths: List[float] = [],
         spline_degrees: List[int] = [],
         gompertz: bool = True,
+        detrend: bool = False,
         outlier_tol: float = 0.1,
         show_progress: bool = False,
     ):
+        """Construct a TrimReport.
+
+        Parameters
+        ----------
+        eigenvalues: ndarray
+            The eigenvalues to trim and unfold.
+
+        max_trim: float
+            Float in (0, 1). The maximum allowable portion of eigenvalues to be trimmed.
+            E.g. `max_trim=0.8` means to allow up to 80% of the original eigenvalues to
+            be trimmed away.
+
+        max_iters: int
+            The maximum allowable number of iterations of outlier detection to run.
+            Setting `max_iters=0` will not allow any trimming / outlier detection, and so
+            will simply evaluate unfolding for different smoothers on the original raw
+            eigenvalues. Typically, you would want this to be >= 4, to allow for trimming
+            both some of the most extreme positive and negative eigenvalues.
+
+        poly_degrees: List[int]
+            the polynomial degrees for which to compute fits. Default [3, 4, 5,
+            6, 7, 8, 9, 10, 11]
+
+        spline_smooths: List[float]
+            the smoothing factors passed into scipy.interpolate.UnivariateSpline fits.
+            Default np.linspace(1, 2, num=11)
+
+        spline_degrees: List[int]
+            A list of ints determining the degrees of scipy.interpolate.UnivariateSpline
+            fits. Default [3]
+
+        gompertz: bool
+            Whether or not to use a gompertz curve as one of the smoothers.
+
+        detrend: bool
+            Whether or not to perform EMD detrending before returning the
+            unfolded eigenvalues.
+
+        outlier_tol: float
+            A float between 0 and 1, and which is passed as the tolerance paramater for
+            [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
+            histogram-based outlier detection
+        """
         eigenvalues = np.sort(eigenvalues)
         self._untrimmed: ndarray = eigenvalues
         self._unfold_info: Optional[DataFrame] = None
@@ -175,6 +237,7 @@ class TrimReport:
             spline_smooths=spline_smooths,
             spline_degrees=spline_degrees,
             gompertz=gompertz,
+            detrend=detrend,
             show_progress=show_progress,
         )
         # set self._unfold_info, self._all_unfolds
@@ -184,23 +247,86 @@ class TrimReport:
 
     @property
     def trim_indices(self) -> List[Tuple[int, int]]:
+        """Return a list of the various trim indices found by the iterative
+        outlier detection procedure.
+
+        Returns
+        -------
+        trim_idx: List[Tuple[int, int]]
+            A list of indices (idx_min, idx_max), such that if the original
+            eigenvalues are `eigs`, then the trims are `eigs[idx_min:idx_max]`
+        """
         return list(map(lambda trim: trim.trim_indices, self._trim_iters))
 
     @property
     def untrimmed(self) -> ndarray:
+        """Returns the class's copy of the original eigenvalues."""
         return self._untrimmed
 
     @property
     def summary(self) -> DataFrame:
+        """Returns the summary DataFrame.
+
+        Returns
+        -------
+        df: DataFrame
+            The summary DataFrame. See Description below.
+
+        Description
+        -----------
+        The summary DataFrame summarizes the results of the various unfoldings
+        across different trims. Each row represents a particular trimming, with
+        the first row containing all the original eigenvalues, and with each
+        subsequent row containing a smaller range of eigenvalues than the
+        previous.
+
+        The first three columns ["trim_percent", "trim_low", "trim_high"]
+        summarize the trim percents. E.g. a "trim_low" of 4.5 means that
+        4.5% of the total eigenvalues were trimmed from the bottom (most
+        negative) eigenvalues.
+
+        The remaining columns contain a short identifier for the smoother (e.g.
+        "poly_5" for a polynomial of degree 5) followed by a separator ('--'),
+        and then a string indicating the values contained in the columns. Those
+        strings are:
+
+        - "mean_spacing": the mean spacing of the unfolded values
+        - "var_spacing": the variance of the unfolded values
+        - "msqe": the mean squared error of the fit to the step function
+        - "score": the 'goe score' combining the above two values
+        """
+
         return self._summary
 
     @property
     def unfoldings(self) -> List[DataFrame]:
+        """Get the actual unfolded values for all trim iterations.
+
+        Returns
+        -------
+        unfolded: List[DataFrame]
+            A list of pandas DataFrame objects. Column names use the same
+            identifier strings as used in the Unfolded.summary object.
+        """
         if self._all_unfolds is None:
             raise RuntimeError("TrimReport inrrectly initialized.")
         return self._all_unfolds
 
     def use_trim_iteration(self, iteration: int) -> Trimmed:
+        """Get a specific set of trimmed eigenvalues.
+
+        Parameters
+        ----------
+        iteration: int
+            The index of the desired iteration. Will coincide with the iteration
+            listed in plot generated by `TrimReport.plot_trim_steps()`.
+
+        Returns
+        -------
+        trimmed: Trimmed
+            A new Trimmed object containing the trimmed (but *not* unfolded)
+            eigenvalues.
+        """
         from empyricalRMT.rmt.eigenvalues import Trimmed
 
         if iteration > (len(self._trim_iters) - 1):
@@ -214,15 +340,15 @@ class TrimReport:
 
         # Criteria
 
-        - "fit"
+        - 'fit'
             - basically, choose the most flexible smoother and most agressive
               trim
-        - "goe"
+        - 'goe'
             - choose the trim and unfolding that result in spacing mean and
               variance closest to that expected for GOE matrices
-        - ""
-
+        - ''
         """
+        raise NotImplementedError("Work in progress!")
 
     def best_overall(
         self
@@ -331,14 +457,14 @@ class TrimReport:
         return best_smoothers, best_unfoldeds, best_trim_indices, consistent_smoothers
 
     def unfold_trimmed(self) -> Unfolded:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def plot_trim_steps(
         self,
-        width: int = 4,
         title: str = "Trim fits",
         mode: PlotMode = "block",
         outfile: Path = None,
+        width: int = 4,
         log_info: bool = True,
     ) -> PlotResult:
         """Show which eigenvalues are trimmed at each iteration.
@@ -359,6 +485,9 @@ class TrimReport:
             If mode="save", save generated plot to Path specified in `outfile` argument.
             Intermediate directories will be created if needed.
 
+        width: int
+            Number of plots to show per row of figure.
+
         log_info: boolean
             If True, print additional information about each trimming to stdout.
 
@@ -378,7 +507,7 @@ class TrimReport:
         )
 
     def to_csv(self, *args: Any, **kwargs: Any) -> None:
-        """A simple wrapper around pd.DataFrame.to_csv()"""
+        """A wrapper around pandas DataFrame.to_csv()"""
         self.summary.to_csv(*args, **kwargs)
 
     def _get_autounfold_vals(self) -> Tuple[ndarray, ndarray]:

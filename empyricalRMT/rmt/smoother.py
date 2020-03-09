@@ -18,6 +18,7 @@ from empyricalRMT.rmt._constants import (
     DEFAULT_SPLINE_SMOOTHS,
 )
 from empyricalRMT.rmt.exponentials import gompertz
+from empyricalRMT.rmt.detred import emd_detrend
 from empyricalRMT.rmt.observables.step import _step_function_fast
 
 
@@ -38,7 +39,7 @@ class Smoother:
         Parameters
         ----------
         eigenvalues: ndarray
-            Eigenvalues for fitting the step function.
+            Eigenvalues for fitting to the step function.
         """
         try:
             eigs = np.array(eigenvalues).ravel()
@@ -53,7 +54,7 @@ class Smoother:
         smoother: SmoothMethod = "poly",
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
-        emd_detrend: bool = False,
+        detrend: bool = False,
         return_callable: bool = False,
     ) -> Tuple[ndarray, ndarray, Optional[Callable[[ndarray], ndarray]]]:
         """Computer the specified smoothing function values for a set of eigenvalues.
@@ -61,16 +62,20 @@ class Smoother:
         Parameters
         ----------
         eigs: ndarray
-            sorted eigenvalues
+            The sorted eigenvalues
 
         smoother: "poly" | "spline" | "gompertz" | lambda
-            the type of smoothing function used to fit the step function
+            The type of smoothing function used to fit the step function
 
         degree: int
-            the degree of the polynomial or spline
+            The degree of the polynomial or spline
 
         spline_smooth: float
-            the smoothing factors passed into scipy.interpolate.UnivariateSpline
+            The smoothing factors passed into scipy.interpolate.UnivariateSpline
+
+        detrend: bool
+            Whether or not to perform EMD detrending before returning the
+            unfolded eigenvalues.
 
         return_callable: bool
             If true, return a function that closes over the fit parameters so
@@ -95,9 +100,10 @@ class Smoother:
         if smoother == "poly":
             poly_coef = polyfit(eigs, steps, degree)
             unfolded = polyval(eigs, poly_coef)
-            if return_callable:
-                return unfolded, steps, lambda x: polyval(x, poly_coef)
-            return unfolded, steps, None
+            func = lambda x: polyval(x, poly_coef) if return_callable else None
+            if detrend:
+                unfolded = emd_detrend(unfolded)
+            return unfolded, steps, func
 
         if smoother == "spline":
             k = DEFAULT_SPLINE_DEGREE
@@ -118,16 +124,20 @@ class Smoother:
                     "Unreachable: All possible spline_smooth arguments should have been handled."
                 )
                 spline = USpline(eigs, steps, k=k, s=spline_smooth)
-            if return_callable:
-                return spline(eigs), steps, lambda x: spline(x)
-            return spline(eigs), steps, None
+            func = lambda x: spline(x) if return_callable else None
+            unfolded = spline(eigs)
+            if detrend:
+                unfolded = emd_detrend(unfolded)
+            return unfolded, steps, func
 
         if smoother == "gompertz":
             # use steps[end] as guess for the asymptote, a, of gompertz curve
             [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[-1], 1, 1))
-            if return_callable:
-                return gompertz(eigs, a, b, c), steps, lambda x: gompertz(x, a, b, c)
-            return gompertz(eigs, a, b, c), steps, None
+            func = lambda x: gompertz(x, a, b, c) if return_callable else None
+            unfolded = gompertz(eigs, a, b, c)
+            if detrend:
+                unfolded = emd_detrend(unfolded)
+            return unfolded, steps, func
         raise RuntimeError("Unreachable!")
 
     def fit_all(
@@ -136,6 +146,7 @@ class Smoother:
         spline_smooths: SmoothArg = [],
         spline_degrees: List[int] = DEFAULT_SPLINE_DEGREES,
         gompertz: bool = False,
+        detrend: bool = False,
     ) -> Tuple[DataFrame, DataFrame, DataFrame, Dict[str, Callable]]:
         """unfold eigenvalues for all specified smoothers
 
@@ -182,7 +193,7 @@ class Smoother:
         for d in poly_degrees:
             col_name = f"poly_{d}"
             unfolded, steps, closure = self.fit(
-                smoother="poly", degree=d, return_callable=True
+                smoother="poly", degree=d, return_callable=True, detrend=detrend
             )
             col_names.append(col_name)
             sqes.append(np.mean((unfolded - steps) ** 2))
@@ -202,6 +213,7 @@ class Smoother:
                         spline_smooth=len(self._eigs) ** s,
                         degree=d,
                         return_callable=True,
+                        detrend=detrend,
                     )
                     col_names.append(col_name)
                     sqes.append(np.mean((unfolded - steps) ** 2))
@@ -218,6 +230,7 @@ class Smoother:
                         spline_smooth=s,
                         degree=d,
                         return_callable=True,
+                        detrend=detrend,
                     )
                     col_names.append(col_name)
                     sqes.append(np.mean((unfolded - steps) ** 2))
@@ -227,7 +240,7 @@ class Smoother:
                     smoother_map[col_name] = closure
         if gompertz:
             unfolded, steps, closure = self.fit(
-                smoother="gompertz", return_callable=True
+                smoother="gompertz", return_callable=True, detrend=detrend
             )
             col_names.append("gompertz")
             sqes.append(np.mean((unfolded - steps) ** 2))
@@ -293,7 +306,7 @@ class Smoother:
         smoother = kwargs.get("smoother")
         degree = kwargs.get("degree")
         spline_smooth = kwargs.get("spline_smooth")
-        emd = kwargs.get("emd_detrend")  # TODO: implement
+        emd = kwargs.get("detrend")  # TODO: implement
         method = kwargs.get("method")
 
         if smoother == "poly":
@@ -328,7 +341,7 @@ class Smoother:
             raise ValueError("Unrecognized smoother argument.")
 
         if emd is not None and not isinstance(emd, bool):
-            raise ValueError("`emd_detrend` can be only a boolean or undefined (None).")
+            raise ValueError("`detrend` can be only a boolean or undefined (None).")
 
         if method is None or method == "auto" or method == "manual":
             pass

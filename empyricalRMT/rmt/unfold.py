@@ -629,15 +629,52 @@ class Unfolded(EigVals):
     def plot_observables(
         self,
         rigidity_L: ndarray = np.arange(2, 50, 0.5),
-        rigidity_iters: int = 50000,
         levelvar_L: ndarray = np.arange(0.2, 20, 0.2),
-        ensembles: List[str] = ["goe", "poisson"],
         title: str = "Spectral Observables",
         mode: PlotMode = "block",
         outfile: Path = None,
+        ensembles: List[str] = ["goe", "poisson"],
         show_progress: bool = True,
+        rigidity_iters: int = 50000,
         **levelvar_kwargs: Any,
     ) -> PlotResult:
+        """Plot some popular spectral observables, as well as a plot of the unfolding
+        fit. For public use, use `Unfolded.plot_observables()`.
+
+        rigidity_L: ndarray
+            The values of L for which to compute the spectral rigidity.
+
+        levelvar_L: ndarray
+            The values of L for which to compute the level variance.
+
+        title: string
+            The plot title string
+
+        mode: "block" (default) | "noblock" | "save" | "return"
+            If "block", call plot.plot() and display plot in a blocking fashion.
+            If "noblock", attempt to generate plot in nonblocking fashion.
+            If "save", save plot to pathlib Path specified in `outfile` argument
+            If "return", return (fig, axes), the matplotlib figure and axes object
+            for modification.
+
+        outfile: Path
+            If mode="save", save generated plot to Path specified in `outfile` argument.
+            Intermediate directories will be created if needed.
+
+        ensembles: ["poisson", "goe", "gue", "gse"]
+            Which ensembles to display the expected number level variance curves
+            for comparison against.
+
+        show_progress: bool
+            If True, print a progress bar during longer calculations.
+
+        rigidity_iters: int
+            The number of iterations, per L, to use when calculating the
+            spectral rigidity.
+
+        levelvar_kwargs: dict
+            The keyword args to pass on to Unfolded.level_variance().
+        """
         rigidity = self.spectral_rigidity(
             L=rigidity_L, c_iters=rigidity_iters, show_progress=show_progress
         )

@@ -2,17 +2,16 @@ import numpy as np
 
 from numpy import ndarray
 from scipy.integrate import quad
-from typing import Any, List, Sized, TypeVar, Type
+from typing import List, Sized, TypeVar, Type
 from warnings import warn
 
 from empyricalRMT.rmt._constants import (
     DEFAULT_POLY_DEGREE,
     DEFAULT_SPLINE_SMOOTH,
     DEFAULT_POLY_DEGREES,
-    DEFAULT_SPLINE_SMOOTHS,
-    DEFAULT_SPLINE_DEGREES,
 )
 from empyricalRMT.rmt._eigvals import EigVals
+from empyricalRMT.rmt.detrend import emd_detrend
 from empyricalRMT.rmt.smoother import Smoother, SmoothMethod
 from empyricalRMT.rmt.trim import Trimmed, TrimReport
 from empyricalRMT.rmt.unfold import Unfolded
@@ -25,9 +24,10 @@ Eigens = TypeVar("Eigens", bound="Eigenvalues")
 
 
 class Eigenvalues(EigVals):
+    """Basic class providing access to various items of interest in RMT. """
+
     def __init__(self, eigenvalues: Sized):
         """Construct an Eigenvalues object.
-
 
         Parameters
         ----------
@@ -146,6 +146,7 @@ class Eigenvalues(EigVals):
         spline_smooths: List[float] = [],
         spline_degrees: List[int] = [],
         gompertz: bool = True,
+        detrend: bool = False,
         outlier_tol: float = 0.1,
         show_progress: bool = False,
     ) -> TrimReport:
@@ -183,6 +184,10 @@ class Eigenvalues(EigVals):
         gompertz: bool
             Whether or not to use a gompertz curve as one of the smoothers.
 
+        detrend: bool
+            Whether or not to perform EMD detrending before returning the
+            unfolded eigenvalues.
+
         outlier_tol: float
             A float between 0 and 1, and which is passed as the tolerance paramater for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
@@ -199,15 +204,16 @@ class Eigenvalues(EigVals):
 
         eigs = self.vals
         return TrimReport(
-            eigs,
-            max_trim,
-            max_iters,
-            poly_degrees,
-            spline_smooths,
-            spline_degrees,
-            gompertz,
-            outlier_tol,
-            show_progress,
+            eigenvalues=eigs,
+            max_trim=max_trim,
+            max_iters=max_iters,
+            poly_degrees=poly_degrees,
+            spline_smooths=spline_smooths,
+            spline_degrees=spline_degrees,
+            gompertz=gompertz,
+            detrend=detrend,
+            outlier_tol=outlier_tol,
+            show_progress=show_progress,
         )
 
     def get_best_trimmed(
@@ -217,6 +223,7 @@ class Eigenvalues(EigVals):
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         max_iters: int = 7,
         max_trim: float = 0.5,
+        detrend: bool = False,
         outlier_tol: float = 0.1,
     ) -> Trimmed:
         """For the given smoother and smmothing and trim options, compute
@@ -263,22 +270,39 @@ class Eigenvalues(EigVals):
         report = None
         if smoother == "poly":
             report = TrimReport(
-                self.vals, max_trim, max_iters, [degree], [], [], False, outlier_tol
+                eigenvalues=self.vals,
+                max_trim=max_trim,
+                max_iters=max_iters,
+                poly_degrees=[degree],
+                spline_smooths=[],
+                spline_degrees=[],
+                gompertz=False,
+                detrend=detrend,
+                outlier_tol=outlier_tol,
             )
         elif smoother == "spline":
             report = TrimReport(
-                self.vals,
-                max_trim,
-                max_iters,
-                [],
-                [spline_smooth],
-                [degree],
-                False,
-                outlier_tol,
+                eigenvalues=self.vals,
+                max_trim=max_trim,
+                max_iters=max_iters,
+                poly_degrees=[],
+                spline_smooths=[spline_smooth],
+                spline_degrees=[degree],
+                gompertz=False,
+                detrend=detrend,
+                outlier_tol=outlier_tol,
             )
         elif smoother == "gompertz":
             report = TrimReport(
-                self.vals, max_trim, max_iters, [], [], [], True, outlier_tol
+                eigenvalues=self.vals,
+                max_trim=max_trim,
+                max_iters=max_iters,
+                poly_degrees=[],
+                spline_smooths=[],
+                spline_degrees=[],
+                gompertz=True,
+                detrend=detrend,
+                outlier_tol=outlier_tol,
             )
         else:
             raise ValueError("Unknown smoother.")
@@ -287,39 +311,84 @@ class Eigenvalues(EigVals):
         start, end = best_indices[0][0], best_indices[0][1]
         return self.trim_manually(start, end)
 
-    def trim_marcenko_pastur(self, series_length: int, n_series: int) -> Trimmed:
+    def trim_marcenko_pastur(
+        self,
+        series_length: int,
+        n_series: int,
+        largest: bool = False,
+        use_shifted: bool = True,
+    ) -> Trimmed:
         """Trim to noise eigenvalues under assumption that eigenvalues come from
         correlation matrix.
 
-        See https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6513117/#sec008title,
+        Paramaters
+        ----------
+        series_length: int
+            The length of the time series (e.g. number of time points per
+            series).
 
-        A second and related improvement takes into account the effects of common
-        (nonstationary) trends for a system with N cells, and in particular the largest
-        eigenvalue eig_max. We realize that the effects of noise are inseparably coupled
-        to those of the global trend [51], as the presence of the latter modifies and
-        left-shifts the density of eigenvalues that we would otherwise observe in presence
-        of noise only. So we do not simply superimpose the two effects as in [15]; on the
-        contrary, we calculate the modification of the random bulk exactly, given the
-        system’s empirical eig_max. In particular, we calculate the shifted value of an
-        original Wishart matrix [15] to find
+        n_series: int
+            The number of time series of length `series_length`.
+
+        largest: bool
+            If False, return the central (e.g. noise) eigenvalues. If True,
+            return only the largest eigenvalues as determined by the cutpoints.
+
+        use_shifted: bool
+            If True, use the shifted distribution (see references below) which
+            accounts for common nonstationary trends. Else, use classic
+            Marcenko-Pastur cutpoints.
+
+        Returns
+        -------
+        trimmed: Trimmed
+            A Trimmed object containing the eigenvalues trimmed according to
+
+
+        References
+        ----------
+        Almog, A., Buijink, M. R., Roethler, O., Michel, S., Meijer, J. H.,
+        Rohling, J. H. T., & Garlaschelli, D. (2019). Uncovering functional
+        signature in neural systems via random matrix theory. PLOS Computational
+        Biology, 15(5), e1006934. doi:10.1371/journal.pcbi.1006934
+        https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6513117/#sec008title,
+
+        'A second and related improvement takes into account the effects of
+        common (nonstationary) trends for a system with N cells, and in
+        particular the largest eigenvalue eig_max. We realize that the effects
+        of noise are inseparably coupled to those of the global trend [51], as
+        the presence of the latter modifies and left-shifts the density of
+        eigenvalues that we would otherwise observe in presence of noise only.
+        So we do not simply superimpose the two effects as in [15]; on the
+        contrary, we calculate the modification of the random bulk exactly,
+        given the system’s empirical eig_max. In particular, we calculate the
+        shifted value of an original Wishart matrix [15] to find
 
         eig_+- = (1 − eig_max/N)(1 +- 1/(sqrt(Q)))**2
 
-        where Q = T/N is the ratio between the number of time steps in the data T and the
-        number of cells N. Fig 2 shows both the modified and unmodified spectral
-        densities. It also shows that taking the left-shift of the random bulk into
-        account is very important, as it unveils informative empirical eigenvalues that
-        would otherwise be classified as consistent with the random spectrum and hence
-        discarded.
+        where Q = T/N is the ratio between the number of time steps in the data
+        T and the number of cells N. Fig 2 shows both the modified and
+        unmodified spectral densities. It also shows that taking the left-shift
+        of the random bulk into account is very important, as it unveils
+        informative empirical eigenvalues that would otherwise be classified as
+        consistent with the random spectrum and hence discarded.'
         """
         # https://en.wikipedia.org/wiki/Marchenko%E2%80%93Pastur_distribution
         if len(self.vals) != n_series:
             raise ValueError("There should be as many eigenvalues as series.")
         N, T = n_series, series_length
         eig_max = self.vals.max()
-        trim_max = (1 - eig_max / N) * (1 + np.sqrt(N / T)) ** 2
-        trim_min = (1 - eig_max / N) * (1 - np.sqrt(N / T)) ** 2
-        return Trimmed(self.vals[(self.vals > trim_min) & (self.vals < trim_max)])
+        if use_shifted:
+            shift = 1 - eig_max / N
+            trim_max, trim_min = shift * (1 + np.sqrt(N / T)) ** 2
+            trim_min = shift * (1 - np.sqrt(N / T)) ** 2
+        else:
+            trim_min, trim_max = (1 - np.sqrt(N / T)) ** 2, (1 + np.sqrt(N / T)) ** 2
+
+        if largest:
+            return Trimmed(self.vals[self.vals > trim_max])
+        else:
+            return Trimmed(self.vals[(self.vals > trim_min) & (self.vals < trim_max)])
 
     def trim_manually(self, start: int, end: int) -> Trimmed:
         """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]]"""
@@ -460,22 +529,32 @@ class Eigenvalues(EigVals):
         smoother: SmoothMethod = "poly",
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
-        emd_detrend: bool = False,
+        detrend: bool = False,
     ) -> Unfolded:
-        """
+        """Unfold the eigenvalues with the specified smoothers.
+
         Parameters
         ----------
         eigs: ndarray
             sorted eigenvalues
 
         smoother: "poly" | "spline" | "gompertz" | "goe" | lambda
-            the type of smoothing function used to fit the step function
+            The type of smoothing function used to fit the step function.
+            - "poly": perform polynomial unfolding.
+            - "spline": use fit a univarate spline.
+            - "gompertz": fit a Gompertz exponential curve.
+            - "goe": perform a "smooth" unfolding via the semicircle law
+            - lambda: not implemented.
 
         degree: int
-            the degree of the polynomial or spline
+            The degree of the polynomial or spline.
 
         spline_smooth: float
-            the smoothing factors passed into scipy.interpolate.UnivariateSpline
+            The smoothing factors passed into scipy.interpolate.UnivariateSpline
+
+        emd_detrend: bool
+            Whether to apply a final Empirical Mode Decomposition detrending
+            (Morales et al.) before returning the final unfolded values.
 
 
         Returns
@@ -495,15 +574,15 @@ class Eigenvalues(EigVals):
             smoother=smoother,
             degree=degree,
             spline_smooth=spline_smooth,
-            emd_detrend=emd_detrend,
+            detrend=detrend,
             return_callable=True,
         )
+        if detrend:
+            unfolded = emd_detrend(unfolded)
         return Unfolded(originals=eigs, unfolded=np.sort(unfolded), smoother=closure)
 
-    def unfold_goe(self, a: float = None) -> Unfolded:
-        # eigs = self.eigs
-        # unfolded = eigs / np.mean(np.diff(eigs))
-        # return Unfolded(eigs, unfolded)
+    def unfold_goe(self) -> Unfolded:
+        """Unfold via Wigner's semicircle law. """
 
         eigs = self.eigenvalues
         N = len(eigs)
