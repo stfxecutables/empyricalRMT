@@ -25,10 +25,14 @@ computation and plotting of some popular spectral observables.
 
 ## Notes on Development
 
-This libary is still undergoing major re-writes and development, and should
-be considered in pre-alpha at this point. Feel free to post issues or ask
-questions relating to the code, but keep in mind any bugs and/or issues are
-very likely to change in the near future.
+This libary is still undergoing significant development. The overall API (e.g.
+basic classes, properties, and methods) will likely remain stable from this
+point, but function and method arguments are still quite likely to change. I
+can't provide any guarantees at this point that numerical results will be stable
+from version to version.
+
+In the meantime, please feel free to post issues or ask *any* questions relating
+to the library on [Github](https://github.com/stfxecutables/empyricalRMT/issues).
 
 # Installation
 
