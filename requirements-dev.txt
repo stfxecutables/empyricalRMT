@@ -2,7 +2,7 @@ numba==0.48.0
 typing_extensions==3.7.4.1
 colorama==0.4.1
 pandas==0.24.2
-statsmodels==0.10.2
+statsmodels==0.11.1
 seaborn==0.9.0
 nibabel==2.4.1
 pyod==0.7.4
