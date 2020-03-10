@@ -1,21 +1,30 @@
 # Table of Contents
 - [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
+  - [Motivation](#motivation)
+  - [Notes on Development](#notes-on-development)
 - [Installation](#installation)
-  - [Using `venv` (recommended)](#using-venv-recommended)
-  - [From Source](#from-source)
-  - [From pip](#from-pip)
-  - [Notes on Windows](#notes-on-windows)
-- [Basic Usage](#basic-usage)
+  - [Local Installation Using `venv` (recommended)](#local-installation-using-venv-recommended)
+  - [Global Installation](#global-installation)
+  - [Windows](#windows)
+- [Examples](#examples)
 - [Documentation](#documentation)
+  - [API Overview](#api-overview)
 - [Development](#development)
   - [Installation](#installation-1)
   - [Testing](#testing)
 
 # Introduction
 
-A python library for Random Matrix Theory eigenvalue unfolding and
-computation and plotting of spectral observables.
+A python library for investigating some of the basic / classical elements of
+Random Matrix Theory, including eigenvalue unfolding and computation and
+plotting of some popular spectral observables.
+
+## Motivation
+
+TODO.
+
+## Notes on Development
 
 This libary is still undergoing major re-writes and development, and should
 be considered in pre-alpha at this point. Feel free to post issues or ask
@@ -24,11 +33,12 @@ very likely to change in the near future.
 
 # Installation
 
-As always, using a virtual environment is recommended for proper use.
-However, you _should_ be okay doing a global `pip install empyricalRMT`
+As always, using a virtual environment is recommended to minimize the chance of
+conflicts. However, you _should_ be okay doing a global `pip install empyricalRMT`
 to try out the library.
 
-## Using `venv` (recommended)
+
+## Local Installation Using `venv` (recommended)
 
 Navigate to the project that you wish to use empyricalRMT in.
 
@@ -43,7 +53,33 @@ you prefer.
 python -m venv env && source env/bin/activate
 ```
 
-## From Source
+Now install locally either from pip:
+
+```bash
+pip install --upgrade empyricalRMT
+```
+
+or from source:
+
+```bash
+git clone https://github.com/stfxecutables/empyricalRMT /path/to/your/favourite/location/empyricalRMT
+cd MyProject  #
+pip install -e /path/to/your/favourite/location/empyricalRMT
+```
+
+If using Windows (which I haven't tested this library on), you *should* be able to
+install this in whatever manner you usually install libraries from source or pip.
+
+
+## Global Installation
+
+Via pip:
+
+```bash
+pip install empyricalRMT
+```
+
+From source:
 
 ```bash
 git clone https://github.com/stfxecutables/empyricalRMT
@@ -51,24 +87,21 @@ cd empyricalRMT
 pip install -e .
 ```
 
-## From pip
-
-```bash
-pip install empyricalRMT
-```
-
 Note that this will install the library "globally" if you haven't activated
 a virtual environment of some kind.
 
-## Notes on Windows
 
-This _should_ still all work on Windows, although you may have to follow
+
+## Windows
+
+The above *should* still all work on Windows, although you may have to follow
 [modified instructions for setting up the *venv*](https://docs.python.org/3/library/venv.html).
 
-If you run into issues you think might be Windows-related, please do report
-them, but keep in mind I currently can only test on Windows via virtual machine :(
+If you run into issues specific to this library that you think might be
+Windows-related, please do report them, but keep in mind I currently can only
+test on Windows via virtual machine :(
 
-# Basic Usage
+# Examples
 
 ```python
 import empyricalRMT.observables.unfold as unfold
@@ -113,7 +146,16 @@ plot.levelNumberVariance(unfolded, df, title=f"{kind.upper()} Matrix", mode="blo
 
 # Documentation
 
-Be sure to read the documentation comments in the [source code](https://github.com/stfxecutables/empyricalRMT/tree/master/empyricalRMT).
+Be sure to read the documentation comments in the [source
+code](https://github.com/stfxecutables/empyricalRMT/tree/master/empyricalRMT).
+
+## API Overview
+
+Eigenvalues
+  - .trim()
+
+Trimmed
+  - etc.
 
 # Development
 
@@ -127,6 +169,7 @@ cd empyricalRMT
 python -m venv env
 source env/bin/activate
 python -m pip install -r requirements-dev.txt
+pip install -e .  # to make editable
 ```
 
 ## Testing
