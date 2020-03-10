@@ -163,39 +163,50 @@ def correlated_eigs(
 
 # TODO, WIP This is really only valid for testing e.g. Tracy-Widom and the
 # semi-circle law.
-def fast_goe_eigs(matsize: int = 1000, sub_matsize: int = 100) -> ndarray:
-    """Use independence and fact that eigvalsh is bottleneck to more quickly generate
-    extreme eigenvalues. E.g. if matsize == 1024, sub_matsize == 100, generate 10 (100x100)
-    matrices and one (24x24) matrix, can concatenate the resultant eigenvalues.
-
-    Edelman, A., Sutton, B. D., & Wang, Y. (2014). Random matrix theory,
-    numerical computation and applications. Modern Aspects of Random Matrix
-    Theory, 72, 53, [pg 3., Algorithm 1]
-
+def tracy_widom_eigs(
+    n_eigs: int = 1000,
+    sub_matsize: int = 100,
+    kind: MatrixKind = "goe",
+    use_tridiagonal: bool = False,
+    return_normalized: bool = False,
+) -> ndarray:
+    """Quickly generate extreme eigenvalues.
 
     Parameters
     ----------
-    matsize: int
-        the desired size of the square matrix, or number of eigenvalues
+    n_eigs: int
+        the desired size of the square matrix, i.e. number of eigenvalues
 
     sub_matsize: int
         the size of the smaller matrices to use to speed eigenvalue calculation
+
+    kind: "goe" | "gue" | "poisson"
+
+    use_tridiagonal: bool
+        Whether or not to force GOE eigenvalues to be always generated from
+        tridiagonal matrices, regardless of submatrix size.
+
+    return_normalized: bool
+        If True, normalize eigenvalues based on n_eigs
+
+    Returns
+    -------
+    max_eigs: the largest eigenvalues generated
+
+    References
+    ----------
+    Edelman, A., Sutton, B. D., & Wang, Y. (2014). Random matrix theory,
+    numerical computation and applications. Modern Aspects of Random Matrix
+    Theory, 72, 53, [pg 3., Algorithm 1]
     """
-    if matsize < 100:
-        return generate_eigs(matsize, kind="goe")
-    if sub_matsize >= matsize:
-        raise ValueError("Submatrices must be smaller in order to speed calculation.")
-    n_submats = int(matsize / sub_matsize)
-    last_matsize = matsize % sub_matsize
-    eigs_submats = np.empty([n_submats, sub_matsize])
-    for i in range(n_submats):
-        M = _generate_GOE_matrix(size=sub_matsize)
-        sub_eigs = np.linalg.eigvalsh(M)
-        eigs_submats[i, :] = sub_eigs
-    eigs_remain = np.linalg.eigvalsh(_generate_GOE_matrix(size=last_matsize))
-    eigs = list(eigs_submats.flatten()) + list(eigs_remain)
-    eigs = np.sort(eigs)
-    return eigs
+    max_eigs = np.empty([n_eigs])
+    for i in range(n_eigs):
+        sub_eigs = generate_eigs(matsize=sub_matsize, use_tridiagonal=use_tridiagonal)
+        max_eigs[i] = sub_eigs.max()
+    if return_normalized:
+        max_eigs *= float(n_eigs) ** (1.0 / 6.0)
+        max_eigs -= 2.0 * np.sqrt(n_eigs)
+    return max_eigs
 
 
 # TODO, WIP
