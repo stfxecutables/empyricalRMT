@@ -1,8 +1,10 @@
 import numpy as np
+import scipy.sparse as sparse
 
 from numpy import ndarray
 from scipy.integrate import quad
-from typing import List, Sized, TypeVar, Type
+from typing import Any, List, Optional, Sized, Tuple, TypeVar, Type, Union
+from typing_extensions import Literal
 from warnings import warn
 
 from empyricalRMT._constants import (
@@ -11,6 +13,7 @@ from empyricalRMT._constants import (
     DEFAULT_POLY_DEGREES,
 )
 from empyricalRMT._eigvals import EigVals
+from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.detrend import emd_detrend
 from empyricalRMT.smoother import Smoother, SmoothMethod
 from empyricalRMT.trim import Trimmed, TrimReport
@@ -54,6 +57,11 @@ class Eigenvalues(EigVals):
             )
 
         super().__init__(eigenvalues)
+        self._series_T: Optional[int] = None
+        self._series_N: Optional[int] = None
+        # get some Marchenko-Pastur endpoints
+        self._marchenko: Optional[Tuple[float, float]] = None
+        self._marchenko_shifted: Optional[Tuple[float, float]] = None
 
     @classmethod
     def from_correlations(
@@ -94,8 +102,19 @@ class Eigenvalues(EigVals):
         eigs = data.reshape(-1)  # equivalent to ravel but less likely to copy
         return cls(eigs[np.abs(eigs) < atol])
 
+    # TODO: see if we can represent the full eigenvalue problem and solve that,
+    # instead of going through the covariance matrix
     @classmethod
-    def from_time_series(cls: Type[Eigens], data: ndarray, time_dim: int = 1) -> Eigens:
+    def from_time_series(
+        cls: Type[Eigens],
+        data: ndarray,
+        trim_zeros: bool = True,
+        zeros: Union[float, Literal["heuristic"], Literal["negative"]] = "heuristic",
+        time_axis: int = 1,
+        ddof: int = 0,
+        use_sparse: bool = False,
+        **sp_args: Any,
+    ) -> Eigens:
         """Use Marchenko-Pastur and positive semi-definiteness to identify likely noise
         values and zero-valued eigenvalues due to floating point imprecision
 
@@ -104,10 +123,36 @@ class Eigenvalues(EigVals):
         data: ndarray
             A 2-dimensional matrix of time-series data.
 
-        time_dim: int
+        trim_zeros: bool
+            If True (default) only return eigenvalues greater than `zeros`
+            (e.g. remove values that are likely unstable or actually zero due
+            to floating point precision limitations).
+
+        zeros: float
+            - If a float, The smallest acceptable value for an eigenvalue not to
+              be considered zero.
+            - If "heuristic", trim according to:
+                1. find the magnitude of the largest *negative* eigenvalue (these
+                   values are impossible, since correlation matrices are positive
+                   definite), and call this `e_min`
+                2. If there are no negative eigenvalues, set `e_min = 100*eps`, where
+                   `eps` is machine epsilon, i.e. `np.finfo(float).eps`
+                3. only return eigenvalues greater than 10 times `e_min`
+
+        time_axis: int
             If 0, assumes the data.shape == (n, T), where n is the number of
             features / variables, and T is the length (number of points) in each
             time series.
+
+        use_sparse: bool
+            Convert the interim correlation matrix to a sparse triangular
+            matrix, and use `scipy.sparse.linalg.eigsh` to solve for the
+            eigenvalues. This currently does not save memory (since we still
+            compute an interim dense covariance matrix) but gives more control
+            over what eigenvalues are returned.
+
+        sp_args:
+            Keyword arguments to pass to scipy.sparse.linalg.eigsh.
 
 
         Returns
@@ -116,7 +161,52 @@ class Eigenvalues(EigVals):
             The Eigenvalues object, with extra time-series relevant data:
             - Eigenvalues.marcenko_endpoints: (float, float)
         """
-        raise NotImplementedError()
+        if len(data.shape) != 2:
+            raise ValueError("Input `data` array must have dimension of 2.")
+        if time_axis not in [0, 1]:
+            raise ValueError("Invalid `time_axis`. Must be either 0 or 1.")
+        if time_axis == 0:
+            data = data.T
+
+        corrs = correlate_fast(data, ddof=ddof)
+        if use_sparse:
+            corrs = sparse.tril(corrs)
+            if sp_args.get("return_eigenvectors") is True:
+                raise ValueError(
+                    "This function is intended only as a helper to extract eigenvalues from time-series."
+                )
+
+            eigs = sparse.linalg.eigsh(corrs, **sp_args)
+        eigs = np.linalg.eigvalsh(corrs)
+
+        if trim_zeros:
+            if zeros == "heuristic":
+                e_min = eigs.min()
+                if e_min > 0:
+                    e_min = np.finfo(float).eps * 100
+                e_min = np.abs(e_min)
+                eigs = eigs[eigs > (10 * e_min)]
+            elif zeros == "negative":
+                eigs = eigs[eigs > 0]
+            else:
+                try:
+                    zeros = float(zeros)
+                except ValueError as e:
+                    raise ValueError(
+                        "`zeros` must be a either a float, 'heuristic' or 'negative'"
+                    ) from e
+                eigs = eigs[eigs > zeros]
+
+        eigs = cls(eigs)
+        N, T = data.shape
+        eigs._series_T = T
+        eigs._series_N = N
+        # get some Marchenko-Pastur endpoints
+        shift = 1 - eigs.max() / N
+        r = np.sqrt(N / T)
+        eigs._marchenko = ((1 - r) ** 2, (1 + r) ** 2)
+        eigs._marchenko_shifted = (shift * (1 + r) ** 2, shift * (1 - r) ** 2)
+        return eigs  # type: ignore
 
     @property
     def values(self) -> ndarray:
@@ -313,9 +403,9 @@ class Eigenvalues(EigVals):
 
     def trim_marcenko_pastur(
         self,
-        series_length: int,
-        n_series: int,
-        largest: bool = False,
+        series_length: int = None,
+        n_series: int = None,
+        largest: bool = True,
         use_shifted: bool = True,
     ) -> Trimmed:
         """Trim to noise eigenvalues under assumption that eigenvalues come from
@@ -325,10 +415,11 @@ class Eigenvalues(EigVals):
         ----------
         series_length: int
             The length of the time series (e.g. number of time points per
-            series).
+            series). If None, check self for saved values and use those.
 
         n_series: int
-            The number of time series of length `series_length`.
+            The number of time series of length `series_length`. If None,
+            check self for saved values and use those.
 
         largest: bool
             If False, return the central (e.g. noise) eigenvalues. If True,
@@ -372,11 +463,21 @@ class Eigenvalues(EigVals):
         of the random bulk into account is very important, as it unveils
         informative empirical eigenvalues that would otherwise be classified as
         consistent with the random spectrum and hence discarded.'
+
+        See also
+        https://en.wikipedia.org/w/index.php?title=Marchenko%E2%80%93Pastur_distribution&oldid=939377392
+        for a simple example of how the unshifted form of this trimming is done.
         """
-        # https://en.wikipedia.org/wiki/Marchenko%E2%80%93Pastur_distribution
-        if len(self.vals) != n_series:
-            raise ValueError("There should be as many eigenvalues as series.")
-        N, T = n_series, series_length
+
+        N = self._series_N if n_series is None else n_series
+        T = self._series_T if series_length is None else series_length
+        if N is None or T is None:
+            raise ValueError(
+                "Cannot determine either time series length or number of time series "
+                "corresponding to eigenvalues. Consider extracting your eigenvalues "
+                "from your data matrix via `Eigenvalues.from_time_series` or be sure "
+                "to pass correct values to `n_series` and `series_length`."
+            )
         eig_max = self.vals.max()
         if use_shifted:
             shift = 1 - eig_max / N
