@@ -401,7 +401,7 @@ class Eigenvalues(EigVals):
         start, end = best_indices[0][0], best_indices[0][1]
         return self.trim_manually(start, end)
 
-    def trim_marcenko_pastur(
+    def trim_marchenko_pastur(
         self,
         series_length: int = None,
         n_series: int = None,
