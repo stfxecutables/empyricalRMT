@@ -279,7 +279,7 @@ class Eigenvalues(EigVals):
             unfolded eigenvalues.
 
         outlier_tol: float
-            A float between 0 and 1, and which is passed as the tolerance paramater for
+            A float between 0 and 1, and which is passed as the tolerance parameter for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
 
@@ -346,7 +346,7 @@ class Eigenvalues(EigVals):
             the smoothing factors passed into scipy.interpolate.UnivariateSpline
 
         outlier_tol: float
-            A float between 0 and 1, and which is passed as the tolerance paramater for
+            A float between 0 and 1, and which is passed as the tolerance parameter for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
 
@@ -411,7 +411,7 @@ class Eigenvalues(EigVals):
         """Trim to noise eigenvalues under assumption that eigenvalues come from
         correlation matrix.
 
-        Paramaters
+        Parameters
         ----------
         series_length: int
             The length of the time series (e.g. number of time points per
@@ -552,7 +552,7 @@ class Eigenvalues(EigVals):
             trim region. See notes. Default: True.
 
         outlier_tol: float
-            A float between 0 and 1, and which is passed as the tolerance paramater for
+            A float between 0 and 1, and which is passed as the tolerance parameter for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
 

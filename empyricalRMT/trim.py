@@ -141,7 +141,7 @@ class Trimmed(_eigvals.EigVals):
             trim region. See notes. Default: True.
 
         outlier_tol: float
-            A float between 0 and 1, and which is passed as the tolerance paramater for
+            A float between 0 and 1, and which is passed as the tolerance parameter for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
 
@@ -220,7 +220,7 @@ class TrimReport:
             unfolded eigenvalues.
 
         outlier_tol: float
-            A float between 0 and 1, and which is passed as the tolerance paramater for
+            A float between 0 and 1, and which is passed as the tolerance parameter for
             [HBOS](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos)
             histogram-based outlier detection
         """

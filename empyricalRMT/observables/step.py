@@ -9,7 +9,7 @@ def step_values(eigs: ndarray, x: Union[float, ndarray]) -> Union[float, ndarray
     """For eigenvalues `eigs`, compute the values of the step function for values x.
     That is, compute the number of eigenvalues <= x_i, for each x_i in x.
 
-    Paramaters
+    Parameters
     ----------
     eigs: ndarray
         The eigenvalues from which to compute the step function.
