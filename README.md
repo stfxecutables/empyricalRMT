@@ -396,5 +396,5 @@ for L > 20).
 
 Finally, I am just a dabbler in RMT. I have tried to limit myself to
 implementing only aspects I feel I understand, but I may have made some basic
-errors in implementation or understanding at some point. If you notice and
+errors in implementation or understanding at some point. If you notice any
 issues or mistakes, corrections are always warmly welcomed!
