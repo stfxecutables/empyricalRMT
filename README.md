@@ -120,7 +120,10 @@ eigs = Eigenvalues(eigs)
 
 # verify Wigner's semicircle law:
 eigs.plot_distribution()
+```
+![Wigner's Semicircle](readme/semicircle.png)
 
+```python
 # unfold the eigenvalues via Wigner's semi-circle law:
 unfolded = eigs.unfold(smoother="goe")
 # or unfold via polynomial:
@@ -128,16 +131,32 @@ unfolded = eigs.unfold(smoother="poly", degree=7)
 # optionally detrend unfolded vals via Empirical Mode Decomposition:
 unfolded = eigs.unfold(smoother="poly", degree=7, detrend=True)
 
-# evaluate the unfolding fit:
-unfolded.plot_fit()
-
 # plot some classic observables and compare to theory
 ensembles = ["poisson", "goe"]  # theoretically expected curves to plot
 unfolded.plot_nnsd(ensembles=ensembles)  # nearest neighbours spacings
-unfolded.plot_nnnsd(ensembles=ensembles)  # next-nearest neighbours spacings
+unfolded.plot_nnnsd(ensembles=["goe"])  # next-nearest neighbours spacings
 unfolded.plot_spectral_rigidity(ensembles=ensembles)
 unfolded.plot_level_variance(ensembles=ensembles)
 ```
+![nnsd](readme/nnsd.png)
+![nnnsd](readme/nnnsd.png)
+![rigidity](readme/rigidity.png)
+![variance](readme/variance.png)
+
+Visually inspect / detect a bad unfolding fit:
+
+```python
+from empyricalRMT.eigenvalues import Eigenvalues
+
+# generate time series data
+T = np.random.standard_normal([1000, 250])
+eigs = Eigenvalues.from_time_series(T, trim_zeros=False)
+unfolded = eigs.unfold(degree=5)
+unfolded.plot_fit()
+```
+
+![bad fit](readme/unfoldfit.png)
+
 
 Sample eigenvalues from *large* GOE matrices (provided they can fit in memory) ***fast*** via
 [equivalently distributed tridiagonal matrices](https://dspace.mit.edu/handle/1721.1/115982):
