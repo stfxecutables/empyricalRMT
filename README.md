@@ -139,9 +139,8 @@ unfolded.plot_spectral_rigidity(ensembles=ensembles)
 unfolded.plot_level_variance(ensembles=ensembles)
 ```
 
-Sample eigenvalues from *large* (provided they can fit in memory) GOE matrices
-***fast*** via equivalently distributed
-[tridiagonal matrices](https://dspace.mit.edu/handle/1721.1/115982):
+Sample eigenvalues from *large* GOE matrices (provided they can fit in memory) ***fast*** via
+[equivalently distributed tridiagonal matrices](https://dspace.mit.edu/handle/1721.1/115982):
 
 ```python
 from empyricalRMT.construct import generate_eigs
@@ -174,11 +173,12 @@ documentation interactively.
 
 ## API Overview
 
-The below should allow easier access to documentation via e.g.
-`help(Eigenvalues.trim_report)`. The various functions, methods, and properties
-below do not represent an exhaustive (or even necessarily up-to-date) list of
-what is available in the library, and are intended simply as an overview for
-convenience. Full and updated documentation can be found in the source code.
+The below should allow easier access to documentation via Python's native `help`
+e.g. via calls like `help(Eigenvalues.trim_report)`. The various functions,
+methods, and properties below do not represent an exhaustive (or even
+necessarily up-to-date) list of what is available in the library, and are
+intended simply as an overview for convenience. Full and updated documentation
+can be found in the source code.
 
 ### Main Classes and Methods
 
@@ -234,7 +234,7 @@ class Unfolded  # subclass of EigVals
   .ensemble_compare()  # Under active development. Beware!
 ```
 
-Minimal intermediate class:
+Minimal class only returned from trimming functions:
 
 ```python
 from empyricalRMT.trim import Trimmed
@@ -361,20 +361,19 @@ Default values for most parameters were chosen because they provided reasonably
 accurate results (e.g. when compared to as predicted by theory) in reasonable
 amounts of time on *this machine*. I have tested the library on my old 2015
 MacBook, and the defaults seem *okay*, but it is possible that they may not work
-well on your machine, especially with regards to memory.
-
-I hope to implement methods that can work around memory issues in the future
-(e.g. using memory maps, dask, and perhaps more sophisticated methods in some
-cases) but for now, this is a limitation of the library.
+well on your machine, especially with regards to memory. I hope to implement
+methods that can work around memory issues in the future (e.g. using memory
+maps, dask, and perhaps more sophisticated methods in some cases) but for now,
+this is a limitation of the library.
 
 Addtionally, RMT results are theoretical, and many results only hold as N
 approaches infinity. In practice, it seems that floating-point precision issues
 (whether in numerical integration, solving of eigenproblems, or in the
 convergence of some of the stochastic methods used in this library) plus the
-reality of working with finite matrices means that there can be some pretty
-significant limits on the extent to which simulations agree with theory,
-especially when looking at long-range spectral observables (e.g. spectral
-rigidity or level number variance for L > 20).
+reality of working with finite matrices means that there are significant limits
+on the extent to which simulations agree with theory, especially when looking at
+long-range spectral observables (e.g. spectral rigidity or level number variance
+for L > 20).
 
 Finally, I am just a dabbler in RMT. I have tried to limit myself to
 implementing only aspects I feel I understand, but I may have made some basic
