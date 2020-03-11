@@ -197,16 +197,16 @@ class Eigenvalues(EigVals):
                     ) from e
                 eigs = eigs[eigs > zeros]
 
-        eigs = cls(eigs)
+        eigenvalues = cls(eigs)
         N, T = data.shape
-        eigs._series_T = T
-        eigs._series_N = N
+        eigenvalues._series_T = T
+        eigenvalues._series_N = N
         # get some Marchenko-Pastur endpoints
         shift = 1 - eigs.max() / N
         r = np.sqrt(N / T)
-        eigs._marchenko = ((1 - r) ** 2, (1 + r) ** 2)
-        eigs._marchenko_shifted = (shift * (1 + r) ** 2, shift * (1 - r) ** 2)
-        return eigs  # type: ignore
+        eigenvalues._marchenko = ((1 - r) ** 2, (1 + r) ** 2)
+        eigenvalues._marchenko_shifted = (shift * (1 + r) ** 2, shift * (1 - r) ** 2)
+        return eigenvalues  # type: ignore
 
     @property
     def values(self) -> ndarray:
