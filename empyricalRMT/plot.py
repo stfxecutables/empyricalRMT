@@ -904,15 +904,15 @@ def _observables(
     fig.set_size_inches(fig.get_size_inches() * 2)
     fig.suptitle(suptitle)
     _unfolded_fit(
-        eigs=eigs, unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="noblock"
+        eigs=eigs, unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="return"
     )
-    _spacings(unfolded, fig=fig, axes=axes[0, 1], mode="noblock", ensembles=ensembles)
+    _spacings(unfolded, fig=fig, axes=axes[0, 1], mode="return", ensembles=ensembles)
     _spectral_rigidity(
         unfolded,
         data=rigidity_df,
         fig=fig,
         axes=axes[1, 0],
-        mode="noblock",
+        mode="return",
         ensembles=ensembles,
     )
     _level_number_variance(
@@ -920,7 +920,7 @@ def _observables(
         data=levelvar_df,
         fig=fig,
         axes=axes[1, 1],
-        mode="noblock",
+        mode="return",
         ensembles=ensembles,
     )
     return _handle_plot_mode(mode, fig, axes, outfile)
@@ -1073,6 +1073,7 @@ def _handle_plot_mode(
         make_parent_directories(outfile)
         print(f"Saving figure to {outfile}")
         fig.savefig(outfile, dpi=save_dpi)
+        plt.close(fig)
     elif mode == "return":
         return fig, axes
     else:
