@@ -314,7 +314,7 @@ def _update_progress(shared: Array, N: int) -> None:
         AnimatedMarker(),
         f"{Fore.RESET}",
     ]
-    pbar = ProgressBar(widgets=pbar_widgets, maxval=N).start(init=True)
+    pbar = ProgressBar(widgets=pbar_widgets, maxval=N).start()
     progress = np.frombuffer(shared.get_obj())
     done = int(progress[0])
     while done < N:  # type: ignore
