@@ -302,6 +302,7 @@ class Unfolded(EigVals):
         trim: float = 5.0,
         trim_kde: bool = False,
         kde_bw: Union[float, str] = "scott",
+        brody: bool = False,
         title: str = "Unfolded Spacing Distribution",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -335,6 +336,10 @@ class Unfolded(EigVals):
         kde_bw: float
             The bandwidth to use for kernel density estimation.
 
+        brody: bool
+            If True, compute the best-fitting Brody distribution via MLE, and plot
+            that distribution.
+
         title: string
             The plot title string
 
@@ -365,6 +370,7 @@ class Unfolded(EigVals):
             trim=trim,
             trim_kde=trim_kde,
             kde_bw=kde_bw,
+            brody=brody,
             title=title,
             mode=mode,
             outfile=outfile,

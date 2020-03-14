@@ -18,6 +18,7 @@ from typing import Any, List, Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
+from empyricalRMT.brody import brody_dist, fit_brody
 from empyricalRMT.ensemble import Poisson, GOE
 from empyricalRMT.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
@@ -412,6 +413,7 @@ def _spacings(
     trim: float = 5.0,
     trim_kde: bool = False,
     kde_bw: Union[float, str] = "scott",
+    brody: bool = False,
     title: str = "Unfolded Spacing Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
@@ -445,6 +447,10 @@ def _spacings(
 
     kde_bw: float
         The bandwidth to use for kernel density estimation.
+
+    brody: bool
+        If True, compute the best-fitting Brody distribution via MLE, and plot
+        that distribution.
 
     title: string
         The plot title string
@@ -521,6 +527,12 @@ def _spacings(
             _kde_plot(_spacings, s, axes, kde_bw)
         else:
             _kde_plot(all_spacings, s, axes, kde_bw)
+
+    if brody is True:
+        beta = fit_brody(_spacings)
+        brody_vals = brody_dist(s, beta=beta)
+        brod = axes.plot(s, brody_vals, label="Brody dist.")
+        plt.setp(brod, color="#9d0000", linestyle="--")
 
     # adjusting the right bounds can be necessary when / if there are
     # many large eigenvalue spacings
