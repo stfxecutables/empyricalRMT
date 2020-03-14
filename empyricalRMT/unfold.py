@@ -5,7 +5,7 @@ from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import Any, Callable, List, Optional, Tuple, Type
+from typing import Any, Callable, List, Optional, Tuple, Type, Union
 from typing_extensions import Literal
 
 import empyricalRMT.plot as plot
@@ -299,8 +299,9 @@ class Unfolded(EigVals):
         self,
         bins: int = 50,
         kde: bool = True,
-        trim: float = 0.0,
+        trim: float = 5.0,
         trim_kde: bool = False,
+        kde_bw: Union[float, str] = "scott",
         title: str = "Unfolded Spacing Distribution",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -331,6 +332,9 @@ class Unfolded(EigVals):
             If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
             KDE using all available spacings.
 
+        kde_bw: float
+            The bandwidth to use for kernel density estimation.
+
         title: string
             The plot title string
 
@@ -360,6 +364,7 @@ class Unfolded(EigVals):
             kde=kde,
             trim=trim,
             trim_kde=trim_kde,
+            kde_bw=kde_bw,
             title=title,
             mode=mode,
             outfile=outfile,
@@ -370,7 +375,7 @@ class Unfolded(EigVals):
         self,
         bins: int = 50,
         kde: bool = True,
-        trim: float = 0.0,
+        trim: float = 10.0,
         trim_kde: bool = False,
         title: str = "next Nearest-Neigbors Spacing Distribution",
         mode: PlotMode = "block",

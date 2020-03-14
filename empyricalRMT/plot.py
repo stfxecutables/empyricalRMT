@@ -409,8 +409,9 @@ def _spacings(
     unfolded: ndarray,
     bins: int = 50,
     kde: bool = True,
-    trim: float = 0.0,
+    trim: float = 5.0,
     trim_kde: bool = False,
+    kde_bw: Union[float, str] = "scott",
     title: str = "Unfolded Spacing Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
@@ -441,6 +442,9 @@ def _spacings(
     trim_kde: bool
         If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
         KDE using all available spacings.
+
+    kde_bw: float
+        The bandwidth to use for kernel density estimation.
 
     title: string
         The plot title string
@@ -514,9 +518,9 @@ def _spacings(
 
     if kde is True:
         if trim_kde:
-            _kde_plot(_spacings, s, axes)
+            _kde_plot(_spacings, s, axes, kde_bw)
         else:
-            _kde_plot(all_spacings, s, axes)
+            _kde_plot(all_spacings, s, axes, kde_bw)
 
     # adjusting the right bounds can be necessary when / if there are
     # many large eigenvalue spacings
@@ -903,9 +907,7 @@ def _observables(
     fig, axes = plt.subplots(2, 2, sharex="none", sharey="none")
     fig.set_size_inches(fig.get_size_inches() * 2)
     fig.suptitle(suptitle)
-    _unfolded_fit(
-        eigs=eigs, unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="return"
-    )
+    _unfolded_fit(eigs=eigs, unfolded=unfolded, fig=fig, axes=axes[0, 0], mode="return")
     _spacings(unfolded, fig=fig, axes=axes[0, 1], mode="return", ensembles=ensembles)
     _spectral_rigidity(
         unfolded,
@@ -1021,7 +1023,9 @@ def _setup_plotting(fig: Figure = None, axes: Axes = None) -> Tuple[Figure, Axes
         return fig, axes
 
 
-def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
+def _kde_plot(
+    values: ndarray, grid: ndarray, axes: Axes, bw: Union[float, str] = "scott"
+) -> None:
     """Calculate KDE for observed spacings.
 
     Parameters
@@ -1035,6 +1039,9 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
     axes: pyplot.Axes
         the current axes object to be modified
 
+    bw: bandwidh
+        The `bw` argument for statsmodels KDEUnivariate .fit
+
     Notes
     -----
     we are doing this manually because we want to ensure consistency of the KDE
@@ -1043,7 +1050,8 @@ def _kde_plot(values: ndarray, grid: ndarray, axes: Axes) -> None:
     and https://github.com/mwaskom/seaborn/issues/796
     """
     kde = KDE(values)
-    kde.fit(kernel="gau", bw="scott", cut=0)
+    # kde.fit(kernel="gau", bw="scott", cut=0)
+    kde.fit(kernel="gau", bw=bw, cut=0)
     evaluated = np.empty_like(grid)
     for i, _ in enumerate(evaluated):
         evaluated[i] = kde.evaluate(grid[i])
