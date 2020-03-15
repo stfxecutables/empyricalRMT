@@ -1044,7 +1044,13 @@ def _plot_trim_iters(
 
 
 def _configure_sbn_style() -> None:
-    """Ensure *once* that seaborn style has been set."""
+    """Ensure *once* that seaborn style has been set.
+
+    NOTE
+    ----
+    This must be called every time *before* creating new figs and axes. In order
+    to fully ensure all plots get the correct style.
+    """
     global PLOTTING_READY
     if not PLOTTING_READY:
         PALETTE = sbn.color_palette("dark").copy()
