@@ -303,6 +303,7 @@ class Unfolded(EigVals):
         trim_kde: bool = False,
         kde_bw: Union[float, str] = "scott",
         brody: bool = False,
+        brody_fit: str = "spacing",
         title: str = "Unfolded Spacing Distribution",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -340,6 +341,13 @@ class Unfolded(EigVals):
             If True, compute the best-fitting Brody distribution via MLE, and plot
             that distribution.
 
+        brody_fit: "spacing" | "mle"
+            Method for parametric distribution fitting of the Brody distribution to
+            the data. If "spacing", use
+            [maximum spacing estimation](https://en.wikipedia.org/wiki/Maximum_spacing_estimation).
+            If "mle", use the maximum likelihood method. The default is "spacing",
+            as this may be preferable for the J-shape of the Brody distribution.
+
         title: string
             The plot title string
 
@@ -371,6 +379,7 @@ class Unfolded(EigVals):
             trim_kde=trim_kde,
             kde_bw=kde_bw,
             brody=brody,
+            brody_fit=brody_fit,
             title=title,
             mode=mode,
             outfile=outfile,
@@ -383,6 +392,8 @@ class Unfolded(EigVals):
         kde: bool = True,
         trim: float = 10.0,
         trim_kde: bool = False,
+        brody: bool = False,
+        brody_fit: str = "spacing",
         title: str = "next Nearest-Neigbors Spacing Distribution",
         mode: PlotMode = "block",
         outfile: Path = None,
@@ -413,6 +424,17 @@ class Unfolded(EigVals):
             If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
             KDE using all available spacings.
 
+        brody: bool
+            If True, compute the best-fitting Brody distribution via MLE, and plot
+            that distribution.
+
+        brody_fit: "spacing" | "mle"
+            Method for parametric distribution fitting of the Brody distribution to
+            the data. If "spacing", use
+            [maximum spacing estimation](https://en.wikipedia.org/wiki/Maximum_spacing_estimation).
+            If "mle", use the maximum likelihood method. The default is "spacing",
+            as this may be preferable for the J-shape of the Brody distribution.
+
         title: string
             The plot title string
 
@@ -442,6 +464,8 @@ class Unfolded(EigVals):
             kde=kde,
             trim=trim,
             trim_kde=trim_kde,
+            brody=brody,
+            brody_fit=brody_fit,
             title=title,
             mode=mode,
             outfile=outfile,

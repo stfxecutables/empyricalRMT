@@ -414,6 +414,7 @@ def _spacings(
     trim_kde: bool = False,
     kde_bw: Union[float, str] = "scott",
     brody: bool = False,
+    brody_fit: str = "spacing",
     title: str = "Unfolded Spacing Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
@@ -451,6 +452,13 @@ def _spacings(
     brody: bool
         If True, compute the best-fitting Brody distribution via MLE, and plot
         that distribution.
+
+    brody_fit: "spacing" | "mle"
+        Method for parametric distribution fitting of the Brody distribution to
+        the data. If "spacing", use
+        [maximum spacing estimation](https://en.wikipedia.org/wiki/Maximum_spacing_estimation).
+        If "mle", use the maximum likelihood method. The default is "spacing",
+        as this may be preferable for the J-shape of the Brody distribution.
 
     title: string
         The plot title string
@@ -552,6 +560,8 @@ def _next_spacings(
     kde: bool = True,
     trim: float = 0.0,
     trim_kde: bool = False,
+    brody: bool = False,
+    brody_fit: str = "spacing",
     title: str = "next Nearest-Neigbors Spacing Distribution",
     mode: PlotMode = "block",
     outfile: Path = None,
@@ -582,6 +592,17 @@ def _next_spacings(
     trim_kde: bool
         If True, fit the KDE using only spacings <= `trim`. Otherwise, fit the
         KDE using all available spacings.
+
+    brody: bool
+        If True, compute the best-fitting Brody distribution via MLE, and plot
+        that distribution.
+
+    brody_fit: "spacing" | "mle"
+        Method for parametric distribution fitting of the Brody distribution to
+        the data. If "spacing", use
+        [maximum spacing estimation](https://en.wikipedia.org/wiki/Maximum_spacing_estimation).
+        If "mle", use the maximum likelihood method. The default is "spacing",
+        as this may be preferable for the J-shape of the Brody distribution.
 
     title: string
         The plot title string
@@ -640,6 +661,12 @@ def _next_spacings(
             _kde_plot(_spacings, s, axes)
         else:
             _kde_plot(all_spacings, s, axes)
+
+    if brody is True:
+        beta = fit_brody(_spacings)
+        brody_vals = brody_dist(s, beta=beta)
+        brod = axes.plot(s, brody_vals, label="Brody dist.")
+        plt.setp(brod, color="#9d0000", linestyle="--")
 
     if "goe" in ensembles:
         goe = GOE.nnnsd(spacings=s)

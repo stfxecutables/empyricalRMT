@@ -3,6 +3,8 @@ import numpy as np
 from numpy import ndarray
 from scipy.optimize import minimize_scalar
 from scipy.special import gamma
+from scipy.stats.mstats import gmean
+from statsmodels.distributions.empirical_distribution import ECDF
 
 
 def brody_dist(s: ndarray, beta: float) -> ndarray:
@@ -28,7 +30,7 @@ def log_brody(s: ndarray, beta: float) -> ndarray:
     return np.sum([t1, t2, t3])
 
 
-def fit_brody(s: ndarray) -> float:
+def fit_brody(s: ndarray, method: str = "spacing") -> float:
     """Return the maximum likelihood estimate for beta.
 
     Paramaters
@@ -40,10 +42,91 @@ def fit_brody(s: ndarray) -> float:
     -------
     beta: float
         The MLE estimate for beta.
+
+    Notes
+    -----
+    Try using https://en.wikipedia.org/wiki/Maximum_spacing_estimation
+    instead
+    """
+    if method.lower() == "spacing":
+        return fit_brody_max_spacing(s)
+    if method.lower() == "mle":
+        return fit_brody_mle(s)
+    raise ValueError("`method` must be one of 'spacing' or 'mle'.")
+
+
+def fit_brody_mle(s: ndarray) -> float:
+    """Return the maximum likelihood estimate for beta.
+
+    Paramaters
+    ----------
+    s: ndarray
+        The array of spacings.
+
+    Returns
+    -------
+    beta: float
+        The MLE estimate for beta.
+
+    Notes
+    -----
+    Try using https://en.wikipedia.org/wiki/Maximum_spacing_estimation
+    instead
     """
     # use negative log-likelihood because we want to minimize
-    log_like = lambda beta: -np.sum(log_brody(s, beta))
-    opt_result = minimize_scalar(log_like, bounds=(1e-5, 1.0 - 1e-5), method="Bounded")
+    # log_like = lambda beta: -np.sum(log_brody(s, beta))
+    log_like = lambda beta: -np.sum(brody_dist(s, beta))
+    opt_result = minimize_scalar(
+        log_like, bounds=(1e-5, 1.0 - 1e-5), method="Bounded", tol=1e-10
+    )
+    if not opt_result.success:
+        raise RuntimeError("Optimizer failed to find optimal Brody fit.")
+    return float(opt_result.x)
+
+
+def fit_brody_max_spacing(s: ndarray) -> float:
+    """Return the maximum likelihood estimate for beta.
+
+    Paramaters
+    ----------
+    s: ndarray
+        The array of spacings.
+
+    Returns
+    -------
+    beta: float
+        The maximum spacings estimate for beta.
+
+    Notes
+    -----
+    Try using https://en.wikipedia.org/wiki/Maximum_spacing_estimation
+    instead
+    """
+
+    n = len(s) - 1
+
+    def alpha(beta: float) -> np.float64:
+        return gamma((beta + 2) / (beta + 1)) ** (beta + 1)
+
+    def _positive_diffs(s: ndarray, beta: float) -> np.float64:
+        s = np.sort(s)
+        brody_cdf = 1.0 - np.exp(-alpha(beta) * (s ** (beta + 1)))
+        diffs = np.diff(brody_cdf)
+        diffs = diffs[diffs > 0]  # necessary to prevent over/underflows
+        return diffs
+
+    # use negative log-likelihood because we want to minimize
+    # log_like = lambda beta: -np.sum(log_brody(s, beta))
+
+    # s = np.sort(s)
+    # brody_cdf = lambda beta: 1.0 - np.exp(-alpha(beta) * (s ** (beta + 1)))
+    # diffs = lambda beta: np.diff(brody_cdf(beta))
+
+    log_spacings = lambda beta: np.log(_positive_diffs(s, beta))
+    S_n = lambda beta: -np.sum(log_spacings(beta)) / (n + 1)
+    opt_result = minimize_scalar(
+        S_n, bounds=(1e-5, 1.0 - 1e-5), method="Bounded", tol=1e-10
+    )
     if not opt_result.success:
         raise RuntimeError("Optimizer failed to find optimal Brody fit.")
     return float(opt_result.x)
