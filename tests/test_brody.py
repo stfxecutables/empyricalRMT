@@ -7,8 +7,40 @@ from empyricalRMT.construct import generate_eigs
 from empyricalRMT.plot import PlotMode, _handle_plot_mode, _configure_sbn_style
 
 
-@pytest.mark.plot
+@pytest.mark.fast
 def test_brody_fit() -> None:
+    for N in [100, 250, 500, 1000]:
+        unfolded = Eigenvalues(generate_eigs(N)).unfold(degree=7)
+        # test fitting via max spacing
+        res = unfolded.fit_brody(method="spacing")
+        spacings = res["spacings"]
+        if -np.inf in spacings or np.inf in spacings:
+            raise ValueError("Return spacings contains infinities.")
+        ecdf = res["ecdf"]
+        if np.sum(ecdf < 0) > 0 or np.sum(ecdf > 1):
+            raise ValueError("Invalid values in empirical cdf.")
+        brody_cdf = res["brody_cdf"]
+        if np.sum(brody_cdf < 0) > 0 or np.sum(brody_cdf > 1):
+            raise ValueError("Invalid values in brody cdf.")
+
+        # test fitting via mle
+        res = unfolded.fit_brody(method="mle")
+        spacings = res["spacings"]
+        if -np.inf in spacings or np.inf in spacings:
+            raise ValueError("Return spacings contains infinities.")
+        ecdf = res["ecdf"]
+        if np.sum(ecdf < 0) > 0 or np.sum(ecdf > 1):
+            raise ValueError("Invalid values in empirical cdf.")
+        brody_cdf = res["brody_cdf"]
+        if np.sum(brody_cdf < 0) > 0 or np.sum(brody_cdf > 1):
+            raise ValueError("Invalid values in brody cdf.")
+
+
+test_brody_fit()
+
+
+@pytest.mark.plot
+def test_brody_plot() -> None:
     # test GOE eigs
     bw = 0.2
     # bw = "scott"

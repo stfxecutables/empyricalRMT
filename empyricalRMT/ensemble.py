@@ -75,6 +75,34 @@ class Poisson(_Ensemble):
         return np.exp(-s)
 
     @staticmethod
+    def nnsd_cdf(
+        spacings_range: Tuple[float, float] = (0.0, 3.0),
+        n_points: int = 1000,
+        spacings: ndarray = None,
+    ) -> ndarray:
+        """Compute and return the theoretical values of the nearest neighbour spacing distribution / cumulative density.
+
+        Parameters
+        ----------
+        spacings_range: (float, float)
+            The max and min values.
+
+        n_points: int
+            The number of points in `spacings_range`.
+
+        spacings: ndarray
+            The values for which to return the expected nnsd density.
+            Overrides the values in `spacings_range` and `n_points`, if provided.
+        """
+        s = (
+            spacings
+            if spacings is not None
+            else np.linspace(spacings_range[0], spacings_range[1], n_points)
+        )
+        s = np.clip(s, 0, None)
+        return 1 - np.exp(-s)
+
+    @staticmethod
     def nnnsd(
         spacings_range: Tuple[float, float] = (0.0, 4.0),
         n_points: int = 1000,
@@ -201,6 +229,35 @@ class GOE(_Ensemble):
         )
         p = np.pi
         return ((p * s) / 2) * np.exp(-(p / 4) * s * s)
+
+    @staticmethod
+    def nnsd_cdf(
+        spacings_range: Tuple[float, float] = (0.0, 3.0),
+        n_points: int = 1000,
+        spacings: ndarray = None,
+    ) -> ndarray:
+        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+
+        Parameters
+        ----------
+        spacings_range: (float, float)
+            The max and min values.
+
+        n_points: int
+            The number of points in `spacings_range`.
+
+        spacings: ndarray
+            The values for which to return the expected nnsd density.
+            Overrides the values in `spacings_range` and `n_points`, if provided.
+        """
+        s = (
+            spacings
+            if spacings is not None
+            else np.linspace(spacings_range[0], spacings_range[1], n_points)
+        )
+        s = np.clip(s, 0, None)
+        p = np.pi
+        return 1 - np.exp((-p / 4) * s * s)
 
     @staticmethod
     def nnnsd(

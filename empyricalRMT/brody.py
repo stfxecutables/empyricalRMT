@@ -18,6 +18,13 @@ def brody_dist(s: ndarray, beta: float) -> ndarray:
     return b1 * alpha * s ** beta * np.exp(-alpha * s ** b1)
 
 
+def brody_cdf(s: ndarray, beta: float) -> ndarray:
+    """Return the cumulative distribution function of the Brody distribution for beta."""
+    b1 = beta + 1
+    alpha = gamma((beta + 2) / b1) ** b1
+    return 1 - np.exp(-alpha * s ** b1)
+
+
 def log_brody(s: ndarray, beta: float) -> ndarray:
     """Just a helper re-written to prevent overflows and filter negative spacings"""
     b1 = beta + 1.0
@@ -31,7 +38,7 @@ def log_brody(s: ndarray, beta: float) -> ndarray:
 
 
 def fit_brody(s: ndarray, method: str = "spacing") -> float:
-    """Return the maximum likelihood estimate for beta.
+    """Get an estimate for the beta parameter of the Brody distribution
 
     Paramaters
     ----------
@@ -42,15 +49,11 @@ def fit_brody(s: ndarray, method: str = "spacing") -> float:
     -------
     beta: float
         The MLE estimate for beta.
-
-    Notes
-    -----
-    Try using https://en.wikipedia.org/wiki/Maximum_spacing_estimation
-    instead
     """
-    if method.lower() == "spacing":
+    method = method.lower()
+    if method == "spacing" or method == "spacings":
         return fit_brody_max_spacing(s)
-    if method.lower() == "mle":
+    if method == "mle":
         return fit_brody_mle(s)
     raise ValueError("`method` must be one of 'spacing' or 'mle'.")
 
@@ -130,3 +133,21 @@ def fit_brody_max_spacing(s: ndarray) -> float:
     if not opt_result.success:
         raise RuntimeError("Optimizer failed to find optimal Brody fit.")
     return float(opt_result.x)
+
+
+def brody_fit_evaluate(s: ndarray, method: str = "spacing") -> dict:
+    beta = fit_brody(s, method)
+    ecdf = ECDF(s)
+    ecdf_x = ecdf.x[1:]  # ECDF always makes first x value -inf if `side`=="left"
+    ecdf_y = ecdf.y[1:]
+    bcdf = brody_cdf(ecdf_x, beta)
+    mad = np.mean(np.abs(ecdf_y - bcdf))
+    msqd = np.mean((ecdf_y - bcdf) ** 2)
+    return {
+        "beta": beta,
+        "mad": mad,
+        "msqd": msqd,
+        "spacings": ecdf_x,
+        "ecdf": ecdf_y,
+        "brody_cdf": bcdf,
+    }

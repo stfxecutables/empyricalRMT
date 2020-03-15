@@ -5,6 +5,7 @@ import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame
 from pathlib import Path
+from statsmodels.distributions.empirical_distribution import ECDF
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing import Any, Callable, List, Optional, Tuple, Type, Union
 from typing_extensions import Literal
@@ -12,11 +13,13 @@ from typing_extensions import Literal
 import empyricalRMT.plot as plot
 
 from empyricalRMT._eigvals import EigVals
+from empyricalRMT.brody import brody_cdf, brody_fit_evaluate
 from empyricalRMT.compare import Metric, Compare
 from empyricalRMT.ensemble import Ensemble
 from empyricalRMT.observables.levelvariance import level_number_variance_stable
 from empyricalRMT.observables.rigidity import spectral_rigidity
 from empyricalRMT.plot import (
+    _brody_fit,
     _next_spacings,
     _observables,
     _spacings as _plot_spacings,
@@ -157,6 +160,69 @@ class Unfolded(EigVals):
             show_progress=show_progress,
         )
         return DataFrame({"L": L, "sigma": sigma})
+
+    def fit_brody(self, method: str = "spacing") -> DataFrame:
+        """Get an estimate for the beta parameter of the Brody distribution fit of the spacings.
+
+        Parameters
+        ----------
+        method: "spacing" | "mse"
+            Method for estimating parameter of the Brody distribution. If "spacing", use
+            [maximum spacing estimation](https://en.wikipedia.org/wiki/Maximum_spacing_estimation).
+            If "mle", use maximum likelihood. The default is "spacing",
+            as this may be preferable for the J-shape of the Brody distribution.
+
+        Returns
+        -------
+        info: dict
+            A dict containing some useful fit information:
+                "beta": float
+                    The estimate for beta.
+                "spacings": ndarray
+                    The sorted spacings.
+                "ecdf": ndarray
+                    The empirical cumulative distribution function of the spacings.
+                "brody_cdf": ndarray
+                    The cumulative distribution function of the Brody distribution
+                    fit to the spacings
+                "mad": float
+                    The mean absolute deviation between the empirical and Brody cdf
+                "msqd": float
+                    The mean squared deviation between the empirical and Brody cdf
+        """
+        s = self.spacings
+        s = s[s > 0]
+        return brody_fit_evaluate(s, method)
+
+    def plot_brody_fit(
+        self,
+        method: str = "spacing",
+        title: str = "Brody distribution fit",
+        mode: PlotMode = "block",
+        outfile: Path = None,
+        save_dpi: int = None,
+        ensembles: List[str] = ["goe", "poisson"],
+        bins: int = 50,
+        kde: bool = True,
+        trim: float = 5.0,
+        trim_kde: bool = False,
+        kde_bw: Union[float, str] = "scott",
+    ) -> PlotResult:
+        unfolded = self.vals
+        return _brody_fit(
+            unfolded=unfolded,
+            method=method,
+            title=title,
+            mode=mode,
+            outfile=outfile,
+            save_dpi=save_dpi,
+            ensembles=ensembles,
+            bins=bins,
+            kde=kde,
+            trim=trim,
+            trim_kde=trim_kde,
+            kde_bw=kde_bw,
+        )
 
     def ensemble_compare(
         self,

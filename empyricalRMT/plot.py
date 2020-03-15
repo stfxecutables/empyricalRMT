@@ -18,7 +18,7 @@ from typing import Any, List, Optional, Tuple, Union
 from typing_extensions import Literal
 from warnings import warn
 
-from empyricalRMT.brody import brody_dist, fit_brody
+from empyricalRMT.brody import brody_dist, brody_fit_evaluate, fit_brody
 from empyricalRMT.ensemble import Poisson, GOE
 from empyricalRMT.observables.step import _step_function_fast
 from empyricalRMT.utils import make_parent_directories
@@ -454,10 +454,9 @@ def _spacings(
         that distribution.
 
     brody_fit: "spacing" | "mle"
-        Method for parametric distribution fitting of the Brody distribution to
-        the data. If "spacing", use
+        Method for estimating parameter of the Brody distribution. If "spacing", use
         [maximum spacing estimation](https://en.wikipedia.org/wiki/Maximum_spacing_estimation).
-        If "mle", use the maximum likelihood method. The default is "spacing",
+        If "mle", use maximum likelihood. The default is "spacing",
         as this may be preferable for the J-shape of the Brody distribution.
 
     title: string
@@ -554,6 +553,58 @@ def _spacings(
     axes.legend().set_visible(True)
 
     return _handle_plot_mode(mode, fig, axes, outfile)
+
+
+def _brody_fit(
+    unfolded: ndarray,
+    method: str = "spacing",
+    title: str = "Brody distribution fit",
+    mode: PlotMode = "block",
+    outfile: Path = None,
+    save_dpi: int = None,
+    ensembles: List[str] = ["goe", "poisson"],
+    bins: int = 50,
+    kde: bool = True,
+    trim: float = 5.0,
+    trim_kde: bool = False,
+    kde_bw: Union[float, str] = "scott",
+) -> PlotResult:
+    _configure_sbn_style()
+    fig, axes = plt.subplots(1, 2, sharex=True, sharey=True)
+    _spacings(
+        unfolded=unfolded,
+        bins=bins,
+        kde=kde,
+        trim=trim,
+        trim_kde=trim_kde,
+        kde_bw=kde_bw,
+        brody=True,
+        brody_fit=method,
+        title="Brody distribution fit: density",
+        mode="return",
+        ensembles=ensembles,
+        fig=fig,
+        axes=axes[0],
+    )
+    spacings = np.diff(unfolded)
+    s = spacings[spacings > 0]
+    res = brody_fit_evaluate(s, method=method)
+    x = res["spacings"]
+    ecdf, bcdf = res["ecdf"], res["brody_cdf"]
+    ax = axes.flat[1]
+    ax_e = ax.plot(x, ecdf)
+    plt.setp(ax_e, label="Empirical CDF")
+    ax_b = ax.plot(x, bcdf)
+    plt.setp(ax_b, label="Brody CDF", color="#9d0000", linestyle="--")
+    if "goe" in ensembles:
+        ax_goe = ax.plot(x, GOE.nnsd_cdf(spacings=x))
+        plt.setp(ax_goe, label="GOE", color="#FD8208")
+    if "poisson" in ensembles:
+        ax_poi = ax.plot(x, Poisson.nnsd_cdf(spacings=x))
+        plt.setp(ax_poi, label="Poisson", color="#08FD4F")
+    ax.legend().set_visible(True)
+    ax.set_title("Brody distribution fit: cumulative density")
+    return _handle_plot_mode(mode, fig, axes, outfile, save_dpi)
 
 
 def _next_spacings(
