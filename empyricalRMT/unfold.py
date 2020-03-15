@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -308,6 +309,8 @@ class Unfolded(EigVals):
         mode: PlotMode = "block",
         outfile: Path = None,
         ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
+        fig: plt.Figure = None,
+        axes: plt.Axes = None,
     ) -> PlotResult:
         """Plots a histogram of the Nearest-Neighbors Spacing Distribution
 
@@ -365,6 +368,14 @@ class Unfolded(EigVals):
         ensembles: ["poisson", "goe", "gue", "gse"]
             Which ensembles to display the expected spectral rigidity curves for comparison against.
 
+        fig: Figure
+            If provided with `axes`, configure plotting with the provided `fig`
+            object instead of creating a new figure. Useful for creating subplots.
+
+        axes: Axes
+            If provided with `fig`, plot to the provided `axes` object. Useful for
+            creating subplots.
+
 
         Returns
         -------
@@ -384,6 +395,8 @@ class Unfolded(EigVals):
             mode=mode,
             outfile=outfile,
             ensembles=ensembles,
+            fig=fig,
+            axes=axes,
         )
 
     def plot_next_nnsd(
@@ -398,6 +411,8 @@ class Unfolded(EigVals):
         mode: PlotMode = "block",
         outfile: Path = None,
         ensembles: List[str] = ["goe", "poisson"],
+        fig: plt.Figure = None,
+        axes: plt.Axes = None,
     ) -> PlotResult:
         """Plots a histogram of the next Nearest-Neighbors Spacing Distribution
 
@@ -452,6 +467,14 @@ class Unfolded(EigVals):
         ensembles: List["poisson", "goe"]
             Which ensembles to display the expected next-NNSD curves for.
 
+        fig: Figure
+            If provided with `axes`, configure plotting with the provided `fig`
+            object instead of creating a new figure. Useful for creating subplots.
+
+        axes: Axes
+            If provided with `fig`, plot to the provided `axes` object. Useful for
+            creating subplots.
+
 
         Returns
         -------
@@ -470,6 +493,8 @@ class Unfolded(EigVals):
             mode=mode,
             outfile=outfile,
             ensembles=ensembles,
+            fig=fig,
+            axes=axes,
         )
 
     def plot_nnnsd(self, *args: Any, **kwargs: Any) -> PlotResult:
