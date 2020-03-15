@@ -485,7 +485,8 @@ def _spacings(
     """
     _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
-    _spacings = np.sort(unfolded[1:] - unfolded[:-1])
+    unfolded = np.sort(unfolded)  # solve issues where flexible smoothers cause reversals
+    _spacings = np.diff(unfolded)
     all_spacings = np.copy(_spacings)
     if trim > 0.0:
         _spacings = _spacings[_spacings <= trim]

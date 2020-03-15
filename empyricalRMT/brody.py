@@ -17,10 +17,15 @@ def brody_dist(s: ndarray, beta: float) -> ndarray:
 
 
 def log_brody(s: ndarray, beta: float) -> ndarray:
-    """Just a helper re-written to prevent overflows"""
+    """Just a helper re-written to prevent overflows and filter negative spacings"""
     b1 = beta + 1.0
     alpha = gamma((beta + 2.0) / b1) ** b1
-    return np.log(b1 * alpha) + beta * np.log(s) - alpha * s ** b1
+    s = s[s > 0.0]
+    # the lines below are separate for better logging of underflow issues
+    t1 = np.log(b1 * alpha)
+    t2 = beta * np.log(s)
+    t3 = alpha * s ** b1
+    return np.sum([t1, t2, t3])
 
 
 def fit_brody(s: ndarray) -> float:
@@ -38,7 +43,7 @@ def fit_brody(s: ndarray) -> float:
     """
     # use negative log-likelihood because we want to minimize
     log_like = lambda beta: -np.sum(log_brody(s, beta))
-    opt_result = minimize_scalar(log_like, bounds=(1e-10, 1.0), method="Bounded")
+    opt_result = minimize_scalar(log_like, bounds=(1e-5, 1.0 - 1e-5), method="Bounded")
     if not opt_result.success:
         raise RuntimeError("Optimizer failed to find optimal Brody fit.")
     return float(opt_result.x)
