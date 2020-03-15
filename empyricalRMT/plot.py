@@ -493,7 +493,9 @@ def _spacings(
     """
     _configure_sbn_style()
     fig, axes = _setup_plotting(fig, axes)
-    unfolded = np.sort(unfolded)  # solve issues where flexible smoothers cause reversals
+    unfolded = np.sort(
+        unfolded
+    )  # solve issues where flexible smoothers cause reversals
     _spacings = np.diff(unfolded)
     all_spacings = np.copy(_spacings)
     if trim > 0.0:
@@ -1095,6 +1097,7 @@ def _kde_plot(
     inconsistent behaviours like https://github.com/mwaskom/seaborn/issues/938
     and https://github.com/mwaskom/seaborn/issues/796
     """
+    values = values[values > 0]  # prevent floating-point bad behaviour
     kde = KDE(values)
     # kde.fit(kernel="gau", bw="scott", cut=0)
     kde.fit(kernel="gau", bw=bw, cut=0)
