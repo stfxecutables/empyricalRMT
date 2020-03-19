@@ -108,10 +108,10 @@ class Eigenvalues(EigVals):
     def from_time_series(
         cls: Type[Eigens],
         data: ndarray,
+        covariance: bool = True,
         trim_zeros: bool = True,
-        zeros: Union[float, Literal["heuristic"], Literal["negative"]] = "heuristic",
+        zeros: Union[float, Literal["negative"]] = "negative",
         time_axis: int = 1,
-        ddof: int = 0,
         use_sparse: bool = False,
         **sp_args: Any,
     ) -> Eigens:
@@ -123,21 +123,24 @@ class Eigenvalues(EigVals):
         data: ndarray
             A 2-dimensional matrix of time-series data.
 
+        covariance: bool
+            If True (default) compute the eigenvalues of the covariance matrix.
+            If False, use the correlation matrix.
+
         trim_zeros: bool
             If True (default) only return eigenvalues greater than `zeros`
             (e.g. remove values that are likely unstable or actually zero due
             to floating point precision limitations).
 
         zeros: float
-            - If a float, The smallest acceptable value for an eigenvalue not to
-              be considered zero.
-            - If "heuristic", trim according to:
-                1. find the magnitude of the largest *negative* eigenvalue (these
-                   values are impossible, since correlation matrices are positive
-                   definite), and call this `e_min`
-                2. If there are no negative eigenvalues, set `e_min = 100*eps`, where
-                   `eps` is machine epsilon, i.e. `np.finfo(float).eps`
-                3. only return eigenvalues greater than 10 times `e_min`
+            If a float, The smallest acceptable value for an eigenvalue not to
+            be considered zero.
+            If "negative", trim invalid negative eigenvalues (e.g. because
+            coviarance and correlation matrices are positive semi-definite)
+            If "heuristic", trim away eigenvalues likely to be unstable:
+                - if computed eigenvaleus are `eigs`, and if `emin = eigs.min()`,
+                  `emin < 0`, then trim to `eigs[eigs > 100 * np.abs(emin)]
+                - if emin >= 0, trim to `eigs[eigs > 0]`
 
         time_axis: int
             If 0, assumes the data.shape == (n, T), where n is the number of
@@ -168,24 +171,30 @@ class Eigenvalues(EigVals):
         if time_axis == 0:
             data = data.T
 
-        corrs = correlate_fast(data, ddof=ddof)
-        if use_sparse:
-            corrs = sparse.tril(corrs)
-            if sp_args.get("return_eigenvectors") is True:
-                raise ValueError(
-                    "This function is intended only as a helper to extract eigenvalues from time-series."
-                )
+        N, T = data.shape
+        M, eigs = None, None
+        if N <= T:  # no benefit from intermediate transposition
+            M = np.cov(data, ddof=1) if covariance else correlate_fast(data, ddof=1)
+            if use_sparse:
+                M = sparse.tril(M)
+                if sp_args.get("return_eigenvectors") is True:
+                    raise ValueError(
+                        "This function is intended only as a helper to extract eigenvalues from time-series."
+                    )
 
-            eigs = sparse.linalg.eigsh(corrs, **sp_args)
-        eigs = np.linalg.eigvalsh(corrs)
+                eigs = sparse.linalg.eigsh(M, **sp_args)
+            else:
+                eigs = np.linalg.eigvalsh(M)
+        else:
+            eigs = _eigs_via_transpose(data, covariance=covariance)
 
         if trim_zeros:
             if zeros == "heuristic":
                 e_min = eigs.min()
-                if e_min > 0:
-                    e_min = np.finfo(float).eps * 100
-                e_min = np.abs(e_min)
-                eigs = eigs[eigs > (10 * e_min)]
+                minval = 0
+                if e_min <= 0:
+                    minval = -100 * e_min
+                eigs = eigs[eigs > minval]
             elif zeros == "negative":
                 eigs = eigs[eigs > 0]
             else:
@@ -704,3 +713,94 @@ class Eigenvalues(EigVals):
 
         unfolded = np.sort(np.vectorize(smooth_goe)(eigs))
         return Unfolded(originals=eigs, unfolded=unfolded)
+
+
+def _eigs_via_transpose(
+    M: ndarray, covariance: bool = True, use_sparse: bool = False, **sp_args: Any
+) -> ndarray:
+    """Use transposes to rapidly compute eigenvalues of covariance and
+    correlation matrices.
+
+    Parameters
+    ----------
+    M: ndarray
+        A time-series array with shape (N, T) such that N > T. (If N <= T, no
+        benefits are gained from transposed intermediates, so the eigenvalues
+        are simply computed in the normal fashion).
+
+    Returns
+    -------
+    eigs: ndarray
+        The computed eigenvalues.
+
+    Notes
+    -----
+    # Covariance Matrices
+
+    if:
+
+        (n, p) = X.shape, n > p, AND
+        norm(X) = X - np.mean(X, axis=1, keepdims=True),
+        Z = norm(X)
+
+    then:
+
+        np.cov(X)  == np.matmul(norm(X), norm(X).T) / (p - 1)
+                   == r * Z * Z.T,   if   r = 1/(1-p)
+
+    Now, it then follows that:
+
+        eigs(np.cov(X))  ==  eigs(r Z * Z.T)
+                         == r * eigs(Z * Z.T)
+
+    But the nonzero eigenvalues of Z*Z.T are exactly those of Z.T*Z. Thus:
+
+        eigs_nz(np.cov(X))  == r * eigs(Z.T * Z)
+
+    which can be computed extremely quickly if p << n
+
+    # Correlation Matrices
+
+    Keeping X, n, p, r the same as above, and letting C = corr(X), and
+
+        stand(X) = (X - np.mean(X, axis=1, keepdims=True)) / np.std(X, axis=1, ddof=1, keepdims=True)
+                 = norm(X) / np.std(X, axis=1, ddof=1, keepdims=True)
+
+    we have:
+
+        corr(X) == np.cov(stand(X))
+
+    but then since norm(stand(X)) = stand(X), if we let Y = stand(X), Z = norm(Y)
+
+        eigs(corr(X)) == eigs(np.cov(stand(X)))
+                      == eigs(np.cov(Y))
+
+    Now, as above, it then follows that:
+
+        eigs_nz(corr(X)) == r * eigs(Z.T*Z)
+                         == r * eigs(Y.T*Y)
+
+    """
+    N, T = M.shape
+    if N <= T:
+        raise ValueError(
+            "Array is not of correct shape to benefit from transposed intermediated."
+        )
+    r = 1 / (T - 1)
+    Z = M - np.mean(M, axis=1, keepdims=True)
+    if not covariance:
+        Z /= np.std(M, axis=1, ddof=1, keepdims=True)
+    M = np.matmul(Z.T, r * Z)
+
+    if use_sparse:
+        M = sparse.tril(M)
+        if sp_args.get("return_eigenvectors") is True:
+            raise ValueError(
+                "This function is intended only as a helper to extract eigenvalues from time-series."
+            )
+
+        eigs = sparse.linalg.eigsh(M, **sp_args)
+    else:
+        eigs = np.linalg.eigvalsh(M)
+
+    return eigs

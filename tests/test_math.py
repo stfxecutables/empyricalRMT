@@ -7,6 +7,8 @@ from scipy.integrate import simps, trapz
 from typing import Any
 
 from empyricalRMT.construct import _generate_GOE_tridiagonal, generate_eigs
+from empyricalRMT.correlater import correlate_fast
+from empyricalRMT.eigenvalues import _eigs_via_transpose as eigv
 from empyricalRMT.observables.rigidity import (
     _slope,
     _intercept,
@@ -294,3 +296,22 @@ def test_tridiag() -> None:
         generate_eigs(size)
         duration = time.time() - start
         print(f"Time for normal (N = {size}): {duration}")
+
+
+@pytest.mark.fast
+@pytest.mark.math
+def test_transpose_trick() -> None:
+    # test for correlation
+    for _ in range(10):
+        A = np.random.standard_normal([1000, 250])
+        eigs = np.linalg.eigvalsh(correlate_fast(A, ddof=1))[-250:]
+        eigsT = eigv(A, covariance=False)
+        assert np.allclose(eigs, eigsT)
+
+    # test for covariance
+    ddof = 1
+    for _ in range(10):
+        A = np.random.standard_normal([1000, 250])
+        eigs = np.linalg.eigvalsh(np.cov(A, ddof=ddof))[-250:]
+        eigsT = eigv(A, covariance=True)
+        assert np.allclose(eigs, eigsT)
