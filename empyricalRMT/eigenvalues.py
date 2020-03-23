@@ -784,7 +784,7 @@ def _eigs_via_transpose(
     N, T = M.shape
     if N <= T:
         raise ValueError(
-            "Array is not of correct shape to benefit from transposed intermediated."
+            "Array is not of correct shape to benefit from transposed intermediates."
         )
     r = 1 / (T - 1)
     Z = M - np.mean(M, axis=1, keepdims=True)
