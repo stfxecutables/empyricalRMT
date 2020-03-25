@@ -29,7 +29,7 @@ setup(
     author="Derek Berger",
     maintainer="Derek Berger",
     author_email="dmberger.dev@gmail.com",
-    version="0.3.dev1",
+    version="0.4.0",
     description="Eigenvalue unfolding and spectral observable computation",
     url="https://github.com/stfxecutables/empyricalRMT",
     license="MIT",
