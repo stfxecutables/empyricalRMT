@@ -416,7 +416,7 @@ class Eigenvalues(EigVals):
         n_series: int = None,
         largest: bool = True,
         use_shifted: bool = True,
-    ) -> Trimmed:
+    ) -> Tuple[Trimmed, Tuple[float, float]]:
         """Trim to noise eigenvalues under assumption that eigenvalues come from
         correlation matrix.
 
@@ -443,6 +443,9 @@ class Eigenvalues(EigVals):
         -------
         trimmed: Trimmed
             A Trimmed object containing the eigenvalues trimmed according to
+
+        trim_vals: Tuple[float, float]
+            The (trim_min, trim_max) cutpoints.
 
 
         References
@@ -489,16 +492,21 @@ class Eigenvalues(EigVals):
             )
         eig_max = self.vals.max()
         if use_shifted:
-            shift = 1 - eig_max / N
-            trim_max, trim_min = shift * (1 + np.sqrt(N / T)) ** 2
+            shift = 1 - (eig_max / N)
             trim_min = shift * (1 - np.sqrt(N / T)) ** 2
+            trim_max = shift * (1 + np.sqrt(N / T)) ** 2
         else:
             trim_min, trim_max = (1 - np.sqrt(N / T)) ** 2, (1 + np.sqrt(N / T)) ** 2
 
+        trims = (trim_min, trim_max)
+
         if largest:
-            return Trimmed(self.vals[self.vals > trim_max])
+            return Trimmed(self.vals[self.vals > trim_max]), trims
         else:
-            return Trimmed(self.vals[(self.vals > trim_min) & (self.vals < trim_max)])
+            return (
+                Trimmed(self.vals[(self.vals > trim_min) & (self.vals < trim_max)]),
+                trims,
+            )
 
     def trim_manually(self, start: int, end: int) -> Trimmed:
         """trim sorted eigenvalues to [start:end), e.g. [eigs[start], ..., eigs[end-1]]"""
