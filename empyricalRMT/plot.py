@@ -946,7 +946,7 @@ def _level_number_variance(
         plt.setp(gse, color="#EA00FF")
 
     axes.set(
-        title=f"Level Number Variance - {title} unfolding",
+        title=title,
         xlabel="L",
         ylabel="Sigma^2(L)",
     )
