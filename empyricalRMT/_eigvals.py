@@ -47,7 +47,7 @@ class EigVals:
 
     @property
     def spacings(self) -> ndarray:
-        return self.vals[1:] - self.vals[:-1]
+        return np.diff(np.sort(self.vals))
 
     def step_function(self, x: ndarray) -> ndarray:
         return _step_function_fast(eigs=self.vals, x=x)
