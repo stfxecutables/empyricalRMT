@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/203210713.svg)](https://zenodo.org/badge/latestdoi/203210713)
+
 # Introduction
 
 A python library for investigating some of the basic / classical elements of
