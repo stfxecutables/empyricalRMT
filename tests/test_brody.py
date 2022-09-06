@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.construct import generate_eigs
-from empyricalRMT.plot import PlotMode, _handle_plot_mode, _configure_sbn_style
+from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.plot import PlotMode, _configure_sbn_style, _handle_plot_mode
 
 
 @pytest.mark.fast
@@ -47,7 +47,6 @@ def test_brody_plot() -> None:
     mode: PlotMode = "test"
     ensembles = ["goe", "poisson"]
     for N in [100, 250, 500, 1000]:
-        _configure_sbn_style()
         fig, axes = plt.subplots(2, 2)
         for i in range(4):
             eigs = generate_eigs(N)
@@ -63,7 +62,6 @@ def test_brody_plot() -> None:
         _handle_plot_mode(mode, fig, axes)
 
     # test time series
-    _configure_sbn_style()
     fig, axes = plt.subplots(2, 2)
     for i in range(4):
         eigs = np.linalg.eigvalsh(np.corrcoef(np.random.standard_normal([1000, 250])))
@@ -79,7 +77,6 @@ def test_brody_plot() -> None:
         )
     _handle_plot_mode(mode, fig, axes)
 
-    _configure_sbn_style()
     fig, axes = plt.subplots(2, 2)
     for i in range(4):
         eigs = np.linalg.eigvalsh(np.corrcoef(np.random.standard_normal([1000, 250])))
@@ -95,7 +92,6 @@ def test_brody_plot() -> None:
         )
     _handle_plot_mode(mode, fig, axes)
 
-    _configure_sbn_style()
     fig, axes = plt.subplots(2, 2)
     for i in range(4):
         eigs = np.linalg.eigvalsh(np.corrcoef(np.random.standard_normal([1000, 250])))
@@ -112,7 +108,6 @@ def test_brody_plot() -> None:
         )
     _handle_plot_mode(mode, fig, axes)
 
-    _configure_sbn_style()
     fig, axes = plt.subplots(2, 2)
     for i in range(4):
         eigs = np.linalg.eigvalsh(np.corrcoef(np.random.standard_normal([1000, 250])))

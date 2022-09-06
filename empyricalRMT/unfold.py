@@ -1,33 +1,26 @@
+from pathlib import Path
+from typing import Any, Callable, List, Optional, Tuple, Type, Union
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from numpy import ndarray
 from pandas import DataFrame
-from pathlib import Path
 from statsmodels.distributions.empirical_distribution import ECDF
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
-from typing import Any, Callable, List, Optional, Tuple, Type, Union
 from typing_extensions import Literal
 
 import empyricalRMT.plot as plot
-
 from empyricalRMT._eigvals import EigVals
+from empyricalRMT._validate import make_1d_array
 from empyricalRMT.brody import brody_cdf, brody_fit_evaluate
-from empyricalRMT.compare import Metric, Compare
+from empyricalRMT.compare import Compare, Metric
 from empyricalRMT.ensemble import Ensemble
 from empyricalRMT.observables.levelvariance import level_number_variance_stable
 from empyricalRMT.observables.rigidity import spectral_rigidity
-from empyricalRMT.plot import (
-    _brody_fit,
-    _next_spacings,
-    _observables,
-    _spacings as _plot_spacings,
-    _unfolded_fit,
-    PlotMode,
-    PlotResult,
-)
-from empyricalRMT._validate import make_1d_array
+from empyricalRMT.plot import PlotMode, PlotResult, _brody_fit, _next_spacings, _observables
+from empyricalRMT.plot import _spacings as _plot_spacings
+from empyricalRMT.plot import _unfolded_fit
 
 Observables = Literal["nnsd", "nnnsd", "rigidity", "levelvar"]
 
@@ -295,12 +288,8 @@ class Unfolded(EigVals):
         in both directions.
         """
 
-        def compare(
-            expected: ndarray, curve: ndarray, name: str, metric: Metric
-        ) -> np.float64:
-            comp = Compare(
-                curves=[curve], labels=[name], base_curve=expected, base_label="exp"
-            )
+        def compare(expected: ndarray, curve: ndarray, name: str, metric: Metric) -> np.float64:
+            comp = Compare(curves=[curve], labels=[name], base_curve=expected, base_label="exp")
             res = None
             if metric == "mad":
                 res = comp.mean_abs_difference()
@@ -309,16 +298,12 @@ class Unfolded(EigVals):
             elif metric == "corr":
                 res = comp.correlate()
             else:
-                raise ValueError(
-                    "Invalid metric. Must be one of ['mad', 'msqd', 'corr']."
-                )
+                raise ValueError("Invalid metric. Must be one of ['mad', 'msqd', 'corr'].")
             return np.float64(res["exp"][name])
 
         df = pd.DataFrame(index=metrics, columns=observables)
         if "nnsd" in observables:
-            nnsd = self.__get_kde_values(
-                spacings_range=spacings, kde_gridsize=kde_gridsize
-            )
+            nnsd = self.__get_kde_values(spacings_range=spacings, kde_gridsize=kde_gridsize)
             nnsd_exp = ensemble.nnsd(spacings_range=spacings, n_points=kde_gridsize)
             for metric in metrics:
                 df["nnsd"][metric] = compare(nnsd_exp, nnsd, "nnsd", metric)
@@ -332,24 +317,16 @@ class Unfolded(EigVals):
                 df["nnnsd"][metric] = compare(nnnsd_exp, nnnsd, "nnnsd", metric)
 
         if "rigidity" in observables:
-            rigidity = self.spectral_rigidity(
-                L=L_rigidity, show_progress=show_progress
-            )["delta"]
+            rigidity = self.spectral_rigidity(L=L_rigidity, show_progress=show_progress)["delta"]
             rigidity_exp = ensemble.spectral_rigidity(L=L_rigidity)
             for metric in metrics:
-                df["rigidity"][metric] = compare(
-                    rigidity_exp, rigidity, "rigidity", metric
-                )
+                df["rigidity"][metric] = compare(rigidity_exp, rigidity, "rigidity", metric)
 
         if "levelvar" in observables:
-            levelvar = self.level_variance(L=L_levelvar, show_progress=show_progress)[
-                "sigma"
-            ]
+            levelvar = self.level_variance(L=L_levelvar, show_progress=show_progress)["sigma"]
             levelvar_exp = ensemble.level_variance(L=L_levelvar)
             for metric in metrics:
-                df["levelvar"][metric] = compare(
-                    levelvar_exp, levelvar, "levelvar", metric
-                )
+                df["levelvar"][metric] = compare(levelvar_exp, levelvar, "levelvar", metric)
         return df
 
     def plot_fit(
@@ -358,9 +335,7 @@ class Unfolded(EigVals):
         mode: PlotMode = "block",
         outfile: Path = None,
     ) -> PlotResult:
-        return _unfolded_fit(
-            self.original_eigs, self.vals, title=title, mode=mode, outfile=outfile
-        )
+        return _unfolded_fit(self.original_eigs, self.vals, title=title, mode=mode, outfile=outfile)
 
     def plot_nnsd(
         self,
@@ -577,6 +552,7 @@ class Unfolded(EigVals):
         outfile: Path = None,
         ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
         show_progress: bool = True,
+        **kwargs,
     ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
         """Compute and plot the spectral rigidity.
 
@@ -646,6 +622,7 @@ class Unfolded(EigVals):
             mode,
             outfile,
             ensembles,
+            **kwargs,
         )
         return L, delta, plot_result
 
@@ -803,9 +780,7 @@ class Unfolded(EigVals):
         rigidity = self.spectral_rigidity(
             L=rigidity_L, c_iters=rigidity_iters, show_progress=show_progress
         )
-        levelvar = self.level_variance(
-            L=levelvar_L, show_progress=show_progress, **levelvar_kwargs
-        )
+        levelvar = self.level_variance(L=levelvar_L, show_progress=show_progress, **levelvar_kwargs)
         return _observables(
             eigs=self.original_eigs,
             unfolded=self.vals,
@@ -824,7 +799,7 @@ class Unfolded(EigVals):
         kde_gridsize: int = 1000,
     ) -> np.array:
         """Fit / derive the KDE using the entire set of unfolded values, but
-        evaluating only over the given `spacings_range`. """
+        evaluating only over the given `spacings_range`."""
         spacings = np.sort(self.vals[2:] - self.vals[:-2]) if nnnsd else self.spacings
         kde = KDE(spacings)
         kde.fit(kernel="gau", bw="scott", cut=0, fft=False, gridsize=10000)

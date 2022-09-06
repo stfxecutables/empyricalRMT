@@ -1,12 +1,27 @@
 import ctypes
-import numpy as np
-from numpy import ndarray
-
-from colorama import Fore
+import sys
+import traceback
+from dataclasses import dataclass
 from multiprocessing import Array, Process
-from numba import jit, prange
-from progressbar import AdaptiveETA, AnimatedMarker, Percentage, ProgressBar, Timer
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
+
+import numpy as np
+from numba import float32, int32, jit, prange
+from numba.extending import as_numba_type
+from numpy import ndarray
+from tqdm.contrib.concurrent import process_map
+
+PyInt = as_numba_type(int)
+PyFloat = as_numba_type(float)
+
+
+@dataclass
+class ParallelArgs:
+    unfolded: ndarray
+    L: float
+    c: ndarray
+    min_iters: int
+    tol: float
 
 
 def level_number_variance(
@@ -125,6 +140,8 @@ def level_number_variance_stable(
     max_L_iters: int,
     min_L_iters: int,
     show_progress: bool,
+    ignore_errors: bool = False,
+    seed: int = None,
 ) -> Tuple[ndarray, ndarray]:
     """Compute the level number variance of the current unfolded eigenvalues.
 
@@ -147,6 +164,12 @@ def level_number_variance_stable(
     show_progress: bool
         Whether or not to display computation progress in stdout.
 
+    ignore_errors: bool = False
+        If True, allow NaNs in returned sigma values.
+
+    seed: Optional[int] = None
+        Seed for rng uniform c integration values.
+
     Returns
     -------
     L_vals: ndarray
@@ -155,13 +178,6 @@ def level_number_variance_stable(
     sigma: ndarray
         The computed number level variance values.
     """
-    if show_progress:
-        # see https://stackoverflow.com/a/9754423, https://stackoverflow.com/a/7908612
-        # here we make the numpy arrays share the same memory
-        shared = Array(ctypes.c_uint64, 1)
-        progress = np.frombuffer(shared.get_obj())
-        update = Process(target=_update_progress, args=(shared, len(L)))
-        update.start()
 
     L_vals, sigma = _sigma_iter_converge(
         unfolded=unfolded,
@@ -169,23 +185,23 @@ def level_number_variance_stable(
         tol=tol,
         max_L_iters=max_L_iters,
         min_L_iters=min_L_iters,
-        progress=progress if show_progress else None,
+        progress=show_progress,
+        ignore_errors=ignore_errors,
+        seed=seed,
     )
-    if show_progress:
-        progress[0] = len(L)  # ensure finish in case increments are non-atomic
-        update.join()
 
     return L_vals, sigma
 
 
-@jit(nopython=True, cache=True, fastmath=True, parallel=True)
 def _sigma_iter_converge(
     unfolded: ndarray,
     L: ndarray,
     tol: float,
     max_L_iters: int,
     min_L_iters: int,
-    progress: ndarray,
+    ignore_errors: bool = False,
+    progress: bool = True,
+    seed: int = None,
 ) -> Tuple[ndarray, ndarray]:
     """Compute the level number variance of the current unfolded eigenvalues.
 
@@ -205,8 +221,14 @@ def _sigma_iter_converge(
     min_L_iters: int
         Minimum number of iterations for each L value.
 
-    progress: bool
+    ignore_errors: bool = False
+        If True, allow NaNs in returned sigma values.
+
+    progress: bool = True
         Whether or not to display computation progress in stdout.
+
+    seed: Optional[int] = None
+        Seed for rng uniform c integration values.
 
     Returns
     -------
@@ -218,37 +240,63 @@ def _sigma_iter_converge(
     """
     # the copy and different variable is needed here in the parallel context
     # https://github.com/numba/numba/issues/3652
-    L_vals = np.copy(L)
+    L_vals = np.copy(L).ravel()
     sigma = np.empty(L_vals.shape, dtype=np.float64)
-    for i in prange(L_vals.shape[0]):
-        # tol_modified = tol + tol * (L[i] / 5.0)
-        tol_modified = tol
-        sigma[i] = _sigma_iter_converge_L(
-            unfolded, L_vals[i], tol_modified, max_L_iters, min_L_iters
-        )
-        if progress is not None:
-            progress[0] += 1
+    rng = np.random.default_rng(seed)
+    mn, mx = np.min(unfolded), np.max(unfolded)
+    cs = [rng.uniform(mn, mx, max_L_iters) for _ in L_vals]
+    args = [
+        ParallelArgs(unfolded=unfolded, L=L, c=cs[i], min_iters=min_L_iters, tol=tol)
+        for i, L in enumerate(L_vals)
+    ]
+
+    sigmas = process_map(_sigma_iter_converge_L_wrapper, args)
+    sigma = np.array(sigmas)
+    if not ignore_errors and (np.sum(np.isnan(sigma)) > 0):
+        raise ValueError("Got NaN values for level number variance.")
     return L_vals, sigma
 
 
-@jit(nopython=True, cache=True, fastmath=True)
+def _sigma_iter_converge_L_wrapper(args: ParallelArgs) -> float:
+    unfolded = args.unfolded
+    L = args.L
+    cs = args.c
+    tol = args.tol
+    min_iters = args.min_iters
+    try:
+        return _sigma_iter_converge_L(
+            unfolded=unfolded,
+            L=L,
+            cs=cs,
+            tol=tol,
+            min_iters=min_iters,
+        )
+    except Exception as e:
+        traceback.print_exc()
+        print(f"Got error: {e}", file=sys.stderr)
+    return np.nan
+
+
+@jit(PyFloat(PyFloat[:], PyFloat, PyFloat[:], PyFloat, PyInt), nopython=True, cache=True)
 def _sigma_iter_converge_L(
-    unfolded: ndarray, L: float, tol: float, max_iters: int, min_iters: int
-) -> Any:
+    unfolded: ndarray, L: float, cs: ndarray, tol: float, min_iters: int
+) -> float:
     """Compute the level number variance of the current unfolded eigenvalues.
 
     Parameters
     ----------
+    unfolded: ndarray
+        Array of unfolded eigenvalues
+
     L: float
         The current L value to use for computation.
+
+    cs: ndarray
+        Array of random, uniformly-sampled c-values used to integrate
 
     tol: float
         Stop iterating when the last `min_iters` computed values of the
         level variance have a range (i.e. max - min) < tol
-
-    max_iters: int
-        Stop computing values for the level variance once max_iters values
-        have been computed
 
     min_iters: int
         Minimum number of iterations
@@ -269,11 +317,11 @@ def _sigma_iter_converge_L(
     """
     level_mean = 0.0
     level_sq_mean = 0.0
-    sigma = 0.0
+    sigma: float = 0.0
     size = min_iters
     sigmas = np.zeros((size), dtype=np.float64)  # hold the last `size` running averages
 
-    c = np.random.uniform(np.min(unfolded), np.max(unfolded))
+    c = cs[0]
     start, end = c - L / 2, c + L / 2
     n_within = len(unfolded[(unfolded >= start) & (unfolded <= end)])
     n_within_sq = n_within * n_within
@@ -286,7 +334,7 @@ def _sigma_iter_converge_L(
     k = 0
     while True:
         k += 1
-        c = np.random.uniform(np.min(unfolded), np.max(unfolded))
+        c = cs[k]
         start, end = c - L / 2, c + L / 2
         n_within = len(unfolded[(unfolded >= start) & (unfolded <= end)])
         n_within_sq = n_within * n_within
@@ -294,30 +342,9 @@ def _sigma_iter_converge_L(
         level_sq_mean = (k * level_sq_mean + n_within_sq) / (k + 1)
         sigma = level_sq_mean - level_mean * level_mean
         sigmas[k % size] = sigma
-        if np.abs(np.max(sigmas) - np.min(sigmas)) < tol and k > min_iters:
+        if k > min_iters and np.abs(np.max(sigmas) - np.min(sigmas)) < tol:
             break
-        if k > max_iters:
+        if k >= len(cs):
             break
 
     return sigma
-
-
-def _update_progress(shared: Array, N: int) -> None:
-    pbar_widgets = [
-        f"{Fore.GREEN}Computing level variance: {Fore.RESET}",
-        f"{Fore.BLUE}",
-        Percentage(),
-        f" {Fore.RESET}",
-        " ",
-        Timer(),
-        f" {Fore.YELLOW}",
-        AnimatedMarker(),
-        f"{Fore.RESET}",
-    ]
-    pbar = ProgressBar(widgets=pbar_widgets, maxval=N).start()
-    progress = np.frombuffer(shared.get_obj())
-    done = int(progress[0])
-    while done < N:  # type: ignore
-        done = int(progress[0])
-        pbar.update(done)
-    pbar.finish()

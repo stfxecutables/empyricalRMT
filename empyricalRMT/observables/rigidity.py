@@ -1,13 +1,25 @@
-import numpy as np
-from numpy import ndarray
-
-from colorama import Fore
-from numba import jit, prange
-from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
+import sys
+import traceback
+from dataclasses import dataclass
 from typing import Tuple
+
+import numpy as np
+from numba import jit, prange
+from numpy import ndarray
+from numpy.random import Generator, SeedSequence, default_rng
+from tqdm.contrib.concurrent import process_map
 from typing_extensions import Literal
 
 from empyricalRMT.observables.step import _step_function_fast
+
+
+@dataclass
+class ParallelArgs:
+    unfolded: ndarray
+    rng: Generator
+    L: float
+    gridsize: int
+    use_simpson: bool
 
 
 # spectral rigidity ∆3
@@ -45,6 +57,7 @@ def spectral_rigidity(
     c_iters: int = 10000,
     integration: Literal["simps", "trapz"] = "simps",
     show_progress: bool = True,
+    seed: int = None,
 ) -> Tuple[ndarray, ndarray]:
     """Compute the spectral rigidity for a particular unfolding.
 
@@ -106,49 +119,27 @@ def spectral_rigidity(
     ----------
     .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier
     """
-    L_vals = np.copy(L)
-    L_grid_size = len(L_vals)
+    L_vals = np.copy(L).ravel()
     delta3 = np.zeros(L_vals.shape)
-    if show_progress:
-        pbar_widgets = [
-            f"{Fore.GREEN}Computing spectral rigidity: {Fore.RESET}",
-            f"{Fore.BLUE}",
-            Percentage(),
-            f" {Fore.RESET}",
-            " ",
-            Timer(),
-            f"|{Fore.YELLOW}",
-            AdaptiveETA(),
-            f"{Fore.RESET}",
-        ]
-        pbar = ProgressBar(widgets=pbar_widgets, maxval=L_vals.shape[0]).start()
-    for i, L in enumerate(L_vals):
-        delta3_L_vals = np.empty((c_iters))
-        if integration == "trapz":
-            _spectral_iter(
-                unfolded, delta3_L_vals, L, c_iters, L_grid_size, use_simpsons=False
-            )
-        else:
-            _spectral_iter(unfolded, delta3_L_vals, L, c_iters, L_grid_size)
-        if len(delta3_L_vals) != c_iters:
-            raise Exception("We aren't computing enough L values")
-        delta3[i] = np.mean(delta3_L_vals)
-        if show_progress:
-            pbar.update(i)
-    if show_progress:
-        pbar.finish()
+    seeds = SeedSequence(seed).spawn(len(L_vals))
+    rngs = [default_rng(s) for s in seeds]
+    args = [
+        ParallelArgs(
+            unfolded=unfolded,
+            rng=rng,
+            L=L,
+            gridsize=c_iters,
+            use_simpson=integration != "trapz",
+        )
+        for rng, L in zip(rngs, L_vals)
+    ]
+    delta3 = np.array(process_map(_spectral_iter, args))
     return L_vals, delta3
 
 
-@jit(nopython=True, fastmath=True, cache=True, parallel=True)
 def _spectral_iter(
-    unfolded: ndarray,
-    delta3_L_vals: ndarray,
-    L: float,
-    c_iters: int = 10000,
-    interval_gridsize: int = 10000,  # does not tend to effect performance significantly
-    use_simpsons: bool = True,
-) -> ndarray:
+    args: ParallelArgs,
+) -> float:
     """Compute c_iters values of L and save them in delta3_L_vals.
 
     Parameters
@@ -170,20 +161,37 @@ def _spectral_iter(
         The number of points for which to evaluate the deviation from a straight
         line on [c - L/2, c + L/2].
     """
-    # make each iteration centred at a random value on the unfolded spectrum
-    starts = np.random.uniform(unfolded[0], unfolded[-1], c_iters)
-    for i in prange(len(starts)):
-        # c_start is in space of unfolded, not unfolded
-        grid = np.linspace(starts[i] - L / 2, starts[i] + L / 2, interval_gridsize)
+    try:
+        return compute_delta(
+            unfolded=args.unfolded,
+            starts=args.rng.uniform(args.unfolded[0], args.unfolded[-1], args.gridsize),
+            L=args.L,
+            gridsize=args.gridsize,
+            use_simpson=args.use_simpson,
+        )
+    except Exception as e:
+        traceback.print_exc()
+        print(f"Got error: {e}", sys.stderr)
+    return np.nan
+
+
+@jit(nopython=True, fastmath=True, cache=True)
+def compute_delta(
+    unfolded: ndarray, starts: ndarray, L: float, gridsize: int, use_simpson: bool
+) -> float:
+    delta3s = np.empty_like(starts)
+    for i, start in enumerate(starts):
+        grid = np.linspace(start - L / 2, start + L / 2, gridsize)
         steps = _step_function_fast(unfolded, grid)  # performance bottleneck
         K = _slope(grid, steps)
         w = _intercept(grid, steps, K)
         y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
-        if use_simpsons:
+        if use_simpson:
             delta3 = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
         else:
             delta3 = _integrate_fast(grid, y_vals)  # O(len(grid))
-        delta3_L_vals[i] = delta3 / L
+        delta3s[i] = delta3 / L
+    return np.mean(delta3s)
 
 
 @jit(nopython=True, fastmath=True, cache=True)
@@ -221,9 +229,7 @@ def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
 # the outer loops. Adding it inside *dramatically* slows performance.
 @jit(nopython=True, fastmath=True, cache=True)
-def _sq_lin_deviation(
-    eigs: ndarray, steps: ndarray, K: float, w: float, grid: ndarray
-) -> ndarray:
+def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: float, w: float, grid: ndarray) -> ndarray:
     """Compute the sqaured deviation of the staircase function of the best fitting
     line, over the region in `grid`.
 
@@ -250,7 +256,7 @@ def _sq_lin_deviation(
         The squared deviations.
     """
     ret = np.empty((len(grid)), dtype=np.float64)
-    for i in prange(len(grid)):
+    for i in range(len(grid)):
         n = steps[i]
         deviation = n - K * grid[i] - w
         ret[i] = deviation * deviation

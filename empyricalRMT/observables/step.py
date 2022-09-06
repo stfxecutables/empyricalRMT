@@ -1,8 +1,8 @@
-import numpy as np
-from numpy import ndarray
-
-from numba import jit, prange
 from typing import Union
+
+import numpy as np
+from numba import jit, prange
+from numpy import ndarray
 
 
 def step_values(eigs: ndarray, x: Union[float, ndarray]) -> Union[float, ndarray]:
