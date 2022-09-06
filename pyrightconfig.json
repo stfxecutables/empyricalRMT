@@ -1,0 +1,23 @@
+{
+    // "include": ["src", "test", "scripts", "tests"],
+    "exclude": [
+        "**/__CACHE__",
+        "**/__MAPPINGS_CACHE__",
+        "**/__pycache__",
+        "**/venv",
+        "**/env",
+        "**/.venv",
+        "**/.env",
+        "**/build"
+    ],
+    "ignore": [
+        "**/__CACHE__",
+        "**/__MAPPINGS_CACHE__",
+        "**/__pycache__",
+        "**/venv",
+        "**/env",
+        "**/.venv",
+        "**/.env",
+        "**/build"
+    ]
+}

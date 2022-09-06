@@ -32,16 +32,15 @@ setup(
     version="0.4.1",
     description="Eigenvalue unfolding and spectral observable computation",
     url="https://github.com/stfxecutables/empyricalRMT",
-    license="MIT",
+    license="",
     long_description=read_file("README.md"),
     long_description_content_type="text/markdown",
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Development Status :: 3 - Alpha",
     ],
     install_requires=read_file("requirements.txt").split("\n"),
-    python_requires=">=3.5",
+    python_requires=">=3.8.5",
     keywords="RMT RandomMatrixTheory spectral observables eigenvalues unfolding",  # noqa E501
 )
