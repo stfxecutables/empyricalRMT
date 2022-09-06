@@ -43,4 +43,4 @@ def test_plot_rigidity(capsys: CaptureFixture) -> None:
     eigs = Eigenvalues(generate_eigs(10000, log=True))
     unfolded = eigs.unfold(smoother="poly", degree=19)
     with capsys.disabled():
-        unfolded.plot_spectral_rigidity(L=np.arange(20, 100, 1), c_iters=20000, mode=PlotMode.Block)
+        unfolded.plot_spectral_rigidity(L=np.arange(20, 100, 1), c_iters=10000, mode=PlotMode.Block)

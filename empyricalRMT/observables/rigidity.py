@@ -1,3 +1,4 @@
+import platform
 import sys
 import traceback
 from dataclasses import dataclass
@@ -11,6 +12,14 @@ from tqdm.contrib.concurrent import process_map
 from typing_extensions import Literal
 
 from empyricalRMT.observables.step import _step_function_fast
+
+# https://en.wikipedia.org/wiki/ANSI_escape_code#C0_control_codes
+if platform.system().lower() == "windows":
+    PROG = "Progress:"
+    PERCENT = "%"
+else:
+    PROG = "\033[2K Progress:"  # clear line
+    PERCENT = "\033[1D%\033[1A"  # go back one to clear space, then up one to undo newline
 
 
 @dataclass
@@ -119,22 +128,66 @@ def spectral_rigidity(
     ----------
     .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier
     """
-    L_vals = np.copy(L).ravel()
+    delta3 = _spectral_iter_numba(
+        unfolded=unfolded,
+        L_vals=L.copy().ravel(),
+        gridsize=c_iters,
+        use_simpson=True,
+    )
+    # L_vals = np.copy(L).ravel()
+    # delta3 = np.zeros(L_vals.shape)
+    # starts = np.random.uniform(unfolded[0], unfolded[-1], (len(L_vals), c_iters))
+    # seeds = SeedSequence(seed).spawn(len(L_vals))
+    # rngs = [default_rng(s) for s in seeds]
+    # args = [
+    #     ParallelArgs(
+    #         unfolded=unfolded,
+    #         rng=rng,
+    #         L=L,
+    #         gridsize=c_iters,
+    #         use_simpson=integration != "trapz",
+    #     )
+    #     for rng, L in zip(rngs, L_vals)
+    # ]
+    # delta3 = np.array(process_map(_spectral_iter, args))
+    return L, delta3
+
+
+@jit(nopython=True, cache=True, parallel=True)
+def _spectral_iter_numba(
+    unfolded: ndarray,
+    L_vals: ndarray,
+    gridsize: int,
+    use_simpson: bool = True,
+    show_progress: bool = True,
+) -> float:
+    prog_interval = len(L_vals) // 50
+    if prog_interval == 0:
+        prog_interval = 1
     delta3 = np.zeros(L_vals.shape)
-    seeds = SeedSequence(seed).spawn(len(L_vals))
-    rngs = [default_rng(s) for s in seeds]
-    args = [
-        ParallelArgs(
-            unfolded=unfolded,
-            rng=rng,
-            L=L,
-            gridsize=c_iters,
-            use_simpson=integration != "trapz",
-        )
-        for rng, L in zip(rngs, L_vals)
-    ]
-    delta3 = np.array(process_map(_spectral_iter, args))
-    return L_vals, delta3
+    starts = np.random.uniform(unfolded[0], unfolded[-1], (len(L_vals), gridsize))
+    # for i in prange(len(L_vals)):
+    for i in prange(len(L_vals)):
+        delta3_cs = np.empty_like(starts[i])
+        L = L_vals[i]
+        for k in range(len(starts[i])):
+            start = starts[i][k]
+            grid = np.linspace(start - L / 2, start + L / 2, gridsize)
+            steps = _step_function_fast(unfolded, grid)  # performance bottleneck
+            K = _slope(grid, steps)
+            w = _intercept(grid, steps, K)
+            y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
+            if use_simpson:
+                delta3_c = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
+            else:
+                delta3_c = _integrate_fast(grid, y_vals)  # O(len(grid))
+            delta3_cs[k] = delta3_c / L
+        delta3[i] = np.mean(delta3_cs)
+
+        if show_progress and i % prog_interval == 0:
+            prog = int(100 * np.sum(delta3 != 0) / len(delta3))
+            print(PROG, prog, PERCENT)
+    return delta3
 
 
 def _spectral_iter(
