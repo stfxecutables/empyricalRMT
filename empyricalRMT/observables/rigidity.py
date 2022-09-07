@@ -11,15 +11,8 @@ from numpy.random import Generator, SeedSequence, default_rng
 from tqdm.contrib.concurrent import process_map
 from typing_extensions import Literal
 
+from empyricalRMT._constants import PERCENT, RIGIDITY_PROG
 from empyricalRMT.observables.step import _step_function_fast
-
-# https://en.wikipedia.org/wiki/ANSI_escape_code#C0_control_codes
-if platform.system().lower() == "windows":
-    PROG = "Progress:"
-    PERCENT = "%"
-else:
-    PROG = "\033[2K Progress:"  # clear line
-    PERCENT = "\033[1D%\033[1A"  # go back one to clear space, then up one to undo newline
 
 
 @dataclass
@@ -153,7 +146,7 @@ def spectral_rigidity(
     return L, delta3
 
 
-@jit(nopython=True, cache=True, parallel=True)
+@jit(nopython=True, cache=False, parallel=True)
 def _spectral_iter_numba(
     unfolded: ndarray,
     L_vals: ndarray,
@@ -186,7 +179,7 @@ def _spectral_iter_numba(
 
         if show_progress and i % prog_interval == 0:
             prog = int(100 * np.sum(delta3 != 0) / len(delta3))
-            print(PROG, prog, PERCENT)
+            print(RIGIDITY_PROG, prog, PERCENT)
     return delta3
 
 

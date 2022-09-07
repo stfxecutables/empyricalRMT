@@ -634,9 +634,9 @@ class Unfolded(EigVals):
         max_L_iters: int = 50000,
         min_L_iters: int = 1000,
         title: str = "Level Number Variance",
-        mode: PlotMode = "block",
+        mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
-        ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
+        ensembles: List[str] = ["goe"],
         show_progress: bool = True,
     ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
         """Compute and plot the level number variance of the current unfolded

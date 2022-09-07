@@ -880,7 +880,7 @@ def _level_number_variance(
     fig, axes = _setup_plotting(fig, axes)
     df = pd.DataFrame(data, columns=["L", "sigma"])
     # sbn.relplot(x="L", y="sigma", data=df, ax=axes)
-    sbn.scatterplot(x="L", y="sigma", data=df, ax=axes)
+    sbn.scatterplot(x="L", y="sigma", data=df, ax=axes, color="black")
     ensembles = set(ensembles)  # type: ignore
 
     # _, right = plt.xlim()
