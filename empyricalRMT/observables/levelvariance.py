@@ -61,7 +61,7 @@ def level_number_variance(
     )
 
 
-@jit(nopython=True, cache=False, parallel=True)
+@jit(nopython=True, cache=False, fastmath=True, parallel=True)
 def compute_sigmas(
     unfolded: NDArray[f64],
     L: NDArray[f64],
@@ -108,7 +108,7 @@ def compute_sigmas(
     # https://github.com/numba/numba/issues/3652
     L_vals = np.copy(L).ravel()
     all_sigmas = np.zeros_like(L_vals)
-    convergences: NDArray[bool_] = np.zeros_like(L_vals, dtype=bool_)
+    converged: NDArray[bool_] = np.zeros_like(L_vals, dtype=bool_)
 
     prog_interval = len(L_vals) // PROG_FREQUENCY
     if prog_interval == 0:
@@ -117,24 +117,24 @@ def compute_sigmas(
     # in each L process / thread. It is OK that the RNG might be cloned here,
     # because the c-values sampled in each process / thread will still be
     # uniformly distributed, and allow for proper integration.
+    if show_progress:
+        print(LEVELVAR_PROG, 0, PERCENT)
     for i in prange(len(L_vals)):
-        levelvar, converged = _sigma_L(
+        all_sigmas[i], converged[i] = _sigma_L(
             unfolded=unfolded,
             L=L_vals[i],
             max_iters=max_L_iters,
             tol=tol,
             min_iters=min_L_iters,
         )
-        all_sigmas[i] = levelvar
-        convergences[i] = converged
         if show_progress and (i % prog_interval == 0):
             prog = int(100 * np.sum(all_sigmas > 0) / len(L_vals))
             print(LEVELVAR_PROG, prog, PERCENT)
 
-    return L_vals, all_sigmas, convergences
+    return L_vals, all_sigmas, converged
 
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False, fastmath=True)
 def _sigma_L(
     unfolded: NDArray[f64],
     L: float,
@@ -199,7 +199,7 @@ def _sigma_L(
 
     # we'll use the fact that for x = [x_0, x_1, ... x_n-1], the
     # average a_k == (k*a_(k-1) + x_k) / (k+1) for k = 0, ..., n-1
-    k = 0
+    k = np.uint64(0)
     while True:
         k += 1
         c = np.random.uniform(mn, mx)
@@ -209,7 +209,7 @@ def _sigma_L(
         level_mean = (k * level_mean + n_within) / (k + 1)
         level_sq_mean = (k * level_sq_mean + n_within_sq) / (k + 1)
         sigma = level_sq_mean - level_mean * level_mean
-        sigmas[k % size] = sigma
+        sigmas[int(k) % size] = sigma
         if k > min_iters and (k % 500 == 0) and (np.abs(np.max(sigmas) - np.min(sigmas)) < tol):
             break
         if k >= max_iters:
