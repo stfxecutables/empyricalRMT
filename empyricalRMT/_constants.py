@@ -16,11 +16,13 @@ DEFAULT_SPLINE_DEGREES = [3]
 # https://en.wikipedia.org/wiki/ANSI_escape_code#C0_control_codes
 if platform.system().lower() == "windows":
     PROG = "Progress:"
+    PROG_FREQUENCY = 20  # Don't print too many lines in Windows
     LEVELVAR_PROG = "Level-variance progress:"
     RIGIDITY_PROG = "Spectral-rigidity progress:"
     PERCENT = "%"
 else:
     PROG = "\033[2KProgress:"  # clear line
+    PROG_FREQUENCY = 50
     LEVELVAR_PROG = "\033[2K Level-variance progress:"
     RIGIDITY_PROG = "\033[2K Spectral-rigidity progress:"
     PERCENT = "\033[1D%\033[1A"  # go back one to clear space, then up one to undo newline

@@ -16,7 +16,7 @@ from empyricalRMT._validate import make_1d_array
 from empyricalRMT.brody import brody_cdf, brody_fit_evaluate
 from empyricalRMT.compare import Compare, Metric
 from empyricalRMT.ensemble import Ensemble
-from empyricalRMT.observables.levelvariance import level_number_variance_stable
+from empyricalRMT.observables.levelvariance import level_number_variance
 from empyricalRMT.observables.rigidity import spectral_rigidity
 from empyricalRMT.plot import PlotMode, PlotResult, _brody_fit, _next_spacings, _observables
 from empyricalRMT.plot import _spacings as _plot_spacings
@@ -144,7 +144,7 @@ class Unfolded(EigVals):
         running averages stabilize, and the final running average is returned.
         """
         unfolded = self.values
-        L, sigma = level_number_variance_stable(
+        L, sigma, convergences = level_number_variance(
             unfolded=unfolded,
             L=L,
             tol=tol,
@@ -152,7 +152,7 @@ class Unfolded(EigVals):
             min_L_iters=min_L_iters,
             show_progress=show_progress,
         )
-        return DataFrame({"L": L, "sigma": sigma})
+        return DataFrame({"L": L, "sigma": sigma, "converged": convergences})
 
     def fit_brody(self, method: str = "spacing") -> DataFrame:
         """Get an estimate for the beta parameter of the Brody distribution fit of the spacings.
@@ -710,7 +710,7 @@ class Unfolded(EigVals):
             )
             return L, sigma, plot_result
 
-        L_vals, sigma = level_number_variance_stable(
+        L_vals, sigma, convergences = level_number_variance(
             unfolded=unfolded,
             L=L,
             tol=tol,

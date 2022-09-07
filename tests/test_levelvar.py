@@ -45,10 +45,11 @@ def test_convergence(capsys: CaptureFixture) -> None:
 def test_levelvar(capsys: CaptureFixture) -> None:
     unfolded = goe_unfolded(5000)
     with capsys.disabled():
-        unfolded.level_variance(
+        df = unfolded.level_variance(
             L=np.arange(0.5, 50, 0.5),
             tol=0.01,
             max_L_iters=int(1e6),
             min_L_iters=1000,
             show_progress=True,
         )
+        print(df)
