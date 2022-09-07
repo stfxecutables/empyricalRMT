@@ -277,6 +277,7 @@ def _spectral_converge_L(
 
     delta_running = np.zeros((buf,))
     k = np.uint64(0)
+    c = 0.0  # compensation (carry-over) term for Kahan summation
     d3_mean = 0.0
     while True:
         if k != 0:  # awkward, want uint64 k
@@ -300,8 +301,16 @@ def _spectral_converge_L(
             k += 1
             continue
         else:
+            # Regular sum
             # d3_mean = (k * d3_mean + d3) / (k + 1)
-            d3_mean += (d3 - d3_mean) / k
+            # d3_mean += (d3 - d3_mean) / k
+
+            # Kahan sum
+            update = (d3 - d3_mean) / k  # mean + update is new mean
+            remainder = update - c
+            lossy = d3_mean + remainder
+            c = (lossy - d3_mean) - remainder
+            d3_mean = lossy
             delta_running[int(k) % buf] = d3_mean
 
         if k >= max_iters:
