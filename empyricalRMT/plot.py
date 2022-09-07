@@ -10,7 +10,9 @@ import pandas as pd
 import seaborn as sbn
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.patches import Rectangle
+from numpy import float64 as f64
 from numpy import ndarray
+from numpy.typing import NDArray
 from scipy.integrate import quad
 from scipy.special import sici
 from scipy.stats import trim_mean
@@ -731,12 +733,13 @@ def _next_spacings(
 
 
 def _spectral_rigidity(
-    unfolded: Optional[ndarray],
+    unfolded: NDArray[f64],
     data: pd.DataFrame,
     title: str = "Spectral Rigidity",
     mode: PlotMode = PlotMode.Block,
     outfile: Path = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
+    show_iters: bool = False,
     fig: plt.Figure = None,
     axes: plt.Axes = None,
     **kwargs: Mapping,
@@ -746,9 +749,6 @@ def _spectral_rigidity(
 
     Parameters
     ----------
-    unfolded: ndarray
-        The unfolded eigenvalues to plot.
-
     data: DataFrame
         `data` argument is pd.DataFrame({"L": L_vals, "delta": delta3})
         TODO: fix this
@@ -770,6 +770,10 @@ def _spectral_rigidity(
     ensembles: ["poisson", "goe", "gue", "gse"]
         Which ensembles to display the expected spectral rigidity curves for comparison against.
 
+    show_iters: bool
+        If True, plot on separate axes number of iterations used to compute
+        each rigidity value.
+
     fig: Figure
         If provided with `axes`, configure plotting with the provided `fig`
         object instead of creating a new figure. Useful for creating subplots.
@@ -787,9 +791,46 @@ def _spectral_rigidity(
         The handles to the matplotlib objects, only if `mode` is "return".
     """
     fig, axes = _setup_plotting(fig, axes)
-    df = pd.DataFrame(data, columns=["L", "delta"])
-    # sbn.relplot(x="L", y="delta", data=df, ax=axes)
-    sbn.scatterplot(x="L", y="delta", data=df, ax=axes, color="black")
+    df = data.copy()
+    if ("L" not in df.columns) or ("delta" not in df.columns):
+        raise RuntimeError("Please pass in a DataFrame with 'L' and 'delta' columns")
+    has_converge_info = "converged" in df.columns
+    if not has_converge_info:
+        df["converged"] = np.ones_like(df.sigma, dtype=bool)
+    df_converged = df.loc[df.converged]
+    df_nonconverged = df.loc[~df.converged]
+    needs_label = has_converge_info and len(df_nonconverged) > 0
+
+    sbn.scatterplot(
+        x="L",
+        y="delta",
+        data=df_converged,
+        ax=axes,
+        color="black",
+        label="converged" if needs_label else None,
+    )
+    sbn.scatterplot(
+        x="L",
+        y="delta",
+        data=df_nonconverged,
+        ax=axes,
+        color="red",
+        marker="X",
+        label="non-converged" if needs_label else None,
+    )
+    if show_iters:
+        ax_iter = axes.twinx()
+        ax_iter.set_yscale("log")
+        sbn.scatterplot(
+            x="L",
+            y="iters",
+            data=df,
+            ax=ax_iter,
+            color="grey",
+            label="iters",
+            marker="*",
+        )
+
     ensembles = set(ensembles)  # type: ignore
 
     # _, right = plt.xlim()

@@ -4,7 +4,9 @@ from typing import Any, Callable, List, Optional, Tuple, Type, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from numpy import float64 as f64
 from numpy import ndarray
+from numpy.typing import NDArray
 from pandas import DataFrame
 from statsmodels.distributions.empirical_distribution import ECDF
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
@@ -54,10 +56,13 @@ class Unfolded(EigVals):
 
     def spectral_rigidity(
         self,
-        L: ndarray = np.arange(2, 50, 0.5),
-        c_iters: int = 10000,
+        L: NDArray[f64] = np.arange(2, 50, 10000),
+        max_iters: int = int(1e6),
+        gridsize: int = 1000,
+        min_iters: int = 1000,
+        tol: float = 0.01,
         integration: Literal["simps", "trapz"] = "simps",
-        show_progress: bool = False,
+        show_progress: bool = True,
     ) -> DataFrame:
         """Compute and the spectral rigidity.
 
@@ -88,14 +93,17 @@ class Unfolded(EigVals):
             df["delta"] contains the computed spectral rigidity values for each of L.
         """
         unfolded = self.values
-        L_vals, delta = spectral_rigidity(
-            unfolded,
-            c_iters=c_iters,
+        L_vals, delta, converged, iters = spectral_rigidity(
+            unfolded=unfolded,
             L=L,
+            gridsize=gridsize,
+            max_iters=max_iters,
+            min_iters=min_iters,
+            tol=tol,
             integration=integration,
             show_progress=show_progress,
         )
-        return pd.DataFrame({"L": L_vals, "delta": delta})
+        return pd.DataFrame({"L": L_vals, "delta": delta, "converged": converged, "iters": iters})
 
     def level_variance(
         self,
@@ -544,13 +552,18 @@ class Unfolded(EigVals):
 
     def plot_spectral_rigidity(
         self,
+        data: Optional[DataFrame] = None,
         L: ndarray = np.arange(2, 50, 0.5),
-        c_iters: int = 10000,
+        max_iters: int = int(1e6),
+        gridsize: int = 1000,
+        min_iters: int = 1000,
+        tol: float = 0.01,
         integration: Literal["simps", "trapz"] = "simps",
         title: str = "Spectral Rigidity",
         mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
         ensembles: List[str] = ["poisson", "goe"],
+        show_iters: bool = False,
         show_progress: bool = True,
         **kwargs,
     ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
@@ -608,23 +621,31 @@ class Unfolded(EigVals):
         .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier.
         """
         unfolded = self.values
-        L_vals, delta = spectral_rigidity(
-            unfolded,
-            L=L,
-            c_iters=c_iters,
-            integration=integration,
-            show_progress=show_progress,
-        )
+        if data is None:
+            L_vals, delta, converged, iters = spectral_rigidity(
+                unfolded,
+                L=L,
+                gridsize=gridsize,
+                max_iters=max_iters,
+                min_iters=min_iters,
+                tol=tol,
+                integration=integration,
+                show_progress=show_progress,
+            )
+            data = (
+                pd.DataFrame({"L": L_vals, "delta": delta, "converged": converged, "iters": iters}),
+            )
         plot_result = plot._spectral_rigidity(
-            unfolded,
-            pd.DataFrame({"L": L_vals, "delta": delta}),
-            title,
-            mode,
-            outfile,
-            ensembles,
+            unfolded=unfolded,
+            data=data,
+            title=title,
+            mode=mode,
+            outfile=outfile,
+            ensembles=ensembles,
+            show_iters=show_iters,
             **kwargs,
         )
-        return L, delta, plot_result
+        return L, data["delta"], plot_result
 
     def plot_level_variance(
         self,

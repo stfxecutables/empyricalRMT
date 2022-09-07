@@ -2,7 +2,10 @@ from typing import Tuple
 
 import numpy as np
 from numba import jit, prange
+from numpy import float64 as f64
+from numpy import int64 as i64
 from numpy import ndarray
+from numpy.typing import NDArray
 from typing_extensions import Literal
 
 from empyricalRMT._constants import PERCENT, RIGIDITY_PROG
@@ -38,13 +41,15 @@ from empyricalRMT.observables.step import _step_function_fast
 #    appropriate number of times to generate a dataset consisting of
 #    datapoints (L, ∆3(L)).
 def spectral_rigidity(
-    unfolded: ndarray,
-    L: ndarray = np.arange(2, 50, 10000),
-    c_iters: int = 10000,
+    unfolded: NDArray[f64],
+    L: NDArray[f64] = np.arange(2, 50, 10000),
+    max_iters: int = int(1e6),
+    gridsize: int = 1000,
+    min_iters: int = 1000,
+    tol: float = 0.01,
     integration: Literal["simps", "trapz"] = "simps",
     show_progress: bool = True,
-    seed: int = None,
-) -> Tuple[ndarray, ndarray]:
+) -> Tuple[NDArray[f64], NDArray[f64], NDArray[np.bool_], NDArray[i64]]:
     """Compute the spectral rigidity for a particular unfolding.
 
     Computes the spectral rigidity (delta_3, ∆₃ [1]_) for a
@@ -105,33 +110,27 @@ def spectral_rigidity(
     ----------
     .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier
     """
-    delta3 = _spectral_iter_numba(
+    # delta3 = _spectral_iter_grid(
+    #     unfolded=unfolded,
+    #     L_vals=L.copy().ravel(),
+    #     gridsize=gridsize,
+    #     use_simpson=True,
+    # )
+    delta3, converged, iters = _spectral_iter_converge(
         unfolded=unfolded,
         L_vals=L.copy().ravel(),
-        gridsize=c_iters,
-        use_simpson=True,
+        gridsize=gridsize,
+        max_iters=max_iters,
+        min_iters=min_iters,
+        tol=tol,
+        use_simpson=integration != "trapz",
+        show_progress=show_progress,
     )
-    # L_vals = np.copy(L).ravel()
-    # delta3 = np.zeros(L_vals.shape)
-    # starts = np.random.uniform(unfolded[0], unfolded[-1], (len(L_vals), c_iters))
-    # seeds = SeedSequence(seed).spawn(len(L_vals))
-    # rngs = [default_rng(s) for s in seeds]
-    # args = [
-    #     ParallelArgs(
-    #         unfolded=unfolded,
-    #         rng=rng,
-    #         L=L,
-    #         gridsize=c_iters,
-    #         use_simpson=integration != "trapz",
-    #     )
-    #     for rng, L in zip(rngs, L_vals)
-    # ]
-    # delta3 = np.array(process_map(_spectral_iter, args))
-    return L, delta3
+    return L, delta3, converged, iters
 
 
 @jit(nopython=True, cache=False, parallel=True)
-def _spectral_iter_numba(
+def _spectral_iter_grid(
     unfolded: ndarray,
     L_vals: ndarray,
     gridsize: int,
@@ -166,6 +165,134 @@ def _spectral_iter_numba(
     return delta3
 
 
+@jit(nopython=True, cache=False, parallel=True)
+def _spectral_iter_converge(
+    unfolded: ndarray,
+    L_vals: ndarray,
+    gridsize: int = 1000,
+    max_iters: int = int(1e6),
+    min_iters: int = 1000,
+    tol: float = 0.01,
+    use_simpson: bool = True,
+    show_progress: bool = True,
+) -> Tuple[NDArray[f64], NDArray[np.bool_], NDArray[i64]]:
+    # buf = 10000
+    prog_interval = len(L_vals) // 50
+    if prog_interval == 0:
+        prog_interval = 1
+    delta3 = np.zeros(L_vals.shape)
+    iters = np.zeros(L_vals.shape)
+    # delta_running = np.zeros((len(L_vals), buf))
+    # ks = np.zeros_like(L_vals, dtype=np.int64) - 1
+    converged = np.zeros_like(L_vals, dtype=np.bool_)
+    # starts = np.random.uniform(unfolded[0], unfolded[-1], (len(L_vals), max_iters))
+    for i in prange(len(L_vals)):
+        # delta3_cs = np.empty_like(starts[i])
+        # d3_mean = 0.0
+        L = L_vals[i]
+        delta3[i], converged[i], iters[i] = _spectral_converge_L(
+            unfolded=unfolded,
+            L=L,
+            gridsize=gridsize,
+            max_iters=max_iters,
+            min_iters=min_iters,
+            tol=tol,
+            use_simpson=use_simpson,
+        )
+        # # delta_running = np.zeros((buf,))
+        # while True:
+        #     ks[i] += 1
+        #     start = np.random.uniform(unfolded[0], unfolded[-1])
+        #     grid = np.linspace(start - L / 2, start + L / 2, gridsize)
+        #     steps = _step_function_fast(unfolded, grid)  # performance bottleneck
+        #     K = _slope(grid, steps)
+        #     w = _intercept(grid, steps, K)
+        #     y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
+        #     if use_simpson:
+        #         delta3_c = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
+        #     else:
+        #         delta3_c = _integrate_fast(grid, y_vals)  # O(len(grid))
+        #     d3 = delta3_c / L
+        #     # delta3_cs[k] = d3
+        #     # we use the fact that for x = [x_0, x_1, ... x_n-1], the
+        #     # average a_k == (k*a_(k-1) + x_k) / (k+1) for k = 0, ..., n-1
+        #     if ks[i] == 0:  # initial value
+        #         d3_mean = d3
+        #         delta_running[i][ks[i] % buf] = d3_mean
+        #         break
+        #     else:
+        #         d3_mean = (ks[i] * d3_mean + d3) / (ks[i] + 1)
+        #         delta_running[i][ks[i] % buf] = d3_mean
+
+        #     if (
+        #         (ks[i] > min_iters)
+        #         and (ks[i] % 500 == 0)
+        #         and (np.abs(np.max(delta_running) - np.min(delta_running)) < tol)
+        #     ):
+        #         break
+        #     if ks[i] >= max_iters:
+        #         break
+
+        # delta3[i] = np.mean(delta3_cs)
+        # delta3[i] = d3_mean
+        # delta3[i] = np.mean(delta_running[i])
+        # converged[i] = np.abs(np.max(delta_running[i]) - np.min(delta_running[i])) < tol
+
+        if show_progress and i % prog_interval == 0:
+            prog = int(100 * np.sum(delta3 != 0) / len(delta3))
+            print(RIGIDITY_PROG, prog, PERCENT)
+    return delta3, converged, iters
+
+
+@jit(nopython=True, cache=False, parallel=True)
+def _spectral_converge_L(
+    unfolded: ndarray,
+    L: float,
+    gridsize: int = 1000,
+    max_iters: int = int(1e6),
+    min_iters: int = 1000,
+    tol: float = 0.01,
+    use_simpson: bool = True,
+) -> Tuple[float, bool, int]:
+    buf = 1000
+
+    delta_running = np.zeros((buf,))
+    k = -1
+    d3_mean = 0.0
+    while True:
+        k += 1
+        start = np.random.uniform(unfolded[0], unfolded[-1])
+        grid = np.linspace(start - L / 2, start + L / 2, gridsize)
+        steps = _step_function_fast(unfolded, grid)  # performance bottleneck
+        K = _slope(grid, steps)
+        w = _intercept(grid, steps, K)
+        y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
+        if use_simpson:
+            delta3_c = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
+        else:
+            delta3_c = _integrate_fast(grid, y_vals)  # O(len(grid))
+        d3 = delta3_c / L
+        # we use the fact that for x = [x_0, x_1, ... x_n-1], the
+        # average a_k == (k*a_(k-1) + x_k) / (k+1) for k = 0, ..., n-1
+        if k == 0:  # initial value
+            d3_mean = d3
+            delta_running[0] = d3_mean
+            continue
+        else:
+            d3_mean = (k * d3_mean + d3) / (k + 1)
+            delta_running[k % buf] = d3_mean
+
+        if (
+            (k > min_iters)
+            and (k % buf == 0)  # all buffer values must have changed
+            and (np.abs(np.max(delta_running) - np.min(delta_running)) < tol)
+        ):
+            break
+        if k >= max_iters:
+            break
+
+    converged = np.abs(np.max(delta_running) - np.min(delta_running)) < tol
+    return d3_mean, converged, k
 
 
 @jit(nopython=True, fastmath=True, cache=True)
