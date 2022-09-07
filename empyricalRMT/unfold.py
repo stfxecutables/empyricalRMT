@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from numpy import float64 as f64
+from numpy import float128 as f128
 from numpy import ndarray
 from numpy.typing import NDArray
 from pandas import DataFrame

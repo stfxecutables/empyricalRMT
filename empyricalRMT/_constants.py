@@ -21,7 +21,7 @@ if platform.system().lower() == "windows":
     RIGIDITY_PROG = "Spectral-rigidity progress:"
     PERCENT = "%"
 else:
-    PROG = "\033[2KProgress:"  # clear line
+    PROG = "\033[2K Progress:"  # clear line
     PROG_FREQUENCY = 50
     LEVELVAR_PROG = "\033[2K Level-variance progress:"
     RIGIDITY_PROG = "\033[2K Spectral-rigidity progress:"

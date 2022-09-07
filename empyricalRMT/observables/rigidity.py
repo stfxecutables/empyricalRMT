@@ -43,17 +43,20 @@ from empyricalRMT.observables.step import _step_function_fast
 def spectral_rigidity(
     unfolded: NDArray[f64],
     L: NDArray[f64] = np.arange(2, 50, 10000),
-    max_iters: int = int(1e6),
-    gridsize: int = 1000,
-    min_iters: int = 1000,
+    max_iters: int = int(1e4),
     tol: float = 0.01,
+    gridsize: int = 100,
+    min_iters: int = 100,
     integration: Literal["simps", "trapz"] = "simps",
     show_progress: bool = True,
 ) -> Tuple[NDArray[f64], NDArray[f64], NDArray[np.bool_], NDArray[i64]]:
     """Compute the spectral rigidity for a particular unfolding.
 
-    Computes the spectral rigidity (delta_3, ∆₃ [1]_) for a
-    particular set of eigenvalues and their unfolding.
+    Computes the spectral rigidity (delta_3, ∆₃ [1]) for a
+    particular set of eigenvalues and their unfoldings via random samling.
+    The internal integral of the staircase deviation from a linear fit is
+    computed via Simpson's method, and samples of c are drawn iteratively
+    for each L value, until a convergence criterion is met.
 
     Parameters
     ----------
@@ -61,18 +64,38 @@ def spectral_rigidity(
         The unfolded eigenvalues.
 
     L: ndarray
-        The values of L to compute the rigidity.
+        The values of L at which to compute the rigidity.
 
-    c_iters: int
+    max_iters: int = int(1e5)
         How many times the location of the center, c, of the interval
         [c - L/2, c + L/2] should be chosen uniformly at random for
         each L in order to compute the estimate of the spectral
-        rigidity. Default 10000.
+        rigidity.
+
+        For an NxN GOE matrix where N in [5000, 10 000, 20 000], unfolded with a
+        high-degree polynomial or analytically unfolded, the default values of
+        `tol=0.01` and `max_iters=int(1e4)`, the algorithm should converge for L
+        values up to about 70-90. Larger L-values than this will require
+        increasing `max_iters` to about `1e5` for consistent convergence.
+        Smaller matrices (e.g. N=2000) struggle to converge past L values of
+        60 for the defaults.
+
+    tol: float = 0.01
+        Convergence criterion. Convergence is reached when the range of
+        the last 1000 computed values is less than `tol`.
+
+
+    gridsize: int = 100
+        Each internal integral is computed over a grid
+        of `gridsize` points on [c - L/2, c + L/2]. Smaller values here
+        increase the variance of sampled values of delta_3, and increase the
+        likelihood that `max_iters` is reached. Probably best to leave at the
+        default value.
 
     integration: "simps" | "trapz"
         Whether to use the trapezoidal or simpson's rule for integration. Default
-        `simps`. Method "trapz" might be faster in some cases, but final
-        calculations will be considerably more inaccurate.
+        `simps`. Method "trapz" might be faster in some cases, at the cost of some
+        accuracy.
 
 
     Returns
@@ -129,43 +152,7 @@ def spectral_rigidity(
     return L, delta3, converged, iters
 
 
-@jit(nopython=True, cache=False, parallel=True)
-def _spectral_iter_grid(
-    unfolded: ndarray,
-    L_vals: ndarray,
-    gridsize: int,
-    use_simpson: bool = True,
-    show_progress: bool = True,
-) -> float:
-    prog_interval = len(L_vals) // 50
-    if prog_interval == 0:
-        prog_interval = 1
-    delta3 = np.zeros(L_vals.shape)
-    starts = np.random.uniform(unfolded[0], unfolded[-1], (len(L_vals), gridsize))
-    for i in prange(len(L_vals)):
-        delta3_cs = np.empty_like(starts[i])
-        L = L_vals[i]
-        for k in range(len(starts[i])):
-            start = starts[i][k]
-            grid = np.linspace(start - L / 2, start + L / 2, gridsize)
-            steps = _step_function_fast(unfolded, grid)  # performance bottleneck
-            K = _slope(grid, steps)
-            w = _intercept(grid, steps, K)
-            y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
-            if use_simpson:
-                delta3_c = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
-            else:
-                delta3_c = _integrate_fast(grid, y_vals)  # O(len(grid))
-            delta3_cs[k] = delta3_c / L
-        delta3[i] = np.mean(delta3_cs)
-
-        if show_progress and i % prog_interval == 0:
-            prog = int(100 * np.sum(delta3 != 0) / len(delta3))
-            print(RIGIDITY_PROG, prog, PERCENT)
-    return delta3
-
-
-@jit(nopython=True, cache=False, parallel=True)
+@jit(nopython=True, cache=False, parallel=True, fastmath=True)
 def _spectral_iter_converge(
     unfolded: ndarray,
     L_vals: ndarray,
@@ -180,12 +167,14 @@ def _spectral_iter_converge(
     prog_interval = len(L_vals) // 50
     if prog_interval == 0:
         prog_interval = 1
-    delta3 = np.zeros(L_vals.shape)
-    iters = np.zeros(L_vals.shape)
+    delta3 = np.zeros(L_vals.shape, dtype=unfolded.dtype)
+    iters = np.zeros(L_vals.shape, dtype=np.uint64)
     # delta_running = np.zeros((len(L_vals), buf))
     # ks = np.zeros_like(L_vals, dtype=np.int64) - 1
     converged = np.zeros_like(L_vals, dtype=np.bool_)
     # starts = np.random.uniform(unfolded[0], unfolded[-1], (len(L_vals), max_iters))
+    if show_progress:
+        print(RIGIDITY_PROG, 0, PERCENT)
     for i in prange(len(L_vals)):
         # delta3_cs = np.empty_like(starts[i])
         # d3_mean = 0.0
@@ -244,7 +233,37 @@ def _spectral_iter_converge(
     return delta3, converged, iters
 
 
-@jit(nopython=True, cache=False, parallel=True)
+"""
+https://stackoverflow.com/a/54078906
+
+I've use Kahan summation for Monte-Carlo integration. You have a scalar valued
+function f which you believe is rather expensive to evaluate; a reasonable
+estimate is 65ns/dimension. Then you accumulate those values into an
+average-updating an average takes about 4ns. So if you update the average using
+Kahan summation (4x as many flops, ~16ns) then you're really not adding that
+much compute to the total. Now, often it is said that the error of Monte-Carlo
+integration is sigma/sqrt(N), but this is incorrect. The real error bound (in finite
+precision arithmetic) is
+
+sigma/sqrt(N) + cond(I_n) * eps * N
+
+Where cond(In) is the condition number of summation and ε is twice the unit
+roundoff. So the algorithm diverges faster than it converges. For 32 bit
+arithmetic, getting eps N ~ 1 is simple: 10^7 evaluations can be done exceedingly
+quickly, and after this your Monte-Carlo integration goes on a random walk. The
+situation is even worse when the condition number is large.
+
+If you use Kahan summation, the expression for the error changes to
+
+sigma/sqrt(N) + cond(I_n) * eps^2 * N,
+
+Which, admittedly still diverges faster than it converges, but eps^2 * N cannot
+be made large on a reasonable timescale on modern hardware.
+
+"""
+
+
+@jit(nopython=True, cache=False, fastmath=True)
 def _spectral_converge_L(
     unfolded: ndarray,
     L: float,
@@ -257,10 +276,11 @@ def _spectral_converge_L(
     buf = 1000
 
     delta_running = np.zeros((buf,))
-    k = -1
+    k = np.uint64(0)
     d3_mean = 0.0
     while True:
-        k += 1
+        if k != 0:  # awkward, want uint64 k
+            k += 1
         start = np.random.uniform(unfolded[0], unfolded[-1])
         grid = np.linspace(start - L / 2, start + L / 2, gridsize)
         steps = _step_function_fast(unfolded, grid)  # performance bottleneck
@@ -277,25 +297,28 @@ def _spectral_converge_L(
         if k == 0:  # initial value
             d3_mean = d3
             delta_running[0] = d3_mean
+            k += 1
             continue
         else:
-            d3_mean = (k * d3_mean + d3) / (k + 1)
-            delta_running[k % buf] = d3_mean
+            # d3_mean = (k * d3_mean + d3) / (k + 1)
+            d3_mean += (d3 - d3_mean) / k
+            delta_running[int(k) % buf] = d3_mean
 
+        if k >= max_iters:
+            break
         if (
             (k > min_iters)
             and (k % buf == 0)  # all buffer values must have changed
             and (np.abs(np.max(delta_running) - np.min(delta_running)) < tol)
         ):
             break
-        if k >= max_iters:
-            break
 
     converged = np.abs(np.max(delta_running) - np.min(delta_running)) < tol
-    return d3_mean, converged, k
+    # return d3_mean, converged, k
+    return np.mean(delta_running), converged, k
 
 
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, cache=True, fastmath=True)
 def compute_delta(
     unfolded: ndarray, starts: ndarray, L: float, gridsize: int, use_simpson: bool
 ) -> float:
@@ -314,7 +337,7 @@ def compute_delta(
     return np.mean(delta3s)
 
 
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, cache=True, fastmath=True)
 def _slope(x: ndarray, y: ndarray) -> np.float64:
     """Perform linear regression to compute the slope."""
     x_mean = np.mean(x)
@@ -323,17 +346,17 @@ def _slope(x: ndarray, y: ndarray) -> np.float64:
     y_dev = y - y_mean
     cov = np.sum(x_dev * y_dev)
     var = np.sum(x_dev * x_dev)
-    if var == 0:
-        return 0
+    if var == 0.0:
+        return 0.0
     return cov / var
 
 
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, cache=True, fastmath=True)
 def _intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
     return np.mean(y) - slope * np.mean(x)
 
 
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, cache=True, fastmath=True)
 def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
     """scipy.integrate.trapz is excruciatingly slow and unusable for our purposes.
     This tiny rewrite seems to result in a near 20x speedup. However, being trapezoidal
@@ -348,7 +371,7 @@ def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
 
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
 # the outer loops. Adding it inside *dramatically* slows performance.
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, cache=True, fastmath=True)
 def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: float, w: float, grid: ndarray) -> ndarray:
     """Compute the sqaured deviation of the staircase function of the best fitting
     line, over the region in `grid`.
@@ -375,7 +398,7 @@ def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: float, w: float, grid: n
     sq_deviations: ndarray
         The squared deviations.
     """
-    ret = np.empty((len(grid)), dtype=np.float64)
+    ret = np.empty(len(grid))
     for i in range(len(grid)):
         n = steps[i]
         deviation = n - K * grid[i] - w
@@ -384,7 +407,7 @@ def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: float, w: float, grid: n
 
 
 # fmt: off
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, cache=True, fastmath=True)
 def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
     """
     Simpson rule for irregularly spaced data. Copied shamelessly from
