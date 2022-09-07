@@ -7,7 +7,6 @@ from numpy import float64 as f64
 from numpy.typing import NDArray
 
 from empyricalRMT._constants import LEVELVAR_PROG, PERCENT, PROG_FREQUENCY
-from empyricalRMT._types import PyBool, PyFloat, PyInt
 
 
 def level_number_variance(

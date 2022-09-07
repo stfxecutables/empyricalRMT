@@ -1,28 +1,12 @@
-import platform
-import sys
-import traceback
-from dataclasses import dataclass
 from typing import Tuple
 
 import numpy as np
 from numba import jit, prange
 from numpy import ndarray
-from numpy.random import Generator, SeedSequence, default_rng
-from tqdm.contrib.concurrent import process_map
 from typing_extensions import Literal
 
 from empyricalRMT._constants import PERCENT, RIGIDITY_PROG
 from empyricalRMT.observables.step import _step_function_fast
-
-
-@dataclass
-class ParallelArgs:
-    unfolded: ndarray
-    rng: Generator
-    L: float
-    gridsize: int
-    use_simpson: bool
-
 
 # spectral rigidity ∆3
 # the least square devation of the unfolded cumulative eigenvalue
@@ -159,7 +143,6 @@ def _spectral_iter_numba(
         prog_interval = 1
     delta3 = np.zeros(L_vals.shape)
     starts = np.random.uniform(unfolded[0], unfolded[-1], (len(L_vals), gridsize))
-    # for i in prange(len(L_vals)):
     for i in prange(len(L_vals)):
         delta3_cs = np.empty_like(starts[i])
         L = L_vals[i]
@@ -183,42 +166,6 @@ def _spectral_iter_numba(
     return delta3
 
 
-def _spectral_iter(
-    args: ParallelArgs,
-) -> float:
-    """Compute c_iters values of L and save them in delta3_L_vals.
-
-    Parameters
-    ----------
-    unfolded: ndarray
-        The sorted unfolded eigenvalues.
-
-    delta3_L_vals: ndarray
-        The array to store all the c_iters computed L values.
-
-    L: float
-        The current L value for which the spectral rigidity is being calculated.
-
-    c_iters: int
-        The number of centre-points (c) to choose (i.e. the number of L values to
-        compute).
-
-    interval_gridsize: int
-        The number of points for which to evaluate the deviation from a straight
-        line on [c - L/2, c + L/2].
-    """
-    try:
-        return compute_delta(
-            unfolded=args.unfolded,
-            starts=args.rng.uniform(args.unfolded[0], args.unfolded[-1], args.gridsize),
-            L=args.L,
-            gridsize=args.gridsize,
-            use_simpson=args.use_simpson,
-        )
-    except Exception as e:
-        traceback.print_exc()
-        print(f"Got error: {e}", sys.stderr)
-    return np.nan
 
 
 @jit(nopython=True, fastmath=True, cache=True)

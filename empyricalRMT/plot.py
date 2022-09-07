@@ -824,7 +824,6 @@ def _spectral_rigidity(
 
 
 def _level_number_variance(
-    unfolded: ndarray,
     data: pd.DataFrame,
     title: str = "Level Number Variance",
     mode: PlotMode = PlotMode.Block,
@@ -838,13 +837,11 @@ def _level_number_variance(
 
     Parameters
     ----------
-    unfolded: ndarray
-        The unfolded eigenvalues to plot.
-
     data: DataFrame
         `data` argument is pd.DataFrame({"L": L_vals, "sigma": sigma}), where sigma
         are the values computed from
-        observables.levelvariance.level_number_variance
+        observables.levelvariance.level_number_variance. Optionally, a "converged"
+        boolean column may be present.
 
     title: string
         The plot title string
@@ -878,9 +875,34 @@ def _level_number_variance(
         The handles to the matplotlib objects, only if `mode` is "return".
     """
     fig, axes = _setup_plotting(fig, axes)
-    df = pd.DataFrame(data, columns=["L", "sigma"])
+    df = data.copy()
+    if ("L" not in df.columns) or ("sigma" not in df.columns):
+        raise RuntimeError("Please pass in a DataFrame with 'L' and 'sigma' columns")
+    has_converge_info = "converged" in df.columns
+    if not has_converge_info:
+        df["converged"] = np.ones_like(df.sigma, dtype=bool)
+    df_converged = df.loc[df.converged]
+    df_nonconverged = df.loc[~df.converged]
+    needs_label = has_converge_info and len(df_nonconverged) > 0
+
     # sbn.relplot(x="L", y="sigma", data=df, ax=axes)
-    sbn.scatterplot(x="L", y="sigma", data=df, ax=axes, color="black")
+    sbn.scatterplot(
+        x="L",
+        y="sigma",
+        data=df_converged,
+        ax=axes,
+        color="black",
+        label="converged" if needs_label else None,
+    )
+    sbn.scatterplot(
+        x="L",
+        y="sigma",
+        data=df_nonconverged,
+        ax=axes,
+        color="red",
+        marker="X",
+        label="non-converged" if needs_label else None,
+    )
     ensembles = set(ensembles)  # type: ignore
 
     # _, right = plt.xlim()
@@ -992,7 +1014,6 @@ def _observables(
         ensembles=ensembles,
     )
     _level_number_variance(
-        unfolded,
         data=levelvar_df,
         fig=fig,
         axes=axes[1, 1],

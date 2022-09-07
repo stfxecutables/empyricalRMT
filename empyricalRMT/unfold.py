@@ -101,7 +101,7 @@ class Unfolded(EigVals):
         self,
         L: ndarray = np.arange(0.5, 20, 0.2),
         tol: float = 0.01,
-        max_L_iters: int = 50000,
+        max_L_iters: int = int(1e6),
         min_L_iters: int = 1000,
         show_progress: bool = False,
     ) -> DataFrame:
@@ -144,7 +144,7 @@ class Unfolded(EigVals):
         running averages stabilize, and the final running average is returned.
         """
         unfolded = self.values
-        L, sigma, convergences = level_number_variance(
+        L, sigma, converged = level_number_variance(
             unfolded=unfolded,
             L=L,
             tol=tol,
@@ -152,7 +152,7 @@ class Unfolded(EigVals):
             min_L_iters=min_L_iters,
             show_progress=show_progress,
         )
-        return DataFrame({"L": L, "sigma": sigma, "converged": convergences})
+        return DataFrame({"L": L, "sigma": sigma, "converged": converged})
 
     def fit_brody(self, method: str = "spacing") -> DataFrame:
         """Get an estimate for the beta parameter of the Brody distribution fit of the spacings.
@@ -332,7 +332,7 @@ class Unfolded(EigVals):
     def plot_fit(
         self,
         title: str = "Unfolding Fit",
-        mode: PlotMode = "block",
+        mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
     ) -> PlotResult:
         return _unfolded_fit(self.original_eigs, self.vals, title=title, mode=mode, outfile=outfile)
@@ -347,7 +347,7 @@ class Unfolded(EigVals):
         brody: bool = False,
         brody_fit: str = "spacing",
         title: str = "Unfolded Spacing Distribution",
-        mode: PlotMode = "block",
+        mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
         ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
         fig: plt.Figure = None,
@@ -449,7 +449,7 @@ class Unfolded(EigVals):
         brody: bool = False,
         brody_fit: str = "spacing",
         title: str = "next Nearest-Neigbors Spacing Distribution",
-        mode: PlotMode = "block",
+        mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
         ensembles: List[str] = ["goe", "poisson"],
         fig: plt.Figure = None,
@@ -548,9 +548,9 @@ class Unfolded(EigVals):
         c_iters: int = 10000,
         integration: Literal["simps", "trapz"] = "simps",
         title: str = "Spectral Rigidity",
-        mode: PlotMode = "block",
+        mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
-        ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
+        ensembles: List[str] = ["poisson", "goe"],
         show_progress: bool = True,
         **kwargs,
     ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
@@ -631,7 +631,7 @@ class Unfolded(EigVals):
         L: ndarray = np.arange(0.5, 20, 0.2),
         sigma: ndarray = None,
         tol: float = 0.01,
-        max_L_iters: int = 50000,
+        max_L_iters: int = int(1e6),
         min_L_iters: int = 1000,
         title: str = "Level Number Variance",
         mode: PlotMode = PlotMode.Block,
@@ -700,9 +700,9 @@ class Unfolded(EigVals):
         unfolded = self.values
         if sigma is not None:
             sigma = make_1d_array(sigma)
+            converged = np.ones_like(sigma, dtype=bool)
             plot_result = plot._level_number_variance(
-                unfolded=unfolded,
-                data=pd.DataFrame({"L": L, "sigma": sigma}),
+                data=pd.DataFrame({"L": L, "sigma": sigma, "converged": converged}),
                 title=title,
                 mode=mode,
                 outfile=outfile,
@@ -710,7 +710,7 @@ class Unfolded(EigVals):
             )
             return L, sigma, plot_result
 
-        L_vals, sigma, convergences = level_number_variance(
+        L_vals, sigma, converged = level_number_variance(
             unfolded=unfolded,
             L=L,
             tol=tol,
@@ -719,8 +719,7 @@ class Unfolded(EigVals):
             show_progress=show_progress,
         )
         plot_result = plot._level_number_variance(
-            unfolded=unfolded,
-            data=pd.DataFrame({"L": L, "sigma": sigma}),
+            data=pd.DataFrame({"L": L, "sigma": sigma, "converged": converged}),
             title=title,
             mode=mode,
             outfile=outfile,
