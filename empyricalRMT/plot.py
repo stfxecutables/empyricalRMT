@@ -870,6 +870,7 @@ def _level_number_variance(
     mode: PlotMode = PlotMode.Block,
     outfile: Path = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
+    show_iters: bool = False,
     fig: plt.Figure = None,
     axes: plt.Axes = None,
 ) -> PlotResult:
@@ -944,6 +945,18 @@ def _level_number_variance(
         marker="X",
         label="non-converged" if needs_label else None,
     )
+    if show_iters:
+        ax_iter = axes.twinx()
+        ax_iter.set_yscale("log")
+        sbn.scatterplot(
+            x="L",
+            y="iters",
+            data=df,
+            ax=ax_iter,
+            color="grey",
+            label="iters",
+            marker="*",
+        )
     ensembles = set(ensembles)  # type: ignore
 
     # _, right = plt.xlim()

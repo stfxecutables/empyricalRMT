@@ -8,8 +8,18 @@ from numpy import ndarray
 from numpy.typing import NDArray
 from typing_extensions import Literal
 
-from empyricalRMT._constants import PERCENT, RIGIDITY_PROG
+from empyricalRMT._constants import (
+    AUTO_MAX_ITERS,
+    CONVERG_PROG,
+    CONVERG_PROG_INTERVAL,
+    ITER_COUNT,
+    MIN_ITERS,
+    PERCENT,
+    RIGIDITY_GRID,
+    RIGIDITY_PROG,
+)
 from empyricalRMT.observables.step import _step_function_fast
+from empyricalRMT.utils import ConvergenceError
 
 # spectral rigidity ∆3
 # the least square devation of the unfolded cumulative eigenvalue
@@ -42,11 +52,10 @@ from empyricalRMT.observables.step import _step_function_fast
 #    datapoints (L, ∆3(L)).
 def spectral_rigidity(
     unfolded: NDArray[f64],
-    L: NDArray[f64] = np.arange(2, 50, 10000),
-    max_iters: int = int(1e4),
+    L: NDArray[f64] = np.arange(2, 20, 0.5),
     tol: float = 0.01,
-    gridsize: int = 100,
-    min_iters: int = 100,
+    max_iters: int = 0,
+    gridsize: int = RIGIDITY_GRID,
     integration: Literal["simps", "trapz"] = "simps",
     show_progress: bool = True,
 ) -> Tuple[NDArray[f64], NDArray[f64], NDArray[np.bool_], NDArray[i64]]:
@@ -66,7 +75,7 @@ def spectral_rigidity(
     L: ndarray
         The values of L at which to compute the rigidity.
 
-    max_iters: int = int(1e5)
+    max_iters: int = -1
         How many times the location of the center, c, of the interval
         [c - L/2, c + L/2] should be chosen uniformly at random for
         each L in order to compute the estimate of the spectral
@@ -139,12 +148,38 @@ def spectral_rigidity(
     #     gridsize=gridsize,
     #     use_simpson=True,
     # )
-    delta3, converged, iters = _spectral_iter_converge(
+    if max_iters <= 0:
+        success, max_iters = _delta_converge_L(
+            unfolded=unfolded,
+            L=float(np.max(L)),
+            gridsize=RIGIDITY_GRID,
+            max_iters=AUTO_MAX_ITERS,
+            min_iters=10 * MIN_ITERS,  # also safety
+            tol=tol,
+            use_simpson=integration != "trapz",
+            show_progress=True,
+        )[1:]
+        max_iters = int(max_iters * 2)  # precaution
+        if not success:
+            raise ConvergenceError(
+                f"For the largest L-value in your provided Ls, {np.max(L)}, the "
+                f"spectral rigidity at L did not converge in {AUTO_MAX_ITERS} "
+                "iterations. Either reduce the range of L values, reduce the "
+                "`tol` tolerance value, or manually set `max_iters` to be some "
+                "value other than the default of 0 to disable this check. Note "
+                "the convergence criterion involves the range on the last 1000 "
+                "values, which are themselves iteratively-computed means, so is "
+                "a somewhat strict convergence criterion. However, setting "
+                "`max_iters` too low then provides NO guarantee on the error for "
+                "non-converging L values."
+            )
+
+    delta3, converged, iters = _delta_converge(
         unfolded=unfolded,
         L_vals=L.copy().ravel(),
         gridsize=gridsize,
         max_iters=max_iters,
-        min_iters=min_iters,
+        min_iters=MIN_ITERS,
         tol=tol,
         use_simpson=integration != "trapz",
         show_progress=show_progress,
@@ -153,33 +188,27 @@ def spectral_rigidity(
 
 
 @jit(nopython=True, cache=False, parallel=True, fastmath=True)
-def _spectral_iter_converge(
+def _delta_converge(
     unfolded: ndarray,
     L_vals: ndarray,
-    gridsize: int = 1000,
-    max_iters: int = int(1e6),
-    min_iters: int = 1000,
     tol: float = 0.01,
+    max_iters: int = int(1e6),
+    gridsize: int = 1000,
+    min_iters: int = MIN_ITERS,
     use_simpson: bool = True,
     show_progress: bool = True,
 ) -> Tuple[NDArray[f64], NDArray[np.bool_], NDArray[i64]]:
-    # buf = 10000
     prog_interval = len(L_vals) // 50
     if prog_interval == 0:
         prog_interval = 1
     delta3 = np.zeros(L_vals.shape, dtype=unfolded.dtype)
     iters = np.zeros(L_vals.shape, dtype=np.uint64)
-    # delta_running = np.zeros((len(L_vals), buf))
-    # ks = np.zeros_like(L_vals, dtype=np.int64) - 1
     converged = np.zeros_like(L_vals, dtype=np.bool_)
-    # starts = np.random.uniform(unfolded[0], unfolded[-1], (len(L_vals), max_iters))
     if show_progress:
         print(RIGIDITY_PROG, 0, PERCENT)
     for i in prange(len(L_vals)):
-        # delta3_cs = np.empty_like(starts[i])
-        # d3_mean = 0.0
         L = L_vals[i]
-        delta3[i], converged[i], iters[i] = _spectral_converge_L(
+        delta3[i], converged[i], iters[i] = _delta_converge_L(
             unfolded=unfolded,
             L=L,
             gridsize=gridsize,
@@ -188,44 +217,6 @@ def _spectral_iter_converge(
             tol=tol,
             use_simpson=use_simpson,
         )
-        # # delta_running = np.zeros((buf,))
-        # while True:
-        #     ks[i] += 1
-        #     start = np.random.uniform(unfolded[0], unfolded[-1])
-        #     grid = np.linspace(start - L / 2, start + L / 2, gridsize)
-        #     steps = _step_function_fast(unfolded, grid)  # performance bottleneck
-        #     K = _slope(grid, steps)
-        #     w = _intercept(grid, steps, K)
-        #     y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
-        #     if use_simpson:
-        #         delta3_c = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
-        #     else:
-        #         delta3_c = _integrate_fast(grid, y_vals)  # O(len(grid))
-        #     d3 = delta3_c / L
-        #     # delta3_cs[k] = d3
-        #     # we use the fact that for x = [x_0, x_1, ... x_n-1], the
-        #     # average a_k == (k*a_(k-1) + x_k) / (k+1) for k = 0, ..., n-1
-        #     if ks[i] == 0:  # initial value
-        #         d3_mean = d3
-        #         delta_running[i][ks[i] % buf] = d3_mean
-        #         break
-        #     else:
-        #         d3_mean = (ks[i] * d3_mean + d3) / (ks[i] + 1)
-        #         delta_running[i][ks[i] % buf] = d3_mean
-
-        #     if (
-        #         (ks[i] > min_iters)
-        #         and (ks[i] % 500 == 0)
-        #         and (np.abs(np.max(delta_running) - np.min(delta_running)) < tol)
-        #     ):
-        #         break
-        #     if ks[i] >= max_iters:
-        #         break
-
-        # delta3[i] = np.mean(delta3_cs)
-        # delta3[i] = d3_mean
-        # delta3[i] = np.mean(delta_running[i])
-        # converged[i] = np.abs(np.max(delta_running[i]) - np.min(delta_running[i])) < tol
 
         if show_progress and i % prog_interval == 0:
             prog = int(100 * np.sum(delta3 != 0) / len(delta3))
@@ -233,52 +224,31 @@ def _spectral_iter_converge(
     return delta3, converged, iters
 
 
-"""
-https://stackoverflow.com/a/54078906
-
-I've use Kahan summation for Monte-Carlo integration. You have a scalar valued
-function f which you believe is rather expensive to evaluate; a reasonable
-estimate is 65ns/dimension. Then you accumulate those values into an
-average-updating an average takes about 4ns. So if you update the average using
-Kahan summation (4x as many flops, ~16ns) then you're really not adding that
-much compute to the total. Now, often it is said that the error of Monte-Carlo
-integration is sigma/sqrt(N), but this is incorrect. The real error bound (in finite
-precision arithmetic) is
-
-sigma/sqrt(N) + cond(I_n) * eps * N
-
-Where cond(In) is the condition number of summation and ε is twice the unit
-roundoff. So the algorithm diverges faster than it converges. For 32 bit
-arithmetic, getting eps N ~ 1 is simple: 10^7 evaluations can be done exceedingly
-quickly, and after this your Monte-Carlo integration goes on a random walk. The
-situation is even worse when the condition number is large.
-
-If you use Kahan summation, the expression for the error changes to
-
-sigma/sqrt(N) + cond(I_n) * eps^2 * N,
-
-Which, admittedly still diverges faster than it converges, but eps^2 * N cannot
-be made large on a reasonable timescale on modern hardware.
-
-"""
-
-
+# See https://stackoverflow.com/a/54078906 for why Kahan summation *might* be worth
+# it here. However, keep in mind our convergence criterion sort-of implies this is
+# not an issue.
 @jit(nopython=True, cache=False, fastmath=True)
-def _spectral_converge_L(
+def _delta_converge_L(
     unfolded: ndarray,
     L: float,
-    gridsize: int = 1000,
+    gridsize: int = 100,
     max_iters: int = int(1e6),
-    min_iters: int = 1000,
+    min_iters: int = 100,
     tol: float = 0.01,
     use_simpson: bool = True,
+    show_progress: bool = False,
 ) -> Tuple[float, bool, int]:
     buf = 1000
+    prog_interval = CONVERG_PROG_INTERVAL
+    if L > 100:
+        prog_interval *= 10
 
     delta_running = np.zeros((buf,))
     k = np.uint64(0)
     c = 0.0  # compensation (carry-over) term for Kahan summation
     d3_mean = 0.0
+    if show_progress:
+        print(CONVERG_PROG, 0, ITER_COUNT)
     while True:
         if k != 0:  # awkward, want uint64 k
             k += 1
@@ -293,8 +263,6 @@ def _spectral_converge_L(
         else:
             delta3_c = _integrate_fast(grid, y_vals)  # O(len(grid))
         d3 = delta3_c / L
-        # we use the fact that for x = [x_0, x_1, ... x_n-1], the
-        # average a_k == (k*a_(k-1) + x_k) / (k+1) for k = 0, ..., n-1
         if k == 0:  # initial value
             d3_mean = d3
             delta_running[0] = d3_mean
@@ -305,7 +273,7 @@ def _spectral_converge_L(
             # d3_mean = (k * d3_mean + d3) / (k + 1)
             # d3_mean += (d3 - d3_mean) / k
 
-            # Kahan sum
+            # Kahan sum - but can we be sure Numba isn't optimizing away?
             update = (d3 - d3_mean) / k  # mean + update is new mean
             remainder = update - c
             lossy = d3_mean + remainder
@@ -313,6 +281,8 @@ def _spectral_converge_L(
             d3_mean = lossy
             delta_running[int(k) % buf] = d3_mean
 
+        if show_progress and k % prog_interval == 0:
+            print(CONVERG_PROG, int(k * 2), ITER_COUNT)  # x2 for safety factor
         if k >= max_iters:
             break
         if (
@@ -322,13 +292,17 @@ def _spectral_converge_L(
         ):
             break
 
+    if show_progress:
+        print(CONVERG_PROG, int(k), ITER_COUNT)
     converged = np.abs(np.max(delta_running) - np.min(delta_running)) < tol
+    # I don't think it matters much if we use median, mean, max, or min for the
+    # final returned single value, given our convergence criterion is so strict
     # return d3_mean, converged, k
     return np.mean(delta_running), converged, k
 
 
 @jit(nopython=True, cache=True, fastmath=True)
-def compute_delta(
+def _delta_grid(
     unfolded: ndarray, starts: ndarray, L: float, gridsize: int, use_simpson: bool
 ) -> float:
     delta3s = np.empty_like(starts)

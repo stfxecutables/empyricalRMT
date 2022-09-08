@@ -10,6 +10,10 @@ from numba import jit
 from numpy import ndarray
 
 
+class ConvergenceError(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
 def res(path: Path) -> str:
     return str(path.absolute().resolve())
 

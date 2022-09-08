@@ -14,6 +14,7 @@ from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing_extensions import Literal
 
 import empyricalRMT.plot as plot
+from empyricalRMT._constants import RIGIDITY_GRID
 from empyricalRMT._eigvals import EigVals
 from empyricalRMT._validate import make_1d_array
 from empyricalRMT.brody import brody_cdf, brody_fit_evaluate
@@ -58,9 +59,8 @@ class Unfolded(EigVals):
     def spectral_rigidity(
         self,
         L: NDArray[f64] = np.arange(2, 50, 10000),
-        max_iters: int = int(1e6),
-        gridsize: int = 1000,
-        min_iters: int = 1000,
+        max_iters: int = 0,
+        gridsize: int = RIGIDITY_GRID,
         tol: float = 0.01,
         integration: Literal["simps", "trapz"] = "simps",
         show_progress: bool = True,
@@ -99,7 +99,6 @@ class Unfolded(EigVals):
             L=L,
             gridsize=gridsize,
             max_iters=max_iters,
-            min_iters=min_iters,
             tol=tol,
             integration=integration,
             show_progress=show_progress,
@@ -153,15 +152,14 @@ class Unfolded(EigVals):
         running averages stabilize, and the final running average is returned.
         """
         unfolded = self.values
-        L, sigma, converged = level_number_variance(
+        L, sigma, converged, iters = level_number_variance(
             unfolded=unfolded,
             L=L,
             tol=tol,
-            max_L_iters=max_L_iters,
-            min_L_iters=min_L_iters,
+            max_iters=max_L_iters,
             show_progress=show_progress,
         )
-        return DataFrame({"L": L, "sigma": sigma, "converged": converged})
+        return DataFrame({"L": L, "sigma": sigma, "converged": converged, "iters": iters})
 
     def fit_brody(self, method: str = "spacing") -> DataFrame:
         """Get an estimate for the beta parameter of the Brody distribution fit of the spacings.
@@ -653,12 +651,12 @@ class Unfolded(EigVals):
         L: ndarray = np.arange(0.5, 20, 0.2),
         sigma: ndarray = None,
         tol: float = 0.01,
-        max_L_iters: int = int(1e6),
-        min_L_iters: int = 1000,
+        max_L_iters: int = 0,
         title: str = "Level Number Variance",
         mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
         ensembles: List[str] = ["goe"],
+        show_iters: bool = False,
         show_progress: bool = True,
     ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
         """Compute and plot the level number variance of the current unfolded
@@ -729,23 +727,31 @@ class Unfolded(EigVals):
                 mode=mode,
                 outfile=outfile,
                 ensembles=ensembles,
+                show_iters=show_iters,
             )
             return L, sigma, plot_result
 
-        L_vals, sigma, converged = level_number_variance(
+        L_vals, sigma, converged, iters = level_number_variance(
             unfolded=unfolded,
             L=L,
             tol=tol,
-            max_L_iters=max_L_iters,
-            min_L_iters=min_L_iters,
+            max_iters=max_L_iters,
             show_progress=show_progress,
         )
         plot_result = plot._level_number_variance(
-            data=pd.DataFrame({"L": L, "sigma": sigma, "converged": converged}),
+            data=pd.DataFrame(
+                {
+                    "L": L,
+                    "sigma": sigma,
+                    "converged": converged,
+                    "iters": iters,
+                }
+            ),
             title=title,
             mode=mode,
             outfile=outfile,
             ensembles=ensembles,
+            show_iters=show_iters,
         )
         return L_vals, sigma, plot_result
 

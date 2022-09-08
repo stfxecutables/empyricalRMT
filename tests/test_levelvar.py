@@ -13,31 +13,9 @@ def test_plotting(capsys: CaptureFixture) -> None:
         unfolded.plot_level_variance(
             L=np.arange(2, 50, 0.5),
             tol=0.01,
-            max_L_iters=int(1e4),
-            min_L_iters=1000,
             show_progress=True,
             mode=PlotMode.Block,
-        )
-
-
-def test_convergence(capsys: CaptureFixture) -> None:
-    unfolded = goe_unfolded(10000)
-    with capsys.disabled():
-        unfolded.plot_level_variance(
-            L=np.arange(2, 50, 0.5),
-            tol=0.01,
-            max_L_iters=int(1e6),
-            min_L_iters=int(1e5),
-            show_progress=True,
-            mode=PlotMode.NoBlock,
-        )
-        unfolded.plot_level_variance(
-            L=np.arange(2, 50, 0.5),
-            tol=0.001,
-            max_L_iters=int(1e7),
-            min_L_iters=int(1e5),
-            show_progress=True,
-            mode=PlotMode.Block,
+            show_iters=True,
         )
 
 

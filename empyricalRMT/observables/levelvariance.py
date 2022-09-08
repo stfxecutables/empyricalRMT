@@ -6,17 +6,26 @@ from numpy import bool_
 from numpy import float64 as f64
 from numpy.typing import NDArray
 
-from empyricalRMT._constants import LEVELVAR_PROG, PERCENT, PROG_FREQUENCY
+from empyricalRMT._constants import (
+    AUTO_MAX_ITERS,
+    CONVERG_PROG,
+    CONVERG_PROG_INTERVAL,
+    ITER_COUNT,
+    LEVELVAR_PROG,
+    MIN_ITERS,
+    PERCENT,
+    PROG_FREQUENCY,
+)
+from empyricalRMT.utils import ConvergenceError
 
 
 def level_number_variance(
     unfolded: NDArray[f64],
     L: NDArray[f64],
-    tol: float,
-    max_L_iters: int,
-    min_L_iters: int,
-    show_progress: bool,
-) -> Tuple[NDArray[f64], NDArray[f64], NDArray[bool_]]:
+    tol: float = 0.01,
+    max_iters: int = 0,
+    show_progress: bool = True,
+) -> Tuple[NDArray[f64], NDArray[f64], NDArray[bool_], NDArray[np.uint64]]:
     """Compute the level number variance of the current unfolded eigenvalues.
 
     Parameters
@@ -31,9 +40,6 @@ def level_number_variance(
     max_L_iters: int
         Stop computing values for the level variance once max_L_iters values
         have been computed for each L value.
-
-    min_L_iters: int
-        Minimum number of iterations for each L value.
 
     show_progress: bool
         Whether or not to display computation progress in stdout.
@@ -50,13 +56,35 @@ def level_number_variance(
         An array of length of L_vals and sigma with True where the convergence
         criterion was met within `max_L_iters`.
     """
-
+    if max_iters <= 0:
+        success, max_iters = _sigma_L(
+            unfolded=unfolded,
+            L=float(np.max(L)),
+            tol=tol,
+            max_iters=AUTO_MAX_ITERS,
+            min_iters=MIN_ITERS * 10,
+            show_progress=True,
+        )[1:]
+        max_iters = int(max_iters * 2)
+        if not success:
+            raise ConvergenceError(
+                f"For the largest L-value in your provided Ls, {np.max(L)}, the "
+                f"level variance at L did not converge in {AUTO_MAX_ITERS} "
+                "iterations. Either reduce the range of L values, reduce the "
+                "`tol` tolerance value, or manually set `max_iters` to be some "
+                "value other than the default of 0 to disable this check. Note "
+                "the convergence criterion involves the range on the last 1000 "
+                "values, which are themselves iteratively-computed means, so is "
+                "a somewhat strict convergence criterion. However, setting "
+                "`max_iters` too low then provides NO guarantee on the error for "
+                "non-converging L values."
+            )
     return compute_sigmas(
         unfolded=unfolded,
         L=L,
         tol=tol,
-        max_L_iters=max_L_iters,
-        min_L_iters=min_L_iters,
+        max_L_iters=max_iters,
+        min_L_iters=MIN_ITERS,
         show_progress=show_progress,
     )
 
@@ -69,7 +97,7 @@ def compute_sigmas(
     max_L_iters: int,
     min_L_iters: int,
     show_progress: bool = True,
-) -> Tuple[NDArray[f64], NDArray[f64], NDArray[bool_]]:
+) -> Tuple[NDArray[f64], NDArray[f64], NDArray[bool_], NDArray[np.uint64]]:
     """Compute the level number variance of the current unfolded eigenvalues.
 
     Parameters
@@ -108,6 +136,7 @@ def compute_sigmas(
     # https://github.com/numba/numba/issues/3652
     L_vals = np.copy(L).ravel()
     all_sigmas = np.zeros_like(L_vals)
+    iters = np.empty_like(L_vals)
     converged: NDArray[bool_] = np.zeros_like(L_vals, dtype=bool_)
 
     prog_interval = len(L_vals) // PROG_FREQUENCY
@@ -120,7 +149,7 @@ def compute_sigmas(
     if show_progress:
         print(LEVELVAR_PROG, 0, PERCENT)
     for i in prange(len(L_vals)):
-        all_sigmas[i], converged[i] = _sigma_L(
+        all_sigmas[i], converged[i], iters[i] = _sigma_L(
             unfolded=unfolded,
             L=L_vals[i],
             max_iters=max_L_iters,
@@ -131,7 +160,7 @@ def compute_sigmas(
             prog = int(100 * np.sum(all_sigmas > 0) / len(L_vals))
             print(LEVELVAR_PROG, prog, PERCENT)
 
-    return L_vals, all_sigmas, converged
+    return L_vals, all_sigmas, converged, iters
 
 
 @jit(nopython=True, cache=False, fastmath=True)
@@ -141,7 +170,8 @@ def _sigma_L(
     max_iters: int,
     tol: float,
     min_iters: int,
-) -> Tuple[float, bool]:
+    show_progress: bool = False,
+) -> Tuple[float, bool, np.uint64]:
     """Compute the level number variance of the current unfolded eigenvalues.
 
     Parameters
@@ -171,6 +201,9 @@ def _sigma_L(
     converged: bool
         True if convergence criterion was met.
 
+    iters: int
+        Count of iterations
+
     Notes
     -----
     Computes the level number variance by randomly selecting a point c in
@@ -182,6 +215,9 @@ def _sigma_L(
     TODO: See https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
     to improve numerica stability
     """
+    prog_interval = CONVERG_PROG_INTERVAL
+    if L > 100:
+        prog_interval *= 10
     level_mean = 0.0
     level_sq_mean = 0.0
     sigma: float = 0.0
@@ -197,8 +233,9 @@ def _sigma_L(
     sigma = level_sq_mean - level_mean * level_mean
     sigmas[0] = sigma
 
-    # we'll use the fact that for x = [x_0, x_1, ... x_n-1], the
-    # average a_k == (k*a_(k-1) + x_k) / (k+1) for k = 0, ..., n-1
+    if show_progress:
+        print(CONVERG_PROG, 0, ITER_COUNT)
+
     k = np.uint64(0)
     while True:
         k += 1
@@ -210,10 +247,14 @@ def _sigma_L(
         level_sq_mean = (k * level_sq_mean + n_within_sq) / (k + 1)
         sigma = level_sq_mean - level_mean * level_mean
         sigmas[int(k) % size] = sigma
+        if show_progress and k % prog_interval == 0:
+            print(CONVERG_PROG, int(k * 2), ITER_COUNT)  # x2 for safety factor
         if k > min_iters and (k % 500 == 0) and (np.abs(np.max(sigmas) - np.min(sigmas)) < tol):
             break
         if k >= max_iters:
             break
 
+    if show_progress:
+        print(CONVERG_PROG, int(k), ITER_COUNT)
     converged = np.abs(np.max(sigmas) - np.min(sigmas)) < tol
-    return sigma, converged
+    return sigma, converged, k
