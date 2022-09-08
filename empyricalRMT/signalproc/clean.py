@@ -1,7 +1,7 @@
-import numpy as np
-
-from numba import jit, prange
 from typing import Any
+
+import numpy as np
+from numba import jit, prange
 
 
 def get_signals(arr2d: np.array, threshold: float = 0.01) -> np.array:

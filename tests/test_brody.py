@@ -4,7 +4,7 @@ import pytest
 
 from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
-from empyricalRMT.plot import PlotMode, _configure_sbn_style, _handle_plot_mode
+from empyricalRMT.plot import PlotMode, _handle_plot_mode
 
 
 @pytest.mark.fast

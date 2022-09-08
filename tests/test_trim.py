@@ -1,11 +1,11 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from pathlib import Path
-
-from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.construct import generate_eigs
+from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.trim import TrimIter
 
 
@@ -48,12 +48,8 @@ def test_trim_manual() -> None:
 def test_trim_reports() -> None:
     eigs = Eigenvalues(generate_eigs(2000, seed=2))
     report = eigs.trim_report()
-    best_smoothers, best_unfolds, best_indices, consistent_smoothers = (
-        report.best_overall()
-    )
-    assert np.array_equal(
-        np.sort(consistent_smoothers), np.sort(["poly_7", "poly_8", "poly_9"])
-    )
+    best_smoothers, best_unfolds, best_indices, consistent_smoothers = report.best_overall()
+    assert np.array_equal(np.sort(consistent_smoothers), np.sort(["poly_7", "poly_8", "poly_9"]))
     assert np.array_equal(best_indices, [(104, 1765), (231, 1765), (104, 2000)])
 
     report.plot_trim_steps(mode="test")

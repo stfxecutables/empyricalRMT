@@ -211,10 +211,6 @@ def _sigma_L(
     of unfolded eigenvalues in (c - L/2, c + L/2) to determine a value for
     the level number variance, sigma(L). The process is repeated until the
     running averages stabilize, and the final running average is returned.
-
-    TODO: See
-    https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-    to improve numerical stability
     """
     prog_interval = CONVERG_PROG_INTERVAL
     if L > 100:

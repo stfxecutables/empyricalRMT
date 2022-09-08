@@ -1,22 +1,18 @@
-import numpy as np
 import time
+from typing import Tuple, Union
+from warnings import warn
 
+import numpy as np
 from numpy import ndarray
-
 from scipy.integrate import quad
 from scipy.linalg import eigvalsh_tridiagonal
 from scipy.sparse import diags
-from typing import Tuple, Union
 from typing_extensions import Literal
-from warnings import warn
 
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.unfold import Unfolded
 
-
-MatrixKind = Union[
-    Literal["goe"], Literal["gue"], Literal["uniform"], Literal["poisson"]
-]
+MatrixKind = Union[Literal["goe"], Literal["gue"], Literal["uniform"], Literal["poisson"]]
 
 
 def generate_eigs(
@@ -137,7 +133,7 @@ def correlated_eigs(
     return_mats: bool = False,
 ) -> Union[ndarray, Tuple[ndarray, ndarray, ndarray]]:
     """[WIP]. Generate a correlated system for examinatino with, e.g.
-    Marcenko-Pastur. """
+    Marcenko-Pastur."""
     A = np.random.standard_normal(shape)
     correlated = np.random.permutation(A.shape[0] - 1) + 1  # don't select first row
     last = int(np.floor((percent / 100) * A.shape[0]))
@@ -228,9 +224,7 @@ def time_series_eigs(
     return eigs
 
 
-def generate_uniform(
-    matsize: int = 1000, lower: float = 0, upper: float = 1
-) -> ndarray:
+def generate_uniform(matsize: int = 1000, lower: float = 0, upper: float = 1) -> ndarray:
     raise NotImplementedError
 
 

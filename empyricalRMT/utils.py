@@ -1,9 +1,8 @@
 import os
-import shutil
 import sys
 from pathlib import Path
 from sys import stderr
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
 from numba import jit

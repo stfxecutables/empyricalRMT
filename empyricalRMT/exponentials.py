@@ -1,7 +1,6 @@
 import numpy as np
-from numpy import ndarray
-
 from numba import jit
+from numpy import ndarray
 
 
 @jit(nopython=True, fastmath=True)

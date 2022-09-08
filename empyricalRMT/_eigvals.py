@@ -1,12 +1,13 @@
-import numpy as np
-
-from numpy import ndarray
 from typing import Sized
+
+import numpy as np
+from numpy import ndarray
 
 from empyricalRMT._validate import make_1d_array
 from empyricalRMT.observables.step import _step_function_fast
+from empyricalRMT.plot import PlotResult, _raw_eig_dist, _raw_eig_sorted
 from empyricalRMT.plot import _spacings as plotSpacings
-from empyricalRMT.plot import _raw_eig_dist, _raw_eig_sorted, _step_function, PlotResult
+from empyricalRMT.plot import _step_function
 
 
 class EigVals:

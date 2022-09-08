@@ -1,14 +1,14 @@
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from warnings import warn
+
 import numpy as np
 import pandas as pd
-
 from numpy import ndarray
 from numpy.polynomial.polynomial import polyfit, polyval
 from pandas import DataFrame
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import curve_fit
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from typing_extensions import Literal
-from warnings import warn
 
 from empyricalRMT._constants import (
     DEFAULT_POLY_DEGREE,
@@ -17,9 +17,8 @@ from empyricalRMT._constants import (
     DEFAULT_SPLINE_SMOOTH,
     DEFAULT_SPLINE_SMOOTHS,
 )
-from empyricalRMT.exponentials import gompertz
 from empyricalRMT.detrend import emd_detrend
-
+from empyricalRMT.exponentials import gompertz
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}
 
@@ -92,9 +91,7 @@ class Smoother:
         eigs = self._eigs
         # steps = _step_function_fast(eigs, eigs)
         steps = np.arange(0, len(eigs)) + 1
-        self.__validate_args(
-            smoother=smoother, degree=degree, spline_smooth=spline_smooth
-        )
+        self.__validate_args(smoother=smoother, degree=degree, spline_smooth=spline_smooth)
 
         if smoother == "poly":
             poly_coef = polyfit(eigs, steps, degree)
@@ -204,9 +201,7 @@ class Smoother:
         if spline_smooths == "heuristic":
             for s in DEFAULT_SPLINE_SMOOTHS:
                 for d in spline_degrees:
-                    col_name = f"{_spline_name(d)}-spline_" "{:1.2f}_heuristic".format(
-                        s
-                    )
+                    col_name = f"{_spline_name(d)}-spline_" "{:1.2f}_heuristic".format(s)
                     unfolded, steps, closure = self.fit(
                         smoother="spline",
                         spline_smooth=len(self._eigs) ** s,
@@ -275,9 +270,7 @@ class Smoother:
                 if not isinstance(spline_degrees, list):
                     raise ValueError("spline_degrees must be a list of integer values")
                 for deg in spline_degrees:
-                    col_name = (
-                        f"{_spline_name(deg)}-spline_" "{:1.3f}_heuristic".format(s)
-                    )
+                    col_name = f"{_spline_name(deg)}-spline_" "{:1.3f}_heuristic".format(s)
                     col_names.append(col_name)
         else:
             try:
@@ -287,9 +280,7 @@ class Smoother:
             if isinstance(spline_smooths, list):
                 for s in spline_smooths:
                     if not isinstance(spline_degrees, list):
-                        raise ValueError(
-                            "spline_degrees must be a list of integer values"
-                        )
+                        raise ValueError("spline_degrees must be a list of integer values")
                     for deg in spline_degrees:
                         col_name = f"{_spline_name(deg)}-spline_" "{:1.3f}".format(s)
                         col_names.append(col_name)

@@ -1,13 +1,12 @@
-import numpy as np
-import pytest
 import time
 
+import numpy as np
+import pytest
 from numpy import ndarray
 
-
-from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.construct import goe_unfolded
 from empyricalRMT.correlater import correlate_fast
+from empyricalRMT.eigenvalues import Eigenvalues
 
 
 def get_eigs(arr: ndarray) -> ndarray:
@@ -27,9 +26,7 @@ def test_axes_configuring() -> None:
     corr_indices = correlated[:last]
     # introduce correlation in A
     for i in corr_indices:
-        A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(
-            0, var, size=A.shape[1]
-        )
+        A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(0, var, size=A.shape[1])
     M = correlate_fast(A)
     eigs = get_eigs(M)
     print(f"\nPercent correlated noise: {percent}%")

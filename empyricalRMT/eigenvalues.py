@@ -1,24 +1,19 @@
-import numpy as np
-import scipy.sparse as sparse
-
-from numpy import ndarray
-from scipy.integrate import quad
-from typing import Any, List, Optional, Sized, Tuple, TypeVar, Type, Union
-from typing_extensions import Literal
+from typing import Any, List, Optional, Sized, Tuple, Type, TypeVar, Union
 from warnings import warn
 
-from empyricalRMT._constants import (
-    DEFAULT_POLY_DEGREE,
-    DEFAULT_SPLINE_SMOOTH,
-    DEFAULT_POLY_DEGREES,
-)
+import numpy as np
+import scipy.sparse as sparse
+from numpy import ndarray
+from scipy.integrate import quad
+from typing_extensions import Literal
+
+from empyricalRMT._constants import DEFAULT_POLY_DEGREE, DEFAULT_POLY_DEGREES, DEFAULT_SPLINE_SMOOTH
 from empyricalRMT._eigvals import EigVals
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.detrend import emd_detrend
 from empyricalRMT.smoother import Smoother, SmoothMethod
 from empyricalRMT.trim import Trimmed, TrimReport
 from empyricalRMT.unfold import Unfolded
-
 
 _WARNED_SMALL = False
 
@@ -94,9 +89,7 @@ class Eigenvalues(EigVals):
             The Eigenvalues object, with values close to zero pre-trimmed away.
         """
         if len(data.shape) > 2:
-            raise ValueError(
-                "`data` must be either flat, 1-dimensional, or 2-dimensional."
-            )
+            raise ValueError("`data` must be either flat, 1-dimensional, or 2-dimensional.")
         if len(data.shape) == 2 and np.min(data.shape) > 1:
             eigs = np.linalg.eigvalsh(data, "L" if lower else "U")
         eigs = data.reshape(-1)  # equivalent to ravel but less likely to copy
@@ -791,9 +784,7 @@ def _eigs_via_transpose(
     """
     N, T = M.shape
     if N <= T:
-        raise ValueError(
-            "Array is not of correct shape to benefit from transposed intermediates."
-        )
+        raise ValueError("Array is not of correct shape to benefit from transposed intermediates.")
     r = 1 / (T - 1)
     Z = M - np.mean(M, axis=1, keepdims=True)
     if not covariance:

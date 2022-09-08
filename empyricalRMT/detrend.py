@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import ndarray
-
 from PyEMD import EMD
+
 
 # detrended unfolding via the Empirical Mode Decomposition and first
 # intrinsic mode function

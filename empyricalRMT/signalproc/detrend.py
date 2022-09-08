@@ -1,11 +1,10 @@
 import numpy as np
-from numpy import ndarray
-
 from numba import jit, prange
+from numpy import ndarray
 from PyEMD import EMD
 from scipy.stats import linregress
 
-from empyricalRMT.utils import slope, intercept
+from empyricalRMT.utils import intercept, slope
 
 
 class Detrend:
@@ -22,7 +21,7 @@ class Detrend:
 
     def emd(self, series: ndarray) -> ndarray:
         """Remove the lowest-frequency trend as determined by Empirical
-        Mode Decomposition """
+        Mode Decomposition"""
         trend = EMD().emd(series)[-1]
         return series - trend
 

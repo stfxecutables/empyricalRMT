@@ -1,8 +1,8 @@
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-import time
-
 from numpy import ndarray
 
 from empyricalRMT.correlater import correlate_fast
@@ -59,9 +59,7 @@ def test_correlated_gaussian_noise() -> None:
         corr_indices = correlated[:last]
         # introduce correlation in A
         for i in corr_indices:
-            A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(
-                0, var, size=A.shape[1]
-            )
+            A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(0, var, size=A.shape[1])
         M = correlate_fast(A)
         eigs = get_eigs(M)
         print(f"\nPercent correlated noise: {percent}%")

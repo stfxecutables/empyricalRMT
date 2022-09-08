@@ -1,11 +1,10 @@
-import numpy as np
-
 from abc import ABC, abstractmethod
-from numpy import ndarray
-from scipy.special import gamma
-
 from typing import Tuple, Union
 from warnings import warn
+
+import numpy as np
+from numpy import ndarray
+from scipy.special import gamma
 
 
 class _Ensemble(ABC):

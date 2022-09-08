@@ -1,12 +1,12 @@
+from typing import List
+
 import numpy as np
 import pytest
-
-from typing import List
 
 from empyricalRMT.compare import Compare, Metric
 from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
-from empyricalRMT.ensemble import GOE, GDE
+from empyricalRMT.ensemble import GDE, GOE
 
 
 @pytest.mark.fast

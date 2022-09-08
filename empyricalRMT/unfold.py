@@ -5,11 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from numpy import float64 as f64
-from numpy import float128 as f128
 from numpy import ndarray
 from numpy.typing import NDArray
 from pandas import DataFrame
-from statsmodels.distributions.empirical_distribution import ECDF
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing_extensions import Literal
 
@@ -17,7 +15,7 @@ import empyricalRMT.plot as plot
 from empyricalRMT._constants import RIGIDITY_GRID
 from empyricalRMT._eigvals import EigVals
 from empyricalRMT._validate import make_1d_array
-from empyricalRMT.brody import brody_cdf, brody_fit_evaluate
+from empyricalRMT.brody import brody_fit_evaluate
 from empyricalRMT.compare import Compare, Metric
 from empyricalRMT.ensemble import Ensemble
 from empyricalRMT.observables.levelvariance import level_number_variance

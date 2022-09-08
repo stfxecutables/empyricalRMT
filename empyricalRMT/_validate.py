@@ -1,7 +1,7 @@
+from typing import Any
+
 import numpy as np
 from numpy import ndarray
-
-from typing import Any
 
 
 def make_1d_array(array: Any) -> ndarray:

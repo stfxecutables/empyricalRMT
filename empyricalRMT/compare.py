@@ -1,10 +1,10 @@
+from typing import Any, List, Tuple
+
 import numpy as np
 import pandas as pd
-
 from numba import jit
 from numpy import ndarray
 from pandas import DataFrame
-from typing import Any, List, Tuple
 from typing_extensions import Literal
 
 from empyricalRMT._validate import make_1d_array
@@ -75,9 +75,7 @@ class Compare:
             diffs = np.empty(curves.shape[0])
             for i in range(len(diffs)):
                 diffs[i] = np.mean((self.base_curve - curves[i]) ** 2)
-                return pd.DataFrame(
-                    data=diffs, index=self.labels, columns=[self.base_label]
-                )
+                return pd.DataFrame(data=diffs, index=self.labels, columns=[self.base_label])
         data = self.__fast_msqd(curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
@@ -92,9 +90,7 @@ class Compare:
             diffs = np.empty(curves.shape[0])
             for i in range(len(diffs)):
                 diffs[i] = np.mean(np.abs(self.base_curve - curves[i]))
-                return pd.DataFrame(
-                    data=diffs, index=self.labels, columns=[self.base_label]
-                )
+                return pd.DataFrame(data=diffs, index=self.labels, columns=[self.base_label])
         data = self.__fast_mad(curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
@@ -140,9 +136,7 @@ class Compare:
         """
         vals1 = np.sort(curve1)
         vals2 = np.sort(curve2)
-        endpoints = np.linspace(
-            min(vals1[0], vals2[0]), max(vals1[-1], vals2[-1]), n_bins + 1
-        )
+        endpoints = np.linspace(min(vals1[0], vals2[0]), max(vals1[-1], vals2[-1]), n_bins + 1)
         n, counts1, counts2 = 0, np.arange(n_bins), np.arange(n_bins)
         for val in vals1:
             if val < endpoints[n]:
@@ -162,9 +156,7 @@ class Compare:
 
         return endpoints, counts1, counts2
 
-    def __validate_curve_lengths(
-        self, message: str = None, check_all_equal: bool = False
-    ) -> None:
+    def __validate_curve_lengths(self, message: str = None, check_all_equal: bool = False) -> None:
         """Ensure curve lengths are appropriate for desired comparison methods."""
         curves = self.curves
         labels = self.labels
@@ -172,9 +164,7 @@ class Compare:
         if len(curves) < 1:
             raise ValueError("There must be more than one curve to compare.")
         if len(curves) == 1 and self.base_curve is None:
-            raise ValueError(
-                "There must be more than one curve to compare to the base curve."
-            )
+            raise ValueError("There must be more than one curve to compare to the base curve.")
         if len(self.curves) != len(labels):
             raise ValueError("`labels` must have the same length as `curves`.")
 

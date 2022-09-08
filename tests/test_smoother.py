@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from empyricalRMT.smoother import Smoother
 from empyricalRMT.construct import generate_eigs
+from empyricalRMT.smoother import Smoother
 
 
 @pytest.mark.fast
