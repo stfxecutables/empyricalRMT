@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 from typing import Any, List, Optional, Sized, Tuple, Type, TypeVar, Union
 from warnings import warn
 
 import numpy as np
 import scipy.sparse as sparse
+from numpy import float64 as f64
 from numpy import ndarray
+from numpy.typing import ArrayLike
 from scipy.integrate import quad
 from typing_extensions import Literal
 
@@ -15,16 +19,12 @@ from empyricalRMT.smoother import Smoother, SmoothMethod
 from empyricalRMT.trim import Trimmed, TrimReport
 from empyricalRMT.unfold import Unfolded
 
-_WARNED_SMALL = False
-
-# see https://stackoverflow.com/a/44644576, for class methods
-Eigens = TypeVar("Eigens", bound="Eigenvalues")
-
 
 class Eigenvalues(EigVals):
     """Basic class providing access to various items of interest in RMT. """
+    __WARNED_SMALL = False
 
-    def __init__(self, eigenvalues: Sized):
+    def __init__(self, eigenvalues: ArrayLike):
         """Construct an Eigenvalues object.
 
         Parameters
@@ -33,25 +33,16 @@ class Eigenvalues(EigVals):
             An object for which np.array(eigs) will return a sensible, one-dimensional
             array of floats which are the computed eigenvalues of some matrix.
         """
-        global _WARNED_SMALL
-        if eigenvalues is None:
-            raise ValueError("`eigenvalues` must be an array_like.")
-        try:
-            length = len(eigenvalues)
-            if length < 50 and not _WARNED_SMALL:
-                warn(
-                    "You have less than 50 eigenvalues, and the assumptions of Random "
-                    "Matrix Theory are almost certainly not justified. Any results "
-                    "obtained should be interpreted with caution",
-                    category=UserWarning,
-                )
-                _WARNED_SMALL = True  # don't warn more than once per execution
-        except TypeError:
-            raise ValueError(
-                "The `eigs` passed to unfolded must be an object with a defined length via `len()`."
-            )
-
         super().__init__(eigenvalues)
+        if len(self._vals) < 50 and not self.__class__.__WARNED_SMALL:
+            warn(
+                "You have less than 50 eigenvalues, and the assumptions of Random "
+                "Matrix Theory are almost certainly not justified. Any results "
+                "obtained should be interpreted with caution",
+                category=UserWarning,
+            )
+            self.__class__.__WARNED_SMALL = True  # don't warn more than once per execution
+
         self._series_T: Optional[int] = None
         self._series_N: Optional[int] = None
         # get some Marchenko-Pastur endpoints
@@ -60,11 +51,11 @@ class Eigenvalues(EigVals):
 
     @classmethod
     def from_correlations(
-        cls: Type[Eigens],
+        cls: Type[Eigenvalues],
         data: ndarray,
-        atol: float = 1e3 * np.finfo(np.float).eps,
+        atol: float = 1e3 * np.finfo(np.float64).eps,
         lower: bool = True,
-    ) -> Eigens:
+    ) -> Eigenvalues:
         """Use positive semi-definiteness to identify likely zero-valued eigenvalues
         due to floating point imprecision.
 
@@ -99,7 +90,7 @@ class Eigenvalues(EigVals):
     # instead of going through the covariance matrix
     @classmethod
     def from_time_series(
-        cls: Type[Eigens],
+        cls: Type[Eigenvalues],
         data: ndarray,
         covariance: bool = True,
         trim_zeros: bool = True,
@@ -107,7 +98,7 @@ class Eigenvalues(EigVals):
         time_axis: int = 1,
         use_sparse: bool = False,
         **sp_args: Any,
-    ) -> Eigens:
+    ) -> Eigenvalues:
         """Use Marchenko-Pastur and positive semi-definiteness to identify likely noise
         values and zero-valued eigenvalues due to floating point imprecision
 

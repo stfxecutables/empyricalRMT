@@ -733,7 +733,7 @@ def _next_spacings(
 
 
 def _spectral_rigidity(
-    unfolded: NDArray[f64],
+    unfolded: fArr,
     data: pd.DataFrame,
     title: str = "Spectral Rigidity",
     mode: PlotMode = PlotMode.Block,

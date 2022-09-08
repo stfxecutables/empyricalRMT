@@ -56,7 +56,7 @@ class Unfolded(EigVals):
 
     def spectral_rigidity(
         self,
-        L: NDArray[f64] = np.arange(2, 50, 10000),
+        L: fArr = np.arange(2, 50, 10000),
         max_iters: int = 0,
         gridsize: int = RIGIDITY_GRID,
         tol: float = 0.01,

@@ -2,10 +2,7 @@ from typing import Tuple
 
 import numpy as np
 from numba import jit, prange
-from numpy import float64 as f64
-from numpy import int64 as i64
 from numpy import ndarray
-from numpy.typing import NDArray
 from typing_extensions import Literal
 
 from empyricalRMT._constants import (
@@ -18,6 +15,7 @@ from empyricalRMT._constants import (
     RIGIDITY_GRID,
     RIGIDITY_PROG,
 )
+from empyricalRMT._types import bArr, fArr, iArr
 from empyricalRMT.observables.step import _step_function_fast
 from empyricalRMT.utils import ConvergenceError, kahan_add
 
@@ -51,14 +49,14 @@ from empyricalRMT.utils import ConvergenceError, kahan_add
 #    appropriate number of times to generate a dataset consisting of
 #    datapoints (L, ∆3(L)).
 def spectral_rigidity(
-    unfolded: NDArray[f64],
-    L: NDArray[f64] = np.arange(2, 20, 0.5),
+    unfolded: fArr,
+    L: fArr = np.arange(2, 20, 0.5),
     tol: float = 0.01,
     max_iters: int = 0,
     gridsize: int = RIGIDITY_GRID,
     integration: Literal["simps", "trapz"] = "simps",
     show_progress: bool = True,
-) -> Tuple[NDArray[f64], NDArray[f64], NDArray[np.bool_], NDArray[i64]]:
+) -> Tuple[fArr, fArr, bArr, iArr]:
     """Compute the spectral rigidity for a particular unfolding.
 
     Computes the spectral rigidity (delta_3, ∆₃ [1]) for a
@@ -149,7 +147,7 @@ def spectral_rigidity(
     #     use_simpson=True,
     # )
     if max_iters <= 0:
-        success, max_iters = _delta_converge_L(
+        success, max_iters = delta_L(
             unfolded=unfolded,
             L=float(np.max(L)),
             gridsize=RIGIDITY_GRID,
@@ -174,7 +172,7 @@ def spectral_rigidity(
                 "non-converging L values."
             )
 
-    delta3, converged, iters = _delta_converge(
+    delta3, converged, iters = delta_parallel(
         unfolded=unfolded,
         L_vals=L.copy().ravel(),
         gridsize=gridsize,
@@ -188,7 +186,7 @@ def spectral_rigidity(
 
 
 @jit(nopython=True, cache=False, parallel=True, fastmath=True)
-def _delta_converge(
+def delta_parallel(
     unfolded: ndarray,
     L_vals: ndarray,
     tol: float = 0.01,
@@ -197,7 +195,7 @@ def _delta_converge(
     min_iters: int = MIN_ITERS,
     use_simpson: bool = True,
     show_progress: bool = True,
-) -> Tuple[NDArray[f64], NDArray[np.bool_], NDArray[i64]]:
+) -> Tuple[fArr, bArr, iArr]:
     prog_interval = len(L_vals) // 50
     if prog_interval == 0:
         prog_interval = 1
@@ -208,7 +206,7 @@ def _delta_converge(
         print(RIGIDITY_PROG, 0, PERCENT)
     for i in prange(len(L_vals)):
         L = L_vals[i]
-        delta3[i], converged[i], iters[i] = _delta_converge_L(
+        delta3[i], converged[i], iters[i] = delta_L(
             unfolded=unfolded,
             L=L,
             gridsize=gridsize,
@@ -228,7 +226,7 @@ def _delta_converge(
 # it here. However, keep in mind our convergence criterion sort-of implies this is
 # not an issue.
 @jit(nopython=True, cache=False, fastmath=True)
-def _delta_converge_L(
+def delta_L(
     unfolded: ndarray,
     L: float,
     gridsize: int = 100,
@@ -299,7 +297,7 @@ def _delta_converge_L(
     # I don't think it matters much if we use median, mean, max, or min for the
     # final returned single value, given our convergence criterion is so strict
     # return d3_mean, converged, k
-    return np.mean(delta_running), converged, k
+    return np.mean(delta_running), converged, k  # type: ignore
 
 
 @jit(nopython=True, cache=True, fastmath=True)
@@ -318,7 +316,7 @@ def _delta_grid(
         else:
             delta3 = _integrate_fast(grid, y_vals)  # O(len(grid))
         delta3s[i] = delta3 / L
-    return np.mean(delta3s)
+    return np.mean(delta3s)  # type: ignore
 
 
 @jit(nopython=True, cache=True, fastmath=True)
@@ -331,13 +329,13 @@ def _slope(x: ndarray, y: ndarray) -> np.float64:
     cov = np.sum(x_dev * y_dev)
     var = np.sum(x_dev * x_dev)
     if var == 0.0:
-        return 0.0
-    return cov / var
+        return 0.0  # type: ignore
+    return cov / var  # type: ignore
 
 
 @jit(nopython=True, cache=True, fastmath=True)
 def _intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
-    return np.mean(y) - slope * np.mean(x)
+    return np.mean(y) - slope * np.mean(x)  # type: ignore
 
 
 @jit(nopython=True, cache=True, fastmath=True)
@@ -350,7 +348,7 @@ def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
         w = grid[i + 1] - grid[i]
         h = values[i] + values[i + 1]
         integral += w * h / 2
-    return integral
+    return integral  # type: ignore
 
 
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
@@ -392,7 +390,7 @@ def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: float, w: float, grid: n
 
 # fmt: off
 @jit(nopython=True, cache=True, fastmath=True)
-def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
+def _int_simps_nonunif(grid: fArr, vals: fArr) -> float:
     """
     Simpson rule for irregularly spaced data. Copied shamelessly from
     https://en.wikipedia.org/w/index.php?title=Simpson%27s_rule&oldid=938527913#Composite_Simpson's_rule_for_irregularly_spaced_data

@@ -1,9 +1,12 @@
+from typing import cast
+
 import numpy as np
-from numba import jit, prange
-from numpy import ndarray
+from numba import njit, prange
+from numpy.typing import NDArray
 from PyEMD import EMD
 from scipy.stats import linregress
 
+from empyricalRMT._types import fArr
 from empyricalRMT.utils import intercept, slope
 
 
@@ -11,21 +14,21 @@ class Detrend:
     def __init__(self) -> None:
         return
 
-    def linear(self, series: ndarray) -> ndarray:
+    def linear(self, series: NDArray) -> fArr:
         """Remove the linear trend by fitting a linear model, and returning
         the residuals"""
         time = np.arange(0, len(series))
         m, b = linregress(time, series)  # m == slope, b == intercept
         fitted = m * time + b
-        return series - fitted
+        return cast(fArr, series - fitted)
 
-    def emd(self, series: ndarray) -> ndarray:
+    def emd(self, series: NDArray) -> fArr:
         """Remove the lowest-frequency trend as determined by Empirical
         Mode Decomposition"""
         trend = EMD().emd(series)[-1]
-        return series - trend
+        return cast(fArr, series - trend)
 
-    def difference(self, series: ndarray) -> ndarray:
+    def difference(self, series: NDArray) -> fArr:
         """Remove non-stationarity by differencing the data (once)"""
         differenced = np.empty([len(series - 1)])
         for i in range(len(series) - 1):
@@ -33,8 +36,8 @@ class Detrend:
         return differenced
 
 
-@jit(nopython=True, parallel=True, fastmath=True)
-def linear_detrend(signals: ndarray, ret: ndarray) -> ndarray:
+@njit(parallel=True, fastmath=True)
+def linear_detrend(signals: NDArray, ret: fArr) -> None:
     """takes voxels with nonzero variance"""
     m, T = signals.shape
     x = np.arange(0, T)
@@ -45,13 +48,11 @@ def linear_detrend(signals: ndarray, ret: ndarray) -> ndarray:
         fitted = m * x + b
         detrended = y - fitted
         ret[i, :] = detrended
-    return ret
 
 
-@jit(nopython=True, parallel=True, fastmath=True)
-def mean_detrend(signals: ndarray, ret: ndarray) -> ndarray:
+@njit(parallel=True, fastmath=True)
+def mean_detrend(signals: NDArray, ret: fArr) -> None:
     """takes voxels with nonzero variance"""
     m, T = signals.shape
     for i in prange(m):
         ret[i, :] = signals[i, :] - np.mean(signals[i, :])
-    return ret

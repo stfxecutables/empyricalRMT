@@ -3,8 +3,6 @@ from typing import Tuple
 import numpy as np
 from numba import jit, prange
 from numpy import bool_
-from numpy import float64 as f64
-from numpy.typing import NDArray
 
 from empyricalRMT._constants import (
     AUTO_MAX_ITERS,
@@ -16,16 +14,17 @@ from empyricalRMT._constants import (
     PERCENT,
     PROG_FREQUENCY,
 )
+from empyricalRMT._types import bArr, fArr, uArr
 from empyricalRMT.utils import ConvergenceError, kahan_add
 
 
 def level_number_variance(
-    unfolded: NDArray[f64],
-    L: NDArray[f64],
+    unfolded: fArr,
+    L: fArr,
     tol: float = 0.01,
     max_iters: int = 0,
     show_progress: bool = True,
-) -> Tuple[NDArray[f64], NDArray[f64], NDArray[bool_], NDArray[np.uint64]]:
+) -> Tuple[fArr, fArr, bArr, uArr]:
     """Compute the level number variance of the current unfolded eigenvalues.
 
     Parameters
@@ -52,12 +51,12 @@ def level_number_variance(
     sigma: NDArray[np.float64]
         The computed number level variance values.
 
-    convergences: NDArray[np.bool_]
+    convergences: bArr
         An array of length of L_vals and sigma with True where the convergence
         criterion was met within `max_L_iters`.
     """
     if max_iters <= 0:
-        success, max_iters = _sigma_L(
+        success, max_iters = sigma_L(
             unfolded=unfolded,
             L=float(np.max(L)),
             tol=tol,
@@ -79,7 +78,7 @@ def level_number_variance(
                 "`max_iters` too low then provides NO guarantee on the error for "
                 "non-converging L values."
             )
-    return compute_sigmas(  # type: ignore
+    return sigma_parallel(  # type: ignore
         unfolded=unfolded,
         L=L,
         tol=tol,
@@ -90,14 +89,14 @@ def level_number_variance(
 
 
 @jit(nopython=True, cache=False, fastmath=True, parallel=True)
-def compute_sigmas(
-    unfolded: NDArray[f64],
-    L: NDArray[f64],
+def sigma_parallel(
+    unfolded: fArr,
+    L: fArr,
     tol: float,
     max_L_iters: int,
     min_L_iters: int,
     show_progress: bool = True,
-) -> Tuple[NDArray[f64], NDArray[f64], NDArray[bool_], NDArray[np.uint64]]:
+) -> Tuple[fArr, fArr, bArr, uArr]:
     """Compute the level number variance of the current unfolded eigenvalues.
 
     Parameters
@@ -137,7 +136,7 @@ def compute_sigmas(
     L_vals = np.copy(L).ravel()
     all_sigmas = np.zeros_like(L_vals)
     iters = np.empty_like(L_vals)
-    converged: NDArray[bool_] = np.zeros_like(L_vals, dtype=bool_)
+    converged: bArr = np.zeros_like(L_vals, dtype=bool_)
 
     prog_interval = len(L_vals) // PROG_FREQUENCY
     if prog_interval == 0:
@@ -149,7 +148,7 @@ def compute_sigmas(
     if show_progress:
         print(LEVELVAR_PROG, 0, PERCENT)
     for i in prange(len(L_vals)):
-        all_sigmas[i], converged[i], iters[i] = _sigma_L(
+        all_sigmas[i], converged[i], iters[i] = sigma_L(
             unfolded=unfolded,
             L=L_vals[i],
             max_iters=max_L_iters,
@@ -164,8 +163,8 @@ def compute_sigmas(
 
 
 @jit(nopython=True, cache=False, fastmath=True)
-def _sigma_L(
-    unfolded: NDArray[f64],
+def sigma_L(
+    unfolded: fArr,
     L: float,
     max_iters: int,
     tol: float,

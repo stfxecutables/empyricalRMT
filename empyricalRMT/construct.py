@@ -9,6 +9,7 @@ from scipy.linalg import eigvalsh_tridiagonal
 from scipy.sparse import diags
 from typing_extensions import Literal
 
+from empyricalRMT._types import bArr, fArr, uArr
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.unfold import Unfolded
 
@@ -21,7 +22,7 @@ def generate_eigs(
     seed: int = None,
     log: bool = False,
     use_tridiagonal: bool = True,
-) -> ndarray:
+) -> fArr:
     """Generate a random matrix as specified by arguments, and compute and return
     the eigenvalues.
 
@@ -74,7 +75,7 @@ def generate_eigs(
 
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
-    eigs = np.linalg.eigvalsh(M)
+    eigs: fArr = np.linalg.eigvalsh(M)
     if log:
         print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
     return eigs

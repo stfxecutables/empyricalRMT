@@ -1,12 +1,13 @@
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from numba import jit
+from numba import njit
 from numpy import ndarray
 from pandas import DataFrame
 from typing_extensions import Literal
 
+from empyricalRMT._types import fArr
 from empyricalRMT._validate import make_1d_array
 
 Metric = Literal["mad", "msqd", "corr"]
@@ -17,16 +18,16 @@ class Compare:
 
     def __init__(
         self,
-        curves: List[ndarray],
+        curves: List[fArr],
         labels: List[str],
-        base_curve: ndarray = None,
+        base_curve: fArr = None,
         base_label: str = None,
     ):
         """Construct a Compare object for accessing various comparison methods.
 
         Parameters
         ----------
-        curves: List[ndarray]
+        curves: List[NDArray[floating]]
             A list of unidimensional numpy arrays of values to compare. For most
             comparison methods besides some piecewise / quantile comparison methods, the
             curves must have identical lengths.
@@ -36,16 +37,18 @@ class Compare:
             curves, and labels[i] must be the label for curves[i], for all valid
             values of i.
 
-        base_curve: ndarray
+        base_curve: NDArray[floating]
             The base curve against which each curve of `curves` will be compared, if the
             desire is to compare multiple curves only to one single curve.
 
         base_label: str
             The label for identifying the base_curve.
         """
-        self.curves = [make_1d_array(curve) for curve in curves]
+        self.curves: List[fArr] = [make_1d_array(curve) for curve in curves]
         self.labels = labels.copy()
-        self.base_curve = make_1d_array(base_curve) if base_curve is not None else None
+        self.base_curve: Optional[fArr] = (
+            make_1d_array(base_curve) if base_curve is not None else None
+        )
         self.base_label = base_label  # don't need to copy strings in Python
         self.__validate_curve_lengths()
         self.dict = dict(zip(self.labels, self.curves))
@@ -67,7 +70,10 @@ class Compare:
     def mean_sq_difference(self) -> DataFrame:
         """Return the grid of mean square differences across curves."""
         self.__validate_curve_lengths(
-            message="Comparing via mean squared differences requires all curves have identical lengths",
+            message=(
+                "Comparing via mean squared differences requires "
+                "all curves have identical lengths"
+            ),
             check_all_equal=True,
         )
         curves = np.array(self.curves)
@@ -82,7 +88,10 @@ class Compare:
     def mean_abs_difference(self) -> DataFrame:
         """Return the grid of mean absolute differences across curves."""
         self.__validate_curve_lengths(
-            message="Comparing via mean absolute differences requires all curves have identical lengths",
+            message=(
+                "Comparing via mean squared differences requires "
+                "all curves have identical lengths"
+            ),
             check_all_equal=True,
         )
         curves = np.array(self.curves)
@@ -98,7 +107,7 @@ class Compare:
         self.__validate_curve_lengths(**kwargs)
 
     @staticmethod
-    @jit(nopython=True, fastmath=True)
+    @njit(fastmath=True)
     def __fast_msqd(curves: ndarray) -> ndarray:
         n = curves.shape[0]
         data = np.empty((n, n), dtype=np.float64)
@@ -108,7 +117,7 @@ class Compare:
         return data
 
     @staticmethod
-    @jit(nopython=True, fastmath=True)
+    @njit(fastmath=True)
     def __fast_mad(curves: ndarray) -> ndarray:
         n = curves.shape[0]
         data = np.empty((n, n), dtype=np.float64)
