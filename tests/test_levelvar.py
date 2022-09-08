@@ -8,10 +8,10 @@ from empyricalRMT.plot import PlotMode
 
 @pytest.mark.fast
 def test_plotting(capsys: CaptureFixture) -> None:
-    unfolded = goe_unfolded(10000)
+    unfolded = goe_unfolded(15000)
     with capsys.disabled():
         unfolded.plot_level_variance(
-            L=np.arange(2, 50, 0.5),
+            L=np.arange(2, 30, 0.5),
             tol=0.01,
             show_progress=True,
             mode=PlotMode.Block,

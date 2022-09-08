@@ -3,7 +3,7 @@ import shutil
 import sys
 from pathlib import Path
 from sys import stderr
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 from numba import jit
@@ -13,6 +13,7 @@ from numpy import ndarray
 class ConvergenceError(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
+
 
 def res(path: Path) -> str:
     return str(path.absolute().resolve())
@@ -91,6 +92,24 @@ def make_parent_directories(path: Path) -> None:
 
     for path in paths:
         make_directory(path)
+
+
+@jit(nopython=True, cache=True)
+def kahan_add(current_sum: float, update: float, carry_over: float) -> Tuple[float, float]:
+    """
+    Returns
+    -------
+    updated_sum: float
+        Updated sum.
+
+    carry_over: float
+        Carried-over value (often named "c") in pseudo-code.
+    """
+    remainder = update - carry_over
+    lossy = current_sum + remainder
+    c = (lossy - current_sum) - remainder
+    updated_sum = lossy
+    return updated_sum, c
 
 
 @jit(nopython=True, cache=True, fastmath=True)

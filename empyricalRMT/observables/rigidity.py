@@ -19,7 +19,7 @@ from empyricalRMT._constants import (
     RIGIDITY_PROG,
 )
 from empyricalRMT.observables.step import _step_function_fast
-from empyricalRMT.utils import ConvergenceError
+from empyricalRMT.utils import ConvergenceError, kahan_add
 
 # spectral rigidity ∆3
 # the least square devation of the unfolded cumulative eigenvalue
@@ -275,10 +275,11 @@ def _delta_converge_L(
 
             # Kahan sum - but can we be sure Numba isn't optimizing away?
             update = (d3 - d3_mean) / k  # mean + update is new mean
-            remainder = update - c
-            lossy = d3_mean + remainder
-            c = (lossy - d3_mean) - remainder
-            d3_mean = lossy
+            d3_mean, c = kahan_add(current_sum=d3_mean, update=update, carry_over=c)
+            # remainder = update - c
+            # lossy = d3_mean + remainder
+            # c = (lossy - d3_mean) - remainder
+            # d3_mean = lossy
             delta_running[int(k) % buf] = d3_mean
 
         if show_progress and k % prog_interval == 0:

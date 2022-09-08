@@ -16,7 +16,7 @@ from empyricalRMT._constants import (
     PERCENT,
     PROG_FREQUENCY,
 )
-from empyricalRMT.utils import ConvergenceError
+from empyricalRMT.utils import ConvergenceError, kahan_add
 
 
 def level_number_variance(
@@ -79,7 +79,7 @@ def level_number_variance(
                 "`max_iters` too low then provides NO guarantee on the error for "
                 "non-converging L values."
             )
-    return compute_sigmas(
+    return compute_sigmas(  # type: ignore
         unfolded=unfolded,
         L=L,
         tol=tol,
@@ -212,8 +212,9 @@ def _sigma_L(
     the level number variance, sigma(L). The process is repeated until the
     running averages stabilize, and the final running average is returned.
 
-    TODO: See https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-    to improve numerica stability
+    TODO: See
+    https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+    to improve numerical stability
     """
     prog_interval = CONVERG_PROG_INTERVAL
     if L > 100:
@@ -232,6 +233,9 @@ def _sigma_L(
     level_mean, level_sq_mean = n_within, n_within_sq
     sigma = level_sq_mean - level_mean * level_mean
     sigmas[0] = sigma
+    # for Kahan summation
+    c_mean = 0.0
+    c_sq = 0.0
 
     if show_progress:
         print(CONVERG_PROG, 0, ITER_COUNT)
@@ -243,8 +247,17 @@ def _sigma_L(
         start, end = c - L / 2, c + L / 2
         n_within = len(unfolded[(unfolded >= start) & (unfolded <= end)])
         n_within_sq = n_within * n_within
-        level_mean = (k * level_mean + n_within) / (k + 1)
-        level_sq_mean = (k * level_sq_mean + n_within_sq) / (k + 1)
+        level_mean_update = (n_within - level_mean) / k
+        level_sq_mean_update = (n_within_sq - level_sq_mean) / k
+        level_mean, c_mean = kahan_add(
+            current_sum=level_mean, update=level_mean_update, carry_over=c_mean
+        )
+        level_sq_mean, c_sq = kahan_add(
+            current_sum=level_sq_mean, update=level_sq_mean_update, carry_over=c_sq
+        )
+
+        # level_mean = (k * level_mean + n_within) / (k + 1)
+        # level_sq_mean = (k * level_sq_mean + n_within_sq) / (k + 1)
         sigma = level_sq_mean - level_mean * level_mean
         sigmas[int(k) % size] = sigma
         if show_progress and k % prog_interval == 0:
