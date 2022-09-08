@@ -453,7 +453,7 @@ class TrimReport:
     def plot_trim_steps(
         self,
         title: str = "Trim fits",
-        mode: PlotMode = "block",
+        mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
         width: int = 4,
         log_info: bool = True,
@@ -729,10 +729,10 @@ class TrimIter:
 
     @property
     def inliers(self) -> ndarray:
-        return np.copy(self.eigs[self.clusters == "inlier"])
+        return np.copy(self.eigs[self.clusters == "inlier"])  # type: ignore
 
     def is_all_inliers(self) -> bool:
-        return bool(np.alltrue(self.clusters == "inlier"))
+        return bool(np.alltrue(self.clusters == "inlier"))  # type: ignore
 
     def next_iter(self) -> "TrimIter":
         trim = TrimIter(self.origs, self.inliers, self.tol, **self.kwargs)

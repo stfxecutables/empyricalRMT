@@ -2,6 +2,7 @@ from typing import Tuple
 
 import numpy as np
 from numba import jit, prange
+from numpy import float64 as f64
 from numpy import ndarray
 from typing_extensions import Literal
 
@@ -187,8 +188,8 @@ def spectral_rigidity(
 
 @jit(nopython=True, cache=False, parallel=True, fastmath=True)
 def delta_parallel(
-    unfolded: ndarray,
-    L_vals: ndarray,
+    unfolded: fArr,
+    L_vals: fArr,
     tol: float = 0.01,
     max_iters: int = int(1e6),
     gridsize: int = 1000,
@@ -199,8 +200,8 @@ def delta_parallel(
     prog_interval = len(L_vals) // 50
     if prog_interval == 0:
         prog_interval = 1
-    delta3 = np.zeros(L_vals.shape, dtype=unfolded.dtype)
-    iters = np.zeros(L_vals.shape, dtype=np.uint64)
+    delta3 = np.zeros(L_vals.shape)
+    iters = np.zeros(L_vals.shape, dtype=np.int64)
     converged = np.zeros_like(L_vals, dtype=np.bool_)
     if show_progress:
         print(RIGIDITY_PROG, 0, PERCENT)
@@ -243,8 +244,8 @@ def delta_L(
 
     delta_running = np.zeros((buf,))
     k = np.uint64(0)
-    c = 0.0  # compensation (carry-over) term for Kahan summation
-    d3_mean = 0.0
+    c = np.float64(0.0)  # compensation (carry-over) term for Kahan summation
+    d3_mean: f64 = np.float64(0.0)
     if show_progress:
         print(CONVERG_PROG, 0, ITER_COUNT)
     while True:
@@ -303,7 +304,7 @@ def delta_L(
 @jit(nopython=True, cache=True, fastmath=True)
 def _delta_grid(
     unfolded: ndarray, starts: ndarray, L: float, gridsize: int, use_simpson: bool
-) -> float:
+) -> f64:
     delta3s = np.empty_like(starts)
     for i, start in enumerate(starts):
         grid = np.linspace(start - L / 2, start + L / 2, gridsize)
@@ -320,7 +321,7 @@ def _delta_grid(
 
 
 @jit(nopython=True, cache=True, fastmath=True)
-def _slope(x: ndarray, y: ndarray) -> np.float64:
+def _slope(x: ndarray, y: ndarray) -> f64:
     """Perform linear regression to compute the slope."""
     x_mean = np.mean(x)
     y_mean = np.mean(y)
@@ -334,12 +335,12 @@ def _slope(x: ndarray, y: ndarray) -> np.float64:
 
 
 @jit(nopython=True, cache=True, fastmath=True)
-def _intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
+def _intercept(x: ndarray, y: ndarray, slope: f64) -> f64:
     return np.mean(y) - slope * np.mean(x)  # type: ignore
 
 
 @jit(nopython=True, cache=True, fastmath=True)
-def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
+def _integrate_fast(grid: ndarray, values: ndarray) -> f64:
     """scipy.integrate.trapz is excruciatingly slow and unusable for our purposes.
     This tiny rewrite seems to result in a near 20x speedup. However, being trapezoidal
     integration, it is quite inaccurate."""
@@ -354,7 +355,7 @@ def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
 # the outer loops. Adding it inside *dramatically* slows performance.
 @jit(nopython=True, cache=True, fastmath=True)
-def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: float, w: float, grid: ndarray) -> ndarray:
+def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: f64, w: f64, grid: fArr) -> fArr:
     """Compute the sqaured deviation of the staircase function of the best fitting
     line, over the region in `grid`.
 
@@ -390,7 +391,7 @@ def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: float, w: float, grid: n
 
 # fmt: off
 @jit(nopython=True, cache=True, fastmath=True)
-def _int_simps_nonunif(grid: fArr, vals: fArr) -> float:
+def _int_simps_nonunif(grid: fArr, vals: fArr) -> f64:
     """
     Simpson rule for irregularly spaced data. Copied shamelessly from
     https://en.wikipedia.org/w/index.php?title=Simpson%27s_rule&oldid=938527913#Composite_Simpson's_rule_for_irregularly_spaced_data
@@ -412,7 +413,7 @@ def _int_simps_nonunif(grid: fArr, vals: fArr) -> float:
     N = len(grid) - 1
     h = np.diff(grid)
 
-    result = 0.0
+    result = f64(0.0)
     for i in range(1, N, 2):
         hph = h[i] + h[i - 1]
         result += vals[i] * (h[i]**3 + h[i-1]**3 + 3.0*h[i]*h[i-1]*hph) / (6*h[i]*h[i-1])

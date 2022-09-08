@@ -22,12 +22,12 @@ def test_plot_call() -> None:
     eigs = Eigenvalues(generate_eigs(2000, log=True))
     unfolded = eigs.unfold(smoother="poly", degree=19)
 
-    unfolded.plot_nnsd(mode="test")
-    # unfolded.plot_next_nnsd(mode="test")
+    unfolded.plot_nnsd(mode=PlotMode.Test)
+    # unfolded.plot_next_nnsd(mode=PlotMode.Test)
     unfolded.plot_level_variance(
-        L=np.arange(0.5, 100, 0.2), mode="test", ensembles=["goe", "poisson"]
+        L=np.arange(0.5, 100, 0.2), mode=PlotMode.Test, ensembles=["goe", "poisson"]
     )
-    unfolded.plot_spectral_rigidity(L=np.arange(1, 200, 0.5), c_iters=10000, mode="test")
+    unfolded.plot_spectral_rigidity(L=np.arange(1, 200, 0.5), mode=PlotMode.Test)
 
 
 @pytest.mark.plot
@@ -40,7 +40,7 @@ def test_plot_rigidity(capsys: CaptureFixture) -> None:
         # unfolded = eigs.unfold(smoother="poly", degree=19)
         unfolded = eigs.unfold(smoother="goe")
         df = unfolded.spectral_rigidity(
-            L=np.arange(2, 100, 1),
+            L=np.arange(2, 100, 1, dtype=np.float64),
             integration="simps",
             tol=0.001,
             show_progress=True,

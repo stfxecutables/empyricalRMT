@@ -6,6 +6,7 @@ from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
 from numba import jit
+from numpy import float64 as f64
 from numpy import ndarray
 
 
@@ -94,7 +95,7 @@ def make_parent_directories(path: Path) -> None:
 
 
 @jit(nopython=True, cache=True)
-def kahan_add(current_sum: float, update: float, carry_over: float) -> Tuple[float, float]:
+def kahan_add(current_sum: f64, update: f64, carry_over: f64) -> Tuple[f64, f64]:
     """
     Returns
     -------

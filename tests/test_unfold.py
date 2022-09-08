@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from empyricalRMT._types import fArr
 from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
 

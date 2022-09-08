@@ -1,7 +1,7 @@
 import warnings
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Mapping, Tuple, Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -10,15 +10,14 @@ import pandas as pd
 import seaborn as sbn
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.patches import Rectangle
-from numpy import float64 as f64
 from numpy import ndarray
-from numpy.typing import NDArray
 from scipy.integrate import quad
 from scipy.special import sici
 from scipy.stats import trim_mean
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing_extensions import Literal
 
+from empyricalRMT._types import fArr
 from empyricalRMT.brody import brody_dist, brody_fit_evaluate, fit_brody
 from empyricalRMT.ensemble import GOE, Poisson
 from empyricalRMT.observables.step import _step_function_fast
@@ -28,7 +27,7 @@ if TYPE_CHECKING:
     from empyricalRMT.trim import TrimIter  # noqa: F401
 
 
-PlotResult = Optional[Tuple[plt.Figure, plt.Axes]]
+PlotResult = Tuple[plt.Figure, plt.Axes]
 
 
 class PlotMode(Enum):
@@ -581,7 +580,7 @@ def _brody_fit(
     spacings = np.diff(unfolded)
     s = spacings[spacings > 0]
     res = brody_fit_evaluate(s, method=method)
-    x = res["spacings"]
+    x: fArr = res["spacings"]  # type: ignore
     ecdf, bcdf = res["ecdf"], res["brody_cdf"]
     ax = axes.flat[1]
     ax_e = ax.plot(x, ecdf)
@@ -1216,7 +1215,7 @@ def _kde_plot(
 
 def _handle_plot_mode(
     mode: PlotMode, fig: plt.Figure, axes: plt.Axes, outfile: Path = None, save_dpi: int = None
-) -> Optional[PlotResult]:
+) -> PlotResult:
     """Handle the various combinations of plotting arguments."""
     if mode is PlotMode.Block:
         plt.show(block=True)
@@ -1241,7 +1240,7 @@ def _handle_plot_mode(
         return fig, axes
     else:
         raise ValueError("Invalid plotting mode.")
-    return None
+    return fig, axes
 
 
 def _validate_bin_sizes(vals: ndarray, bins: int) -> None:
@@ -1295,5 +1294,5 @@ if __name__ == "__main__":
     # fig.savefig(out)
 
     out = Path.home() / "Desktop/unfolding.svg"
-    fig, axes = _unfolded_fit(eigs, unfolded.vals, mode=PlotMode.Return)
+    fig, axes = _unfolded_fit(eigs.vals, unfolded.vals, mode=PlotMode.Return)
     fig.savefig(out)

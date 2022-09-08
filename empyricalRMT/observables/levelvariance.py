@@ -3,6 +3,8 @@ from typing import Tuple
 import numpy as np
 from numba import jit, prange
 from numpy import bool_
+from numpy import float64 as f64
+from numpy import uint64 as u64
 
 from empyricalRMT._constants import (
     AUTO_MAX_ITERS,
@@ -63,7 +65,9 @@ def level_number_variance(
             max_iters=AUTO_MAX_ITERS,
             min_iters=MIN_ITERS * 10,
             show_progress=True,
-        )[1:]
+        )[
+            1:
+        ]  # type: ignore
         max_iters = int(max_iters * 2)
         if not success:
             raise ConvergenceError(
@@ -135,7 +139,7 @@ def sigma_parallel(
     # https://github.com/numba/numba/issues/3652
     L_vals = np.copy(L).ravel()
     all_sigmas = np.zeros_like(L_vals)
-    iters = np.empty_like(L_vals)
+    iters = np.empty_like(L_vals, dtype=np.uint64)
     converged: bArr = np.zeros_like(L_vals, dtype=bool_)
 
     prog_interval = len(L_vals) // PROG_FREQUENCY
@@ -170,7 +174,7 @@ def sigma_L(
     tol: float,
     min_iters: int,
     show_progress: bool = False,
-) -> Tuple[float, bool, np.uint64]:
+) -> Tuple[f64, bool, u64]:
     """Compute the level number variance of the current unfolded eigenvalues.
 
     Parameters
@@ -214,9 +218,9 @@ def sigma_L(
     prog_interval = CONVERG_PROG_INTERVAL
     if L > 100:
         prog_interval *= 10
-    level_mean = 0.0
-    level_sq_mean = 0.0
-    sigma: float = 0.0
+    level_mean = np.float64(0.0)
+    level_sq_mean = np.float64(0.0)
+    sigma = np.float64(0.0)
     size = 1000
     sigmas = np.zeros((size), dtype=np.float64)  # hold the last `size` running averages
     mn, mx = np.min(unfolded), np.max(unfolded)
@@ -225,12 +229,12 @@ def sigma_L(
     start, end = c - L / 2, c + L / 2
     n_within = len(unfolded[(unfolded >= start) & (unfolded <= end)])
     n_within_sq = n_within * n_within
-    level_mean, level_sq_mean = n_within, n_within_sq
+    level_mean, level_sq_mean = np.float64(n_within), np.float64(n_within_sq)
     sigma = level_sq_mean - level_mean * level_mean
     sigmas[0] = sigma
     # for Kahan summation
-    c_mean = 0.0
-    c_sq = 0.0
+    c_mean = np.float64(0.0)
+    c_sq = np.float64(0.0)
 
     if show_progress:
         print(CONVERG_PROG, 0, ITER_COUNT)

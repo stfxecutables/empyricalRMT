@@ -1,13 +1,11 @@
 from typing import Union
 
 import numpy as np
-from numpy import ndarray
-from numpy.typing import NDArray
 from scipy.optimize import minimize_scalar
 from scipy.special import gamma
 from statsmodels.distributions.empirical_distribution import ECDF
 
-from empyricalRMT._types import bArr, fArr, uArr
+from empyricalRMT._types import fArr
 
 
 def brody_dist(s: fArr, beta: float) -> fArr:
@@ -143,8 +141,8 @@ def brody_fit_evaluate(
     ecdf_x = ecdf.x[1:]  # ECDF always makes first x value -inf if `side`=="left"
     ecdf_y = ecdf.y[1:]
     bcdf = brody_cdf(ecdf_x, beta)
-    mad = np.mean(np.abs(ecdf_y - bcdf))
-    msqd = np.mean((ecdf_y - bcdf) ** 2)
+    mad = float(np.mean(np.abs(ecdf_y - bcdf)))
+    msqd = float(np.mean((ecdf_y - bcdf) ** 2))
     return {
         "beta": beta,
         "mad": mad,
@@ -152,4 +150,4 @@ def brody_fit_evaluate(
         "spacings": ecdf_x,
         "ecdf": ecdf_y,
         "brody_cdf": bcdf,
-    }
+    }  # type: ignore

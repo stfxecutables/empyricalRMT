@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from numpy import ndarray
 from numpy.polynomial.polynomial import polyfit, polyval
+from numpy.typing import ArrayLike
 from pandas import DataFrame
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import curve_fit
@@ -17,12 +18,13 @@ from empyricalRMT._constants import (
     DEFAULT_SPLINE_SMOOTH,
     DEFAULT_SPLINE_SMOOTHS,
 )
+from empyricalRMT._types import fArr
 from empyricalRMT.detrend import emd_detrend
 from empyricalRMT.exponentials import gompertz
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}
 
-SmoothMethod = Union[Literal["poly"], Literal["spline"], Literal["gompertz"]]
+SmoothMethod = Literal["poly", "spline", "gompertz", "goe"]
 SmoothArg = Union[List[float], Literal["heuristic"]]
 
 
@@ -31,7 +33,7 @@ def _spline_name(i: int) -> str:
 
 
 class Smoother:
-    def __init__(self, eigenvalues: ndarray):
+    def __init__(self, eigenvalues: ArrayLike):
         """Initialize a Smoother.
 
         Parameters
@@ -54,7 +56,7 @@ class Smoother:
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         detrend: bool = False,
         return_callable: bool = False,
-    ) -> Tuple[ndarray, ndarray, Optional[Callable[[ndarray], ndarray]]]:
+    ) -> Tuple[fArr, fArr, Optional[Callable[[fArr], fArr]]]:
         """Computer the specified smoothing function values for a set of eigenvalues.
 
         Parameters
@@ -99,7 +101,7 @@ class Smoother:
             func = lambda x: polyval(x, poly_coef) if return_callable else None
             if detrend:
                 unfolded = emd_detrend(unfolded)
-            return unfolded, steps, func
+            return unfolded, steps, func  # type: ignore
 
         if smoother == "spline":
             k = DEFAULT_SPLINE_DEGREE
@@ -120,11 +122,11 @@ class Smoother:
                     "Unreachable: All possible spline_smooth arguments should have been handled."
                 )
                 spline = USpline(eigs, steps, k=k, s=spline_smooth)
-            func = lambda x: spline(x) if return_callable else None
-            unfolded = spline(eigs)
+            func = spline if return_callable else None
+            unfolded = np.array(spline(eigs))
             if detrend:
                 unfolded = emd_detrend(unfolded)
-            return unfolded, steps, func
+            return unfolded, steps, func  # type: ignore
 
         if smoother == "gompertz":
             # use steps[end] as guess for the asymptote, a, of gompertz curve
@@ -133,7 +135,7 @@ class Smoother:
             unfolded = gompertz(eigs, a, b, c)
             if detrend:
                 unfolded = emd_detrend(unfolded)
-            return unfolded, steps, func
+            return unfolded, steps, func  # type: ignore
         raise RuntimeError("Unreachable!")
 
     def fit_all(
@@ -314,7 +316,8 @@ class Smoother:
             spline_degree = degree
             if degree is None:
                 warn(
-                    f"No degree set for spline unfolding. Will default to spline of degree {DEFAULT_SPLINE_DEGREE}.",
+                    "No degree set for spline unfolding. Will default to "
+                    f"spline of degree {DEFAULT_SPLINE_DEGREE}.",
                     category=UserWarning,
                 )
             if not isinstance(spline_degree, int) or spline_degree > 5:

@@ -36,7 +36,7 @@ def step_values(eigs: fArr, x: Union[float, fArr]) -> Union[float, iArr]:
 def _step_function_fast(eigs: fArr, x: fArr) -> iArr:
     """optimized version that does not repeatedly call np.sum(eigs <= x), since
     this function needed to be called extensively in rigidity calculation."""
-    ret = np.zeros((len(x)), dtype=np.float64)
+    ret = np.zeros((len(x)), dtype=np.int64)
     if x[-1] <= eigs[0]:  # early return if all values are just zero
         return ret
     if x[0] > eigs[-1]:  # early return if all x values above eigs

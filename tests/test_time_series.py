@@ -7,7 +7,7 @@ from numpy import ndarray
 
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.eigenvalues import Eigenvalues
-from empyricalRMT.plot import _observables
+from empyricalRMT.plot import PlotMode, _observables
 
 
 def get_eigs(arr: ndarray) -> ndarray:
@@ -26,10 +26,10 @@ def unfold_and_plot(eigs: ndarray, suptitle: str) -> None:
     _observables(
         eigs=unfolded.original_eigs,
         unfolded=unfolded.vals,
-        rigidity_df=unfolded.spectral_rigidity(c_iters=10000, show_progress=True),
+        rigidity_df=unfolded.spectral_rigidity(show_progress=True),
         levelvar_df=unfolded.level_variance(show_progress=True),
         suptitle=suptitle + f" ({trimmed}% removed)",
-        mode="noblock",
+        mode=PlotMode.NoBlock,
     )
     # unfolded.plot_steps(mode="noblock")
     # unfolded.plot_nnsd(ensembles=["goe", "poisson"], mode="noblock")

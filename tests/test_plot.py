@@ -7,6 +7,7 @@ from numpy import ndarray
 from empyricalRMT.construct import goe_unfolded
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.plot import PlotMode
 
 
 def get_eigs(arr: ndarray) -> ndarray:
@@ -31,6 +32,5 @@ def test_axes_configuring() -> None:
     eigs = get_eigs(M)
     print(f"\nPercent correlated noise: {percent}%")
     unfolded = Eigenvalues(eigs).unfold(degree=13)
-    unfolded.plot_fit(mode="noblock")
-
-    goe_unfolded(1000, log=True).plot_fit(mode="block")
+    unfolded.plot_fit(mode=PlotMode.NoBlock)
+    goe_unfolded(1000, log=True).plot_fit(mode=PlotMode.Block)

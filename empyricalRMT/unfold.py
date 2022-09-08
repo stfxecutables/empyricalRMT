@@ -1,12 +1,10 @@
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, List, Mapping, Optional, Tuple, Type, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from numpy import float64 as f64
 from numpy import ndarray
-from numpy.typing import NDArray
 from pandas import DataFrame
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
 from typing_extensions import Literal
@@ -14,12 +12,13 @@ from typing_extensions import Literal
 import empyricalRMT.plot as plot
 from empyricalRMT._constants import RIGIDITY_GRID
 from empyricalRMT._eigvals import EigVals
+from empyricalRMT._types import fArr
 from empyricalRMT._validate import make_1d_array
 from empyricalRMT.brody import brody_fit_evaluate
 from empyricalRMT.compare import Compare, Metric
 from empyricalRMT.ensemble import Ensemble
 from empyricalRMT.observables.levelvariance import level_number_variance
-from empyricalRMT.observables.rigidity import spectral_rigidity
+from empyricalRMT.observables.rigidity import spectral_rigidity as _spectral_rigidity
 from empyricalRMT.plot import PlotMode, PlotResult, _brody_fit, _next_spacings, _observables
 from empyricalRMT.plot import _spacings as _plot_spacings
 from empyricalRMT.plot import _unfolded_fit
@@ -92,7 +91,7 @@ class Unfolded(EigVals):
             df["delta"] contains the computed spectral rigidity values for each of L.
         """
         unfolded = self.values
-        L_vals, delta, converged, iters = spectral_rigidity(
+        L_vals, delta, converged, iters = _spectral_rigidity(
             unfolded=unfolded,
             L=L,
             gridsize=gridsize,
@@ -196,7 +195,7 @@ class Unfolded(EigVals):
         self,
         method: str = "spacing",
         title: str = "Brody distribution fit",
-        mode: PlotMode = "block",
+        mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
         save_dpi: int = None,
         ensembles: List[str] = ["goe", "poisson"],
@@ -562,7 +561,7 @@ class Unfolded(EigVals):
         ensembles: List[str] = ["poisson", "goe"],
         show_iters: bool = False,
         show_progress: bool = True,
-        **kwargs,
+        **kwargs: Mapping,
     ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
         """Compute and plot the spectral rigidity.
 
@@ -619,12 +618,11 @@ class Unfolded(EigVals):
         """
         unfolded = self.values
         if data is None:
-            L_vals, delta, converged, iters = spectral_rigidity(
+            L_vals, delta, converged, iters = _spectral_rigidity(
                 unfolded,
                 L=L,
                 gridsize=gridsize,
                 max_iters=max_iters,
-                min_iters=min_iters,
                 tol=tol,
                 integration=integration,
                 show_progress=show_progress,
@@ -642,7 +640,7 @@ class Unfolded(EigVals):
             show_iters=show_iters,
             **kwargs,
         )
-        return L, data["delta"], plot_result
+        return L, data["delta"], plot_result  # type: ignore
 
     def plot_level_variance(
         self,
@@ -758,11 +756,11 @@ class Unfolded(EigVals):
         rigidity_L: ndarray = np.arange(2, 50, 0.5),
         levelvar_L: ndarray = np.arange(0.2, 20, 0.2),
         title: str = "Spectral Observables",
-        mode: PlotMode = "block",
+        mode: PlotMode = PlotMode.Block,
         outfile: Path = None,
         ensembles: List[str] = ["goe", "poisson"],
         show_progress: bool = True,
-        rigidity_iters: int = 50000,
+        max_iters: int = int(1e6),
         **levelvar_kwargs: Any,
     ) -> PlotResult:
         """Plot some popular spectral observables, as well as a plot of the unfolding
@@ -795,7 +793,7 @@ class Unfolded(EigVals):
         show_progress: bool
             If True, print a progress bar during longer calculations.
 
-        rigidity_iters: int
+        max_iters: int
             The number of iterations, per L, to use when calculating the
             spectral rigidity.
 
@@ -803,7 +801,7 @@ class Unfolded(EigVals):
             The keyword args to pass on to Unfolded.level_variance().
         """
         rigidity = self.spectral_rigidity(
-            L=rigidity_L, c_iters=rigidity_iters, show_progress=show_progress
+            L=rigidity_L, max_iters=max_iters, show_progress=show_progress
         )
         levelvar = self.level_variance(L=levelvar_L, show_progress=show_progress, **levelvar_kwargs)
         return _observables(
@@ -822,7 +820,7 @@ class Unfolded(EigVals):
         spacings_range: Tuple[float, float],
         nnnsd: bool = False,
         kde_gridsize: int = 1000,
-    ) -> np.array:
+    ) -> fArr:
         """Fit / derive the KDE using the entire set of unfolded values, but
         evaluating only over the given `spacings_range`."""
         spacings = np.sort(self.vals[2:] - self.vals[:-2]) if nnnsd else self.spacings
@@ -832,5 +830,5 @@ class Unfolded(EigVals):
         # evaluated = np.empty_like(s)
         # for i, _ in enumerate(evaluated):
         #     evaluated[i] = kde.evaluate(s[i])
-        evaluated = kde.evaluate(s)
+        evaluated: fArr = kde.evaluate(s)
         return evaluated

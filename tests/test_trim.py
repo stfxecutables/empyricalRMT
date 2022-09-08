@@ -6,6 +6,7 @@ import pytest
 
 from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.plot import PlotMode
 from empyricalRMT.trim import TrimIter
 
 
@@ -28,7 +29,7 @@ def test_init_sanity() -> None:
     report.to_csv(path)
     assert path.exists()
     path.unlink()
-    report.plot_trim_steps(mode="test")
+    report.plot_trim_steps(mode=PlotMode.Test)
 
 
 @pytest.mark.fast
@@ -50,6 +51,6 @@ def test_trim_reports() -> None:
     report = eigs.trim_report()
     best_smoothers, best_unfolds, best_indices, consistent_smoothers = report.best_overall()
     assert np.array_equal(np.sort(consistent_smoothers), np.sort(["poly_7", "poly_8", "poly_9"]))
-    assert np.array_equal(best_indices, [(104, 1765), (231, 1765), (104, 2000)])
+    assert np.array_equal(np.array(best_indices), np.array([[104, 1765], [231, 1765], [104, 2000]]))
 
-    report.plot_trim_steps(mode="test")
+    report.plot_trim_steps(mode=PlotMode.Test)

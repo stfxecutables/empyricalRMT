@@ -1,12 +1,13 @@
 import numpy as np
-from numpy import ndarray
 from PyEMD import EMD
+
+from empyricalRMT._types import fArr
 
 
 # detrended unfolding via the Empirical Mode Decomposition and first
 # intrinsic mode function
 # TODO: re-integrate this option into updated API
-def emd_detrend(unfolded: ndarray) -> ndarray:
+def emd_detrend(unfolded: fArr) -> fArr:
     """'Detrend' the unfolded eigenvalues via Empirical Mode Decomposition.
 
     Parameters

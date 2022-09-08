@@ -1,10 +1,9 @@
-from typing import Optional, Sized
+from typing import Optional
 
 import numpy as np
-from numpy import float64 as f64
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 
-from empyricalRMT._types import bArr, fArr, uArr
+from empyricalRMT._types import fArr, iArr
 from empyricalRMT._validate import make_1d_array
 from empyricalRMT.observables.step import _step_function_fast
 from empyricalRMT.plot import PlotResult, _raw_eig_dist, _raw_eig_sorted
@@ -20,7 +19,7 @@ class EigVals:
             raise ValueError("`eigenvalues` must be ArrayLike.")
 
         self.__construct_vals: fArr = make_1d_array(eigenvalues)
-        self._steps: Optional[fArr] = None
+        self._steps: Optional[iArr] = None
         self._vals: fArr = np.sort(self.__construct_vals)  # to be overridden in actual classes
 
     @property
@@ -44,7 +43,7 @@ class EigVals:
         raise NotImplementedError(".vals() should be implemented in derived classes.")
 
     @property
-    def steps(self) -> fArr:
+    def steps(self) -> iArr:
         if self._steps is None:
             self._steps = _step_function_fast(self._vals, self._vals)
         return self._steps

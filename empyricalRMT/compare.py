@@ -20,8 +20,8 @@ class Compare:
         self,
         curves: List[fArr],
         labels: List[str],
-        base_curve: fArr = None,
-        base_label: str = None,
+        base_curve: Optional[fArr] = None,
+        base_label: Optional[str] = None,
     ):
         """Construct a Compare object for accessing various comparison methods.
 
@@ -165,7 +165,9 @@ class Compare:
 
         return endpoints, counts1, counts2
 
-    def __validate_curve_lengths(self, message: str = None, check_all_equal: bool = False) -> None:
+    def __validate_curve_lengths(
+        self, message: Optional[str] = None, check_all_equal: bool = False
+    ) -> None:
         """Ensure curve lengths are appropriate for desired comparison methods."""
         curves = self.curves
         labels = self.labels

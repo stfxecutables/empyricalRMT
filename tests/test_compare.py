@@ -106,7 +106,7 @@ def test_msqd() -> None:
         assert df.shape == (n, 1)
 
     # very trivial correctness checks
-    curves = [[1, 1, 1], [2, 2, 2]]
+    curves = np.array([[1, 1, 1], [2, 2, 2]], dtype=np.float64)  # type: ignore
     labels = ["ones", "twos"]
     compare = Compare(curves, labels)
     df = compare.mean_sq_difference()
@@ -115,7 +115,7 @@ def test_msqd() -> None:
     assert df["ones"]["ones"] == 0.0
     assert df["twos"]["twos"] == 0.0
 
-    curves = [[1, 1, 1], [3, 3, 3]]
+    curves = np.array([[1, 1, 1], [3, 3, 3]], dtype=np.float64)  # type: ignore
     labels = ["ones", "threes"]
     compare = Compare(curves, labels)
     df = compare.mean_sq_difference()
@@ -155,7 +155,7 @@ def test_mad() -> None:
         assert np.all(df.columns == base_label)
         assert df.shape == (n, 1)
 
-    curves = [[1, 1, 1], [2, 2, 2]]
+    curves = np.array([[1, 1, 1], [2, 2, 2]], dtype=np.float64)  # type: ignore
     labels = ["ones", "twos"]
     compare = Compare(curves, labels)
     df = compare.mean_abs_difference()
@@ -164,7 +164,7 @@ def test_mad() -> None:
     assert df["ones"]["ones"] == 0.0
     assert df["twos"]["twos"] == 0.0
 
-    curves = [[1, 1, 1], [3, 3, 3]]
+    curves = np.array([[1, 1, 1], [3, 3, 3]], dtype=np.float64)  # type: ignore
     labels = ["ones", "threes"]
     compare = Compare(curves, labels)
     df = compare.mean_abs_difference()

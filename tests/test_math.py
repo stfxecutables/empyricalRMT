@@ -15,11 +15,7 @@ from empyricalRMT.observables.rigidity import (
     _intercept,
     _slope,
 )
-from empyricalRMT.observables.step import (
-    _step_function_correct,
-    _step_function_fast,
-    _step_function_slow,
-)
+from empyricalRMT.observables.step import _step_function_correct, _step_function_fast
 
 
 @pytest.mark.math
@@ -92,7 +88,7 @@ def test_step_fast() -> None:
 @pytest.mark.fast
 @pytest.mark.perf
 def test_step_fast_perf() -> None:
-    step_fasts, step_slows, step_corrects = [], [], []
+    step_fasts, step_corrects = [], []
     for _ in range(5):
         eigs = np.sort(np.random.uniform(-10000, 10000, 10000))
         x = np.linspace(eigs[0], eigs[-1], 5000)
@@ -104,16 +100,10 @@ def test_step_fast_perf() -> None:
 
         start = time.time()
         for _ in range(100):
-            _step_function_slow(eigs, x)
-        step_slow = time.time() - start
-
-        start = time.time()
-        for _ in range(100):
             _step_function_correct(eigs, x)
         step_correct = time.time() - start
 
         step_fasts.append(step_fast)
-        step_slows.append(step_slow)
         step_corrects.append(step_correct)
 
     print("Smaller values are better (seconds)")
@@ -122,12 +112,6 @@ def test_step_fast_perf() -> None:
         np.mean(step_fasts),
         "+-",
         3 * np.std(step_fasts, ddof=1),
-    )
-    print(
-        "_step_function_slow: ",
-        np.mean(step_slows),
-        "+-",
-        3 * np.std(step_slows, ddof=1),
     )
     print(
         "_step_function_correct:    ",

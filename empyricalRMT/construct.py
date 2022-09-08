@@ -1,5 +1,5 @@
 import time
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 from warnings import warn
 
 import numpy as np
@@ -9,7 +9,7 @@ from scipy.linalg import eigvalsh_tridiagonal
 from scipy.sparse import diags
 from typing_extensions import Literal
 
-from empyricalRMT._types import bArr, fArr, uArr
+from empyricalRMT._types import fArr
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.unfold import Unfolded
 
@@ -19,7 +19,7 @@ MatrixKind = Union[Literal["goe"], Literal["gue"], Literal["uniform"], Literal["
 def generate_eigs(
     matsize: int,
     kind: MatrixKind = "goe",
-    seed: int = None,
+    seed: Optional[int] = None,
     log: bool = False,
     use_tridiagonal: bool = True,
 ) -> fArr:
@@ -63,14 +63,14 @@ def generate_eigs(
         if seed is not None:
             np.random.seed(seed)
         A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
-        M = (A + A.conjugate().T) / 2
+        M: fArr = (A + A.conjugate().T) / 2  # type: ignore
     elif kind == "goe":
         if matsize > 500 and use_tridiagonal:
             M = _generate_GOE_tridiagonal(size=matsize, seed=seed)
         else:
             M = _generate_GOE_matrix(matsize, seed=seed)
     else:
-        kinds = ["goe", "gue", "poisson", "uniform"]
+        kinds = ["goe", "gue", "poisson", "uniform"]  # type: ignore[unreachable]
         raise ValueError(f"`kind` must be one of {kinds}")
 
     if log:
@@ -107,14 +107,14 @@ def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
         """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004) """
         if np.abs(x) < end:
             return np.float64((1 / np.pi) * np.sqrt(2 * N - x * x))
-        return 0.0
+        return np.float64(0.0)
 
-    MAX = quad(__R1, -end, end)[0]
+    MAX = np.float64(quad(__R1, -end, end)[0])
 
     def smooth_goe(x: float) -> np.float64:
         if x > end:
             return MAX
-        return quad(__R1, -end, x)[0]
+        return np.float64(quad(__R1, -end, x)[0])
 
     M = _generate_GOE_tridiagonal(matsize)
     print("Computing GOE eigenvalues...")
@@ -146,7 +146,7 @@ def correlated_eigs(
     M = correlate_fast(A)
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
-    eigs = np.linalg.eigvalsh(M)
+    eigs: fArr = np.linalg.eigvalsh(M)
     if log:
         print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
     n, t = shape
@@ -207,19 +207,17 @@ def tracy_widom_eigs(
 
 
 # TODO, WIP
-def time_series_eigs(
-    n: int = 1000, t: int = 200, dist: str = "normal", log: bool = True
-) -> ndarray:
+def time_series_eigs(n: int = 1000, t: int = 200, dist: str = "normal", log: bool = True) -> fArr:
     """Generate a correlation matrix for testing Marcenko-Pastur, other spectral observables."""
     if dist == "normal":
         M_time = np.random.standard_normal([n, t])
 
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing correlations...")
-    M = correlate_fast(M_time)
+    M = correlate_fast(M_time)  # type:ignore
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
-    eigs = np.linalg.eigvalsh(M)
+    eigs: fArr = np.linalg.eigvalsh(M)
     if log:
         print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues...")
     return eigs
@@ -229,14 +227,14 @@ def generate_uniform(matsize: int = 1000, lower: float = 0, upper: float = 1) ->
     raise NotImplementedError
 
 
-def _generate_GOE_matrix(size: int = 100, seed: int = None) -> ndarray:
+def _generate_GOE_matrix(size: int = 100, seed: Optional[int] = None) -> fArr:
     if seed is not None:
         np.random.seed(seed)
     M = np.random.standard_normal([size, size])
-    return (M + M.T) / np.sqrt(2)
+    return (M + M.T) / np.sqrt(2)  # type: ignore
 
 
-def _generate_GOE_tridiagonal(size: int = 100, seed: int = None) -> ndarray:
+def _generate_GOE_tridiagonal(size: int = 100, seed: Optional[int] = None) -> fArr:
     """See: Edelman, A., Sutton, B. D., & Wang, Y. (2014).
     Random matrix theory, numerical computation and applications.
     Modern Aspects of Random Matrix Theory, 72, 53.
@@ -250,13 +248,13 @@ def _generate_GOE_tridiagonal(size: int = 100, seed: int = None) -> ndarray:
         chi / np.sqrt(2),
         chi / np.sqrt(2),
     ]
-    M = diags(diagonals, [0, -1, 1])
-    return M.toarray()
+    M = diags(diagonals, [0, -1, 1])  # type: ignore
+    return M.toarray()  # type: ignore
 
 
 def _generate_GOE_tridiagonal_direct(
-    size: int = 100, seed: int = None, dowarn: bool = True
-) -> ndarray:
+    size: int = 100, seed: Optional[int] = None, dowarn: bool = True
+) -> fArr:
     """See: Edelman, A., Sutton, B. D., & Wang, Y. (2014).
     Random matrix theory, numerical computation and applications.
     Modern Aspects of Random Matrix Theory, 72, 53.
@@ -274,20 +272,22 @@ def _generate_GOE_tridiagonal_direct(
     chi_range = size - 1 - np.arange(size - 1)
     chi = np.sqrt(np.random.chisquare(chi_range))
     diagonal = np.random.normal(0, np.sqrt(2), size) / np.sqrt(2)
-    eigs = eigvalsh_tridiagonal(
-        diagonal,
-        chi,
-        # select="a",
-        check_finite=False,
-        select="i",
-        select_range=(1, size - 2),
-        lapack_driver="stebz",
-        tol=4 * np.finfo(np.float64).eps,
+    eigs: fArr = np.array(
+        eigvalsh_tridiagonal(
+            diagonal,
+            chi,
+            # select="a",
+            check_finite=False,
+            select="i",
+            select_range=(1, size - 2),
+            lapack_driver="stebz",
+            tol=float(4.0 * np.finfo(np.float64).eps),
+        )
     )
     return eigs
 
 
-def _generate_poisson(size: int = 100, seed: int = None) -> ndarray:
+def _generate_poisson(size: int = 100, seed: Optional[int] = None) -> fArr:
     if seed is not None:
         np.random.seed(seed)
-    return np.diag(np.random.standard_normal(size))
+    return np.diag(np.random.standard_normal(size))  # type: ignore

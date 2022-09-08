@@ -2,6 +2,7 @@ import pytest
 
 from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.plot import PlotMode
 
 
 @pytest.mark.construct
@@ -14,6 +15,6 @@ def test_poisson() -> None:
             title="Poisson Spacing Test",
             bins=10,
             kde=True,
-            mode="test",
+            mode=PlotMode.Test,
             ensembles=["poisson"],
         )

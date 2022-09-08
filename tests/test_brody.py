@@ -44,7 +44,7 @@ def test_brody_plot() -> None:
     # test GOE eigs
     bw = 0.2
     # bw = "scott"
-    mode: PlotMode = "test"
+    mode: PlotMode = PlotMode.Test
     ensembles = ["goe", "poisson"]
     for N in [100, 250, 500, 1000]:
         fig, axes = plt.subplots(2, 2)
@@ -55,7 +55,7 @@ def test_brody_plot() -> None:
                 kde_bw=bw,
                 title=f"GOE N={N}",
                 ensembles=ensembles,
-                mode="return",
+                mode=PlotMode.Return,
                 fig=fig,
                 axes=axes.flat[i],
             )
@@ -69,7 +69,7 @@ def test_brody_plot() -> None:
             brody=True,
             brody_fit="mle",
             mode=mode,
-            title=f"t-series (untrimmed)(MLE)",
+            title="t-series (untrimmed)(MLE)",
             ensembles=ensembles,
             kde_bw=bw,
             fig=fig,
@@ -84,7 +84,7 @@ def test_brody_plot() -> None:
             brody=True,
             brody_fit="spacings",
             mode=mode,
-            title=f"t-series (untrimmed)(spacings)",
+            title="t-series (untrimmed)(spacings)",
             ensembles=ensembles,
             kde_bw=bw,
             fig=fig,

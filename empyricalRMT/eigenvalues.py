@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional, Sized, Tuple, Type, TypeVar, Union
+from typing import Any, List, Optional, Tuple, Type, Union
 from warnings import warn
 
 import numpy as np
-import scipy.sparse as sparse
-from numpy import float64 as f64
+import scipy.sparse
+import scipy.sparse.linalg
 from numpy import ndarray
 from numpy.typing import ArrayLike
 from scipy.integrate import quad
@@ -13,6 +13,7 @@ from typing_extensions import Literal
 
 from empyricalRMT._constants import DEFAULT_POLY_DEGREE, DEFAULT_POLY_DEGREES, DEFAULT_SPLINE_SMOOTH
 from empyricalRMT._eigvals import EigVals
+from empyricalRMT._types import fArr
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.detrend import emd_detrend
 from empyricalRMT.smoother import Smoother, SmoothMethod
@@ -22,6 +23,7 @@ from empyricalRMT.unfold import Unfolded
 
 class Eigenvalues(EigVals):
     """Basic class providing access to various items of interest in RMT. """
+
     __WARNED_SMALL = False
 
     def __init__(self, eigenvalues: ArrayLike):
@@ -53,7 +55,7 @@ class Eigenvalues(EigVals):
     def from_correlations(
         cls: Type[Eigenvalues],
         data: ndarray,
-        atol: float = 1e3 * np.finfo(np.float64).eps,
+        atol: float = float(1e3 * np.finfo(np.float64).eps),
         lower: bool = True,
     ) -> Eigenvalues:
         """Use positive semi-definiteness to identify likely zero-valued eigenvalues
@@ -156,17 +158,19 @@ class Eigenvalues(EigVals):
             data = data.T
 
         N, T = data.shape
-        M, eigs = None, None
+        M = None
+        eigs: fArr
         if N <= T:  # no benefit from intermediate transposition
             M = np.cov(data, ddof=1) if covariance else correlate_fast(data, ddof=1)
             if use_sparse:
-                M = sparse.tril(M)
+                M = scipy.sparse.tril(M)
                 if sp_args.get("return_eigenvectors") is True:
                     raise ValueError(
-                        "This function is intended only as a helper to extract eigenvalues from time-series."
+                        "This function is intended only as a helper "
+                        "to extract eigenvalues from time-series."
                     )
 
-                eigs = sparse.linalg.eigsh(M, **sp_args)
+                eigs = np.array(scipy.sparse.linalg.eigsh(M, **sp_args))
             else:
                 eigs = np.linalg.eigvalsh(M)
         else:
@@ -174,7 +178,7 @@ class Eigenvalues(EigVals):
 
         if trim_zeros:
             if zeros == "heuristic":
-                e_min = eigs.min()
+                e_min = eigs.min()  # type: ignore[unreachable]
                 minval = 0
                 if e_min <= 0:
                     minval = -100 * e_min
@@ -396,8 +400,8 @@ class Eigenvalues(EigVals):
 
     def trim_marchenko_pastur(
         self,
-        series_length: int = None,
-        n_series: int = None,
+        series_length: Optional[int] = None,
+        n_series: Optional[int] = None,
         largest: bool = True,
         use_shifted: bool = True,
     ) -> Tuple[Trimmed, Tuple[float, float]]:
@@ -669,7 +673,7 @@ class Eigenvalues(EigVals):
         """
 
         if smoother == "goe":
-            return self.unfold_goe()
+            return self.unfold_goe()  # type: ignore[unreachable]
 
         eigs = self.eigs
         unfolded, _, closure = Smoother(eigs).fit(
@@ -681,7 +685,11 @@ class Eigenvalues(EigVals):
         )
         if detrend:
             unfolded = emd_detrend(unfolded)
-        return Unfolded(originals=eigs, unfolded=np.sort(unfolded), smoother=closure)
+        return Unfolded(
+            originals=eigs,
+            unfolded=np.sort(unfolded),
+            smoother=closure,  # type: ignore
+        )
 
     def unfold_goe(self) -> Unfolded:
         """Unfold via Wigner's semicircle law. """
@@ -694,22 +702,22 @@ class Eigenvalues(EigVals):
             """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004) """
             if np.abs(x) < end:
                 return np.float64((1 / np.pi) * np.sqrt(2 * N - x * x))
-            return 0.0
+            return np.float64(0.0)
 
-        MAX = quad(__R1, -end, end)[0]
+        MAX = np.float64(quad(__R1, -end, end)[0])
 
         def smooth_goe(x: float) -> np.float64:
             if x > end:
                 return MAX
-            return quad(__R1, -end, x)[0]
+            return np.float64(quad(__R1, -end, x)[0])
 
         unfolded = np.sort(np.vectorize(smooth_goe)(eigs))
         return Unfolded(originals=eigs, unfolded=unfolded)
 
 
 def _eigs_via_transpose(
-    M: ndarray, covariance: bool = True, use_sparse: bool = False, **sp_args: Any
-) -> ndarray:
+    M: fArr, covariance: bool = True, use_sparse: bool = False, **sp_args: Any
+) -> fArr:
     """Use transposes to rapidly compute eigenvalues of covariance and
     correlation matrices.
 
@@ -755,7 +763,10 @@ def _eigs_via_transpose(
 
     Keeping X, n, p, r the same as above, and letting C = corr(X), and
 
-        stand(X) = (X - np.mean(X, axis=1, keepdims=True)) / np.std(X, axis=1, ddof=1, keepdims=True)
+        stand(X) = (
+                   (X - np.mean(X, axis=1, keepdims=True)) /
+                   np.std(X, axis=1, ddof=1, keepdims=True)
+                )
                  = norm(X) / np.std(X, axis=1, ddof=1, keepdims=True)
 
     we have:
@@ -783,13 +794,14 @@ def _eigs_via_transpose(
     M = np.matmul(Z.T, r * Z)
 
     if use_sparse:
-        M = sparse.tril(M)
+        M_sparse = scipy.sparse.tril(M)
         if sp_args.get("return_eigenvectors") is True:
             raise ValueError(
-                "This function is intended only as a helper to extract eigenvalues from time-series."
+                "This function is intended only as a helper "
+                "to extract eigenvalues from time-series."
             )
 
-        eigs = sparse.linalg.eigsh(M, **sp_args)
+        eigs: fArr = np.array(scipy.sparse.linalg.eigsh(M_sparse, **sp_args))
     else:
         eigs = np.linalg.eigvalsh(M)
 
