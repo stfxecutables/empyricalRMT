@@ -33,4 +33,4 @@ def test_axes_configuring() -> None:
     print(f"\nPercent correlated noise: {percent}%")
     unfolded = Eigenvalues(eigs).unfold(degree=13)
     unfolded.plot_fit(mode=PlotMode.NoBlock)
-    goe_unfolded(1000, log=True).plot_fit(mode=PlotMode.Block)
+    goe_unfolded(1000, log=True).plot_fit(mode=PlotMode.Test)

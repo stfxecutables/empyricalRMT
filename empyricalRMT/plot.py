@@ -127,7 +127,7 @@ def _step_function(
     fig: Optional[Figure] = None,
     axes: Optional[Axes] = None,
 ) -> PlotResult:
-    """Compute the step function vaues over a grid, and plot the resulting curve.
+    """Compute the step function values over a grid, and plot the resulting curve.
 
     Parameters
     ----------
@@ -498,17 +498,17 @@ def _spacings(
     p = np.pi
     s = np.linspace(_spacings.min(), _spacings.max(), 10000)
     # axes: Axes
-    axes = sbn.distplot(
+    axes = sbn.histplot(
         _spacings,
-        norm_hist=True,
+        stat="probability",
         bins=bins,  # doane
         kde=False,
         label="Empirical Spacing Distribution",
-        axlabel="spacing (s)",
         color="black",
         ax=axes,
     )
     axes = cast(Axes, axes)
+    axes.set_xlabel("spacing (s)")
 
     # fmt: off
     if "poisson" in ensembles:
@@ -1242,7 +1242,9 @@ def _handle_plot_mode(
         plt.show(block=False)
         plt.pause(0.001)
     elif mode is PlotMode.Test:
-        plt.show(block=False)
+        # plt.show(block=False)
+        plt.clf()
+        plt.cla()
         plt.close(fig)
     elif mode is PlotMode.Save:
         if outfile is None:

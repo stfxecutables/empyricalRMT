@@ -70,16 +70,13 @@ def fit_brody_mle(s: fArr) -> float:
     -------
     beta: float
         The MLE estimate for beta.
-
-    Notes
-    -----
-    Try using https://en.wikipedia.org/wiki/Maximum_spacing_estimation
-    instead
     """
     # use negative log-likelihood because we want to minimize
     # log_like = lambda beta: -np.sum(log_brody(s, beta))
     log_like = lambda beta: -np.sum(brody_dist(s, beta))
-    opt_result = minimize_scalar(log_like, bounds=(1e-5, 1.0 - 1e-5), method="Bounded", tol=1e-10)
+    opt_result = minimize_scalar(
+        log_like, bounds=(1e-5, 1.0 - 1e-5), method="Bounded", options=dict(xatol=1e-4)
+    )
     if not opt_result.success:
         raise RuntimeError("Optimizer failed to find optimal Brody fit.")
     return float(opt_result.x)
@@ -125,7 +122,9 @@ def fit_brody_max_spacing(s: fArr) -> float:
 
     log_spacings = lambda beta: np.log(_positive_diffs(s, beta))
     S_n = lambda beta: -np.sum(log_spacings(beta)) / (n + 1)
-    opt_result = minimize_scalar(S_n, bounds=(1e-5, 1.0 - 1e-5), method="Bounded", tol=1e-10)
+    opt_result = minimize_scalar(
+        S_n, bounds=(1e-5, 1.0 - 1e-5), method="Bounded", options=dict(xatol=1e-4)
+    )
     if not opt_result.success:
         raise RuntimeError("Optimizer failed to find optimal Brody fit.")
     return float(opt_result.x)
