@@ -15,7 +15,7 @@ def test_brody_fit() -> None:
         # test fitting via max spacing
         res = unfolded.fit_brody(method="spacing")
         spacings = res["spacings"]
-        if -np.inf in spacings or np.inf in spacings:
+        if not np.all(np.isfinite(spacings)):
             raise ValueError("Return spacings contains infinities.")
         ecdf = res["ecdf"]
         if np.sum(ecdf < 0) > 0 or np.sum(ecdf > 1):
@@ -27,7 +27,7 @@ def test_brody_fit() -> None:
         # test fitting via mle
         res = unfolded.fit_brody(method="mle")
         spacings = res["spacings"]
-        if -np.inf in spacings or np.inf in spacings:
+        if not np.all(np.isfinite(spacings)):
             raise ValueError("Return spacings contains infinities.")
         ecdf = res["ecdf"]
         if np.sum(ecdf < 0) > 0 or np.sum(ecdf > 1):
