@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from matplotlib.axes import Axes
 
 from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
@@ -47,7 +48,8 @@ def test_brody_plot() -> None:
     mode: PlotMode = PlotMode.Test
     ensembles = ["goe", "poisson"]
     for N in [100, 250, 500, 1000]:
-        fig, axes = plt.subplots(2, 2)
+        axes: Axes
+        fig, axes = plt.subplots(2, 2)  # type: ignore
         for i in range(4):
             eigs = generate_eigs(N)
             Eigenvalues(eigs).unfold(degree=7).plot_nnsd(
@@ -57,12 +59,12 @@ def test_brody_plot() -> None:
                 ensembles=ensembles,
                 mode=PlotMode.Return,
                 fig=fig,
-                axes=axes.flat[i],
+                axes=axes.flat[i],  # type: ignore
             )
         _handle_plot_mode(mode, fig, axes)
 
     # test time series
-    fig, axes = plt.subplots(2, 2)
+    fig, axes = plt.subplots(2, 2)  # type: ignore
     for i in range(4):
         eigs = np.linalg.eigvalsh(np.corrcoef(np.random.standard_normal([1000, 250])))
         Eigenvalues(eigs).unfold(degree=7).plot_nnsd(
@@ -73,11 +75,11 @@ def test_brody_plot() -> None:
             ensembles=ensembles,
             kde_bw=bw,
             fig=fig,
-            axes=axes.flat[i],
+            axes=axes.flat[i],  # type: ignore
         )
     _handle_plot_mode(mode, fig, axes)
 
-    fig, axes = plt.subplots(2, 2)
+    fig, axes = plt.subplots(2, 2)  # type: ignore
     for i in range(4):
         eigs = np.linalg.eigvalsh(np.corrcoef(np.random.standard_normal([1000, 250])))
         Eigenvalues(eigs).unfold(degree=7).plot_nnsd(
@@ -88,11 +90,11 @@ def test_brody_plot() -> None:
             ensembles=ensembles,
             kde_bw=bw,
             fig=fig,
-            axes=axes.flat[i],
+            axes=axes.flat[i],  # type: ignore
         )
     _handle_plot_mode(mode, fig, axes)
 
-    fig, axes = plt.subplots(2, 2)
+    fig, axes = plt.subplots(2, 2)  # type: ignore
     for i in range(4):
         eigs = np.linalg.eigvalsh(np.corrcoef(np.random.standard_normal([1000, 250])))
         eigs = eigs[eigs > 100 * np.abs(eigs.min())]
@@ -104,11 +106,11 @@ def test_brody_plot() -> None:
             ensembles=ensembles,
             kde_bw=bw,
             fig=fig,
-            axes=axes.flat[i],
+            axes=axes.flat[i],  # type: ignore
         )
     _handle_plot_mode(mode, fig, axes)
 
-    fig, axes = plt.subplots(2, 2)
+    fig, axes = plt.subplots(2, 2)  # type: ignore
     for i in range(4):
         eigs = np.linalg.eigvalsh(np.corrcoef(np.random.standard_normal([1000, 250])))
         eigs = eigs[eigs > 100 * np.abs(eigs.min())]
@@ -120,7 +122,7 @@ def test_brody_plot() -> None:
             ensembles=ensembles,
             kde_bw=bw,
             fig=fig,
-            axes=axes.flat[i],
+            axes=axes.flat[i],  # type: ignore
         )
     _handle_plot_mode(mode, fig, axes)
 

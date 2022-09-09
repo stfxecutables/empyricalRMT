@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 from sys import stderr
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 from numba import jit
@@ -30,15 +30,6 @@ def log(label: str, var: Any) -> None:
 # https://stackoverflow.com/a/42913743
 def is_symmetric(a: ndarray, rtol: float = 1e-05, atol: float = 1e-08) -> bool:
     return bool(np.allclose(a, a.T, rtol=rtol, atol=atol))
-
-
-def array_map(array: ndarray, f: Callable, x: ndarray) -> None:
-    it = np.nditer(array, flags=["f_index"], op_flags=["readwrite"])
-    while not it.finished:
-        i = it.index
-        it[0] = f(x[i])
-        it.iternext()
-    it.close()
 
 
 # def make_cheaty_nii(orig: Nifti1Image, array: ndarray) -> Nifti1Image:
@@ -151,12 +142,12 @@ def slope(x: ndarray, y: ndarray) -> np.float64:
     cov = np.sum(x_dev * y_dev)
     var = np.sum(x_dev * x_dev)
     if var == 0:
-        return 0.0
-    return cov / var
+        return np.float64(0.0)
+    return np.float64(cov / var)
 
 
 @jit(nopython=True, fastmath=True)
-def variance(arr: ndarray) -> float:
+def variance(arr: ndarray) -> np.float64:
     """i.e. s^2"""
     n = len(arr)
     scale = 1.0 / (n - 1.0)
@@ -164,12 +155,12 @@ def variance(arr: ndarray) -> float:
     diffs = arr - mean
     squares = diffs ** 2
     summed = np.sum(squares)
-    return scale * summed  # type: ignore
+    return np.float64(scale * summed)
 
 
 @jit(nopython=True, fastmath=True, cache=True)
 def intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
-    return np.mean(y) - slope * np.mean(x)
+    return np.float64(np.mean(y) - slope * np.mean(x))
 
 
 @jit(nopython=True, fastmath=True, cache=True)
@@ -178,8 +169,8 @@ def fast_r(x: ndarray, y: ndarray) -> np.float64:
     num = x * y - n * np.mean(x) * np.mean(y)
     denom = (n - 1) * np.sqrt(variance(x)) * np.sqrt(variance(y))
     if denom == 0:
-        return 0.0
-    return num / denom
+        return np.float64(0.0)
+    return np.float64(num / denom)
 
 
 # termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)

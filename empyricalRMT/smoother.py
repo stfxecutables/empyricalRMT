@@ -3,7 +3,6 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
-from numpy import ndarray
 from numpy.polynomial.polynomial import polyfit, polyval
 from numpy.typing import ArrayLike
 from pandas import DataFrame
@@ -42,11 +41,12 @@ class Smoother:
             Eigenvalues for fitting to the step function.
         """
         try:
-            eigs = np.array(eigenvalues).ravel()
+            eigs = np.array(eigenvalues).astype(np.float64)
         except BaseException as e:
             raise ValueError("Could not convert eigenvalues into numpy array.") from e
-        if len(eigs) != len(eigenvalues):
+        if len(eigs) != len(eigs.reshape((-1,))):
             raise ValueError("Input array must be one-dimensional.")
+        eigs = eigs.flatten()
         self._eigs = np.sort(eigs)
 
     def fit(

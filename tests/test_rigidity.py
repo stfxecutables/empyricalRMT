@@ -42,7 +42,7 @@ def test_plot_rigidity(capsys: CaptureFixture) -> None:
         df = unfolded.spectral_rigidity(
             L=np.arange(2, 100, 1, dtype=np.float64),
             integration="simps",
-            tol=0.001,
+            tol=0.01,
             show_progress=True,
         )
         print(df.tail())

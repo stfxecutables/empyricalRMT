@@ -1,14 +1,17 @@
 import warnings
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Mapping, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Tuple, Union, cast
 from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sbn
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.legend_handler import HandlerBase
+from matplotlib.markers import MarkerStyle
 from matplotlib.patches import Rectangle
 from numpy import ndarray
 from scipy.integrate import quad
@@ -27,7 +30,7 @@ if TYPE_CHECKING:
     from empyricalRMT.trim import TrimIter  # noqa: F401
 
 
-PlotResult = Tuple[plt.Figure, plt.Axes]
+PlotResult = Tuple[Figure, Axes]
 
 
 class PlotMode(Enum):
@@ -47,9 +50,9 @@ def _raw_eig_dist(
     kde: bool = True,
     title: str = "Raw Eigenvalue Distribution",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    outfile: Optional[Path] = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
 ) -> PlotResult:
     """Plot a histogram of the raw eigenvalues.
 
@@ -120,9 +123,9 @@ def _step_function(
     gridsize: int = 100000,
     title: str = "Eigenvalue Step Function",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    outfile: Optional[Path] = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
 ) -> PlotResult:
     """Compute the step function vaues over a grid, and plot the resulting curve.
 
@@ -167,8 +170,8 @@ def _step_function(
     grid = np.linspace(eigs.min(), eigs.max(), gridsize)
     steps = _step_function_fast(eigs, grid)
     df = pd.DataFrame({"Cumulative Value": steps, "Raw eigenvalues λ": grid})
-    axes = sbn.lineplot(data=df, x="Raw eigenvalues λ", y="Cumulative Value", ax=axes)
-    axes.set(title=title)
+    ax: Axes = sbn.lineplot(data=df, x="Raw eigenvalues λ", y="Cumulative Value", ax=axes)
+    ax.set(title=title)
     return _handle_plot_mode(mode, fig, axes, outfile)
 
 
@@ -176,10 +179,10 @@ def _raw_eig_sorted(
     eigs: ndarray,
     title: str = "Raw Eigenvalues",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
+    outfile: Optional[Path] = None,
     kind: Union[Literal["scatter"], Literal["line"]] = "scatter",
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
 ) -> PlotResult:
     """Plot a curve or scatterplot of the raw eigenvalues.
 
@@ -236,9 +239,9 @@ def _unfolded_dist(
     kde: bool = True,
     title: str = "Unfolded Eigenvalues",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    outfile: Optional[Path] = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
 ) -> PlotResult:
     """Plot a histogram of the unfolded eigenvalues.
 
@@ -309,9 +312,9 @@ def _unfolded_fit(
     unfolded: ndarray,
     title: str = "Unfolding Fit",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    outfile: Optional[Path] = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
 ) -> PlotResult:
     """Plot the unfolding fit against the step function.
 
@@ -352,7 +355,8 @@ def _unfolded_fit(
         The handles to the matplotlib objects, only if `mode` is "return".
     """
     # cmap = plt.cm.cividis
-    cmap = plt.cm.gist_heat
+
+    cmap = plt.cm.gist_heat  # type: ignore  # so dumb, plt.cm exists...
     fig, axes = _setup_plotting(fig, axes)
     N = len(unfolded)
     step_vals = np.arange(0, N)
@@ -375,8 +379,7 @@ def _unfolded_fit(
         s=size,  # size of points
         c=color,  # color of points
         cmap=cmap,  # should be color blind safe
-        marker="o",
-        # color="red",
+        marker=MarkerStyle("o"),
         edgecolors="white",
         linewidths=0.1,
         label="Outlier",
@@ -412,10 +415,10 @@ def _spacings(
     brody_fit: str = "spacing",
     title: str = "Unfolded Spacing Distribution",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
+    outfile: Optional[Path] = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
 ) -> PlotResult:
     """Plots a histogram of the Nearest-Neighbors Spacing Distribution
 
@@ -494,6 +497,7 @@ def _spacings(
     # Generate expected distributions for classical ensembles
     p = np.pi
     s = np.linspace(_spacings.min(), _spacings.max(), 10000)
+    # axes: Axes
     axes = sbn.distplot(
         _spacings,
         norm_hist=True,
@@ -504,6 +508,7 @@ def _spacings(
         color="black",
         ax=axes,
     )
+    axes = cast(Axes, axes)
 
     # fmt: off
     if "poisson" in ensembles:
@@ -552,8 +557,8 @@ def _brody_fit(
     method: str = "spacing",
     title: str = "Brody distribution fit",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
-    save_dpi: int = None,
+    outfile: Optional[Path] = None,
+    save_dpi: Optional[int] = None,
     ensembles: List[str] = ["goe", "poisson"],
     bins: int = 50,
     kde: bool = True,
@@ -561,7 +566,9 @@ def _brody_fit(
     trim_kde: bool = False,
     kde_bw: Union[float, str] = "scott",
 ) -> PlotResult:
-    fig, axes = plt.subplots(1, 2, sharex=True, sharey=True)
+    ax: Axes
+    axes: Any
+    fig, axes = plt.subplots(1, 2, sharex=True, sharey=True, squeeze=False)
     _spacings(
         unfolded=unfolded,
         bins=bins,
@@ -582,7 +589,7 @@ def _brody_fit(
     res = brody_fit_evaluate(s, method=method)
     x: fArr = res["spacings"]  # type: ignore
     ecdf, bcdf = res["ecdf"], res["brody_cdf"]
-    ax = axes.flat[1]
+    ax = axes.ravel()[1]
     ax_e = ax.plot(x, ecdf)
     plt.setp(ax_e, label="Empirical CDF")
     ax_b = ax.plot(x, bcdf)
@@ -599,7 +606,7 @@ def _brody_fit(
 
 
 def _next_spacings(
-    unfolded: ndarray,
+    unfolded: fArr,
     bins: int = 50,
     kde: bool = True,
     trim: float = 0.0,
@@ -608,10 +615,10 @@ def _next_spacings(
     brody_fit: str = "spacing",
     title: str = "next Nearest-Neigbors Spacing Distribution",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
+    outfile: Optional[Path] = None,
     ensembles: List[str] = ["goe", "poisson"],
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
 ) -> PlotResult:
     """Plots a histogram of the next Nearest-Neighbors Spacing Distribution
 
@@ -680,6 +687,7 @@ def _next_spacings(
         The handles to the matplotlib objects, only if `mode` is "return".
     """
     fig, axes = _setup_plotting(fig, axes)
+    axes = cast(Axes, axes)
     _spacings = np.sort((unfolded[2:] - unfolded[:-2]) / 2)
     all_spacings = np.copy(_spacings)
     if trim > 0.0:
@@ -688,15 +696,18 @@ def _next_spacings(
     s_min, s_max = _spacings.min(), _spacings.max()
     s = np.linspace(s_min, s_max, 10000)
 
-    axes = sbn.distplot(
-        _spacings,
-        norm_hist=True,
-        bins=bins,  # doane
-        kde=False,
-        label="next NNSD",
-        axlabel="spacing (s_2)",
-        color="black",
-        ax=axes,
+    axes = cast(
+        Axes,
+        sbn.distplot(
+            _spacings,
+            norm_hist=True,
+            bins=bins,  # doane
+            kde=False,
+            label="next NNSD",
+            axlabel="spacing (s_2)",
+            color="black",
+            ax=axes,
+        ),
     )
 
     if kde is True:
@@ -736,11 +747,11 @@ def _spectral_rigidity(
     data: pd.DataFrame,
     title: str = "Spectral Rigidity",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
+    outfile: Optional[Path] = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
     show_iters: bool = False,
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
     **kwargs: Mapping,
 ) -> PlotResult:
     """Plot the computed spectral rigidity against the various expected spectral
@@ -835,7 +846,7 @@ def _spectral_rigidity(
     # _, right = plt.xlim()
     _, right = axes.get_xlim()
 
-    L = df["L"]
+    L = df["L"].to_numpy()
     p, y = np.pi, np.euler_gamma
 
     # see pg 290 of Mehta (2004) for definition of s
@@ -867,11 +878,11 @@ def _level_number_variance(
     data: pd.DataFrame,
     title: str = "Level Number Variance",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
+    outfile: Optional[Path] = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
     show_iters: bool = False,
-    fig: plt.Figure = None,
-    axes: plt.Axes = None,
+    fig: Optional[Figure] = None,
+    axes: Optional[Axes] = None,
 ) -> PlotResult:
     """Plot the computed level number variance against the various expected number
     level variance curves for the classical ensembles.
@@ -1012,13 +1023,13 @@ def _level_number_variance(
 
 
 def _observables(
-    eigs: ndarray,
-    unfolded: ndarray,
+    eigs: fArr,
+    unfolded: fArr,
     rigidity_df: pd.DataFrame,
     levelvar_df: pd.DataFrame,
     suptitle: str = "Spectral Observables",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
+    outfile: Optional[Path] = None,
     ensembles: List[str] = ["goe", "poisson"],
 ) -> PlotResult:
     """Plot some popular spectral observables, as well as a plot of the unfolding
@@ -1053,23 +1064,38 @@ def _observables(
     ensembles: ["poisson", "goe", "gue", "gse"]
         Which ensembles to display the expected number level variance curves for comparison against.
     """
-    fig, axes = plt.subplots(2, 2, sharex="none", sharey="none")
-    fig.set_size_inches(fig.get_size_inches() * 2)
+    fig: Figure
+    axes: Axes
+    fig, axes = plt.subplots(2, 2, squeeze=False)  # type: ignore
+    w, h = fig.get_size_inches() * 2
+    fig.set_size_inches(w=w, h=h)
     fig.suptitle(suptitle)
-    _unfolded_fit(eigs=eigs, unfolded=unfolded, fig=fig, axes=axes[0, 0], mode=PlotMode.Return)
-    _spacings(unfolded, fig=fig, axes=axes[0, 1], mode=PlotMode.Return, ensembles=ensembles)
+    _unfolded_fit(
+        eigs=eigs,
+        unfolded=unfolded,
+        fig=fig,
+        axes=axes[0, 0],  # type: ignore
+        mode=PlotMode.Return,
+    )
+    _spacings(
+        unfolded,
+        fig=fig,
+        axes=axes[0, 1],  # type: ignore
+        mode=PlotMode.Return,
+        ensembles=ensembles,
+    )
     _spectral_rigidity(
         unfolded,
         data=rigidity_df,
         fig=fig,
-        axes=axes[1, 0],
+        axes=axes[1, 0],  # type: ignore
         mode=PlotMode.Return,
         ensembles=ensembles,
     )
     _level_number_variance(
         data=levelvar_df,
         fig=fig,
-        axes=axes[1, 1],
+        axes=axes[1, 1],  # type: ignore
         mode=PlotMode.Return,
         ensembles=ensembles,
     )
@@ -1081,7 +1107,7 @@ def _plot_trim_iters(
     width: int = 4,
     title: str = "Trim fits",
     mode: PlotMode = PlotMode.Block,
-    outfile: Path = None,
+    outfile: Optional[Path] = None,
 ) -> PlotResult:
     """Plot the trim regions.
 
@@ -1109,10 +1135,11 @@ def _plot_trim_iters(
 
 
     """
+    axes: Axes
     height = int(np.ceil(len(trims) / width))
     width = int(width)
-    fig, axes = plt.subplots(height, width)
-    for trim, ax in zip(trims, axes.flat):
+    fig, axes = plt.subplots(height, width)  # type: ignore
+    for trim, ax in zip(trims, axes.flat):  # type: ignore
         start, end = trim.trim_indices
         mean = float(trim_mean(trim.spacings.mean(), 0.2))
         var = float(trim_mean(trim.spacings.var(ddof=1), 0.2))
@@ -1135,39 +1162,24 @@ def _plot_trim_iters(
             style="Cluster",
             style_order=["inlier", "outlier"],
             linewidth=0,
-            markers=[".", "X"],
+            markers=[".", "X"],  # type: ignore
             palette=["black", "red"],
             hue_order=["inlier", "outlier"],
             legend="brief",
             ax=ax,
         )
         ax.set(title=ax_title)
-    for i in range(len(trims), len(axes.flat)):
-        fig.delaxes(axes.flat[i])
+    for i in range(len(trims), len(axes.flat)):  # type: ignore
+        fig.delaxes(axes.flat[i])  # type: ignore
     fig.subplots_adjust(wspace=0.8, hspace=0.8)
     fig.suptitle(title)
     fig.set_size_inches(width * 3, height * 3)
     return _handle_plot_mode(mode, fig, axes, outfile, 100)
 
 
-def _configure_sbn_style() -> None:
-    """Ensure *once* that seaborn style has been set.
-
-    NOTE
-    ----
-    This must be called every time *before* creating new figs and axes. In order
-    to fully ensure all plots get the correct style.
-    """
-    global PLOTTING_READY
-    if not PLOTTING_READY:
-        PALETTE = sbn.color_palette("dark").copy()
-        PALETTE.insert(0, (0.0, 0.0, 0.0))
-        sbn.set()
-        sbn.set_palette(PALETTE)
-        PLOTTING_READY = True
-
-
-def _setup_plotting(fig: plt.Figure = None, axes: plt.Axes = None) -> Tuple[plt.Figure, plt.Axes]:
+def _setup_plotting(
+    fig: Optional[Figure] = None, axes: Optional[Axes] = None
+) -> Tuple[Figure, Axes]:
     """Get new axes and figure objects, or return passed in."""
     if fig is None or axes is None:
         fig, axes = plt.subplots()
@@ -1177,7 +1189,10 @@ def _setup_plotting(fig: plt.Figure = None, axes: plt.Axes = None) -> Tuple[plt.
 
 
 def _kde_plot(
-    values: ndarray, grid: ndarray, axes: plt.Axes, bw: Union[float, str] = "scott"
+    values: fArr,
+    grid: fArr,
+    axes: Axes,
+    bw: Union[float, str] = "scott",
 ) -> None:
     """Calculate KDE for observed spacings.
 
@@ -1197,7 +1212,7 @@ def _kde_plot(
 
     Notes
     -----
-    we are doing this manually because we want to ensure consistency of the KDE
+    We are doing this manually because we want to ensure consistency of the KDE
     calculation and remove Seaborn control over the process, while also avoiding
     inconsistent behaviours like https://github.com/mwaskom/seaborn/issues/938
     and https://github.com/mwaskom/seaborn/issues/796
@@ -1205,7 +1220,7 @@ def _kde_plot(
     values = values[values > 0]  # prevent floating-point bad behaviour
     kde = KDE(values)
     # kde.fit(kernel="gau", bw="scott", cut=0)
-    kde.fit(kernel="gau", bw=bw, cut=0)
+    kde.fit(kernel="gau", bw=bw, cut=0)  # type: ignore
     evaluated = np.empty_like(grid)
     for i, _ in enumerate(evaluated):
         evaluated[i] = kde.evaluate(grid[i])
@@ -1214,7 +1229,11 @@ def _kde_plot(
 
 
 def _handle_plot_mode(
-    mode: PlotMode, fig: plt.Figure, axes: plt.Axes, outfile: Path = None, save_dpi: int = None
+    mode: PlotMode,
+    fig: Figure,
+    axes: Axes,
+    outfile: Optional[Path] = None,
+    save_dpi: Optional[int] = None,
 ) -> PlotResult:
     """Handle the various combinations of plotting arguments."""
     if mode is PlotMode.Block:
@@ -1228,13 +1247,9 @@ def _handle_plot_mode(
     elif mode is PlotMode.Save:
         if outfile is None:
             raise ValueError("Path not specified for `outfile`.")
-        try:
-            outfile = Path(outfile)
-        except BaseException as e:
-            raise ValueError("Cannot interpret outfile path.") from e
         make_parent_directories(outfile)
         print(f"Saving figure to {outfile}")
-        fig.savefig(outfile, dpi=save_dpi)
+        fig.savefig(outfile, dpi=save_dpi)  # type: ignore
         plt.close(fig)
     elif mode is PlotMode.Return:
         return fig, axes
@@ -1261,7 +1276,12 @@ def _validate_bin_sizes(vals: ndarray, bins: int) -> None:
 # shameless theft from https://stackoverflow.com/a/55501861, i.e.
 # https://stackoverflow.com/questions/55501860/how-to-put-multiple-colormap-patches-in-a-matplotlib-legend
 class HandlerColormap(HandlerBase):
-    def __init__(self, cmap: plt.cm, num_stripes: int = 8, **kw: Any):
+    def __init__(
+        self,
+        cmap: plt.cm,  # type: ignore
+        num_stripes: int = 8,
+        **kw: Any,
+    ):
         HandlerBase.__init__(self, **kw)
         self.cmap = cmap
         self.num_stripes = num_stripes
@@ -1295,4 +1315,4 @@ if __name__ == "__main__":
 
     out = Path.home() / "Desktop/unfolding.svg"
     fig, axes = _unfolded_fit(eigs.vals, unfolded.vals, mode=PlotMode.Return)
-    fig.savefig(out)
+    fig.savefig(out)  # type: ignore

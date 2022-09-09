@@ -8,6 +8,8 @@
         "**/env",
         "**/.venv",
         "**/.env",
+        "**/data",
+        "**/tests/data",
         "**/build"
     ],
     "ignore": [
@@ -18,6 +20,8 @@
         "**/env",
         "**/.venv",
         "**/.env",
+        "**/data",
+        "**/tests/data",
         "**/build"
     ]
 }

@@ -131,8 +131,7 @@ def correlated_eigs(
     shape: Tuple[int, int] = (1000, 500),
     noise: float = 0.1,
     log: bool = True,
-    return_mats: bool = False,
-) -> Union[ndarray, Tuple[ndarray, ndarray, ndarray]]:
+) -> tuple[fArr, fArr, fArr]:
     """[WIP]. Generate a correlated system for examinatino with, e.g.
     Marcenko-Pastur."""
     A = np.random.standard_normal(shape)
@@ -152,10 +151,7 @@ def correlated_eigs(
     n, t = shape
     eig_min, eig_max = (1 - np.sqrt(n / t)) ** 2, (1 + np.sqrt(n / t)) ** 2
     print(f"Eigenvalues in ({eig_min},{eig_max}) are likely noise-related.")
-
-    if return_mats:
-        return eigs, A, M
-    return eigs
+    return eigs, A, M
 
 
 # TODO, WIP This is really only valid for testing e.g. Tracy-Widom and the

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Motivation for this module
 
@@ -19,7 +21,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from numpy import ndarray
+from numpy import floating, ndarray
 from pandas import DataFrame
 from pyod.models.hbos import HBOS
 from scipy.stats import trim_mean
@@ -35,6 +37,7 @@ from empyricalRMT._constants import (
     EXPECTED_GOE_MEAN,
     EXPECTED_GOE_VARIANCE,
 )
+from empyricalRMT._types import fArr
 from empyricalRMT.plot import PlotMode, PlotResult, _plot_trim_iters
 from empyricalRMT.smoother import Smoother, SmoothMethod
 from empyricalRMT.unfold import Unfolded
@@ -351,7 +354,7 @@ class TrimReport:
 
     def best_overall(
         self,
-    ) -> Tuple[Dict[Union[str, int], str], DataFrame, List[Tuple[int, int]], List[str]]:
+    ) -> tuple[Dict[Union[str, int], str], list[DataFrame], list[Tuple[int, int]], list[str]]:
         """Computes GOE fit scores for the unfoldings performed, and returns various
         "best" fits.
 
@@ -425,12 +428,12 @@ class TrimReport:
                 col,
             ]
             if i == 0:
-                best_smoothers["best"] = report[cols].iloc[min_score_i, :]
+                best_smoothers["best"] = report[cols].iloc[min_score_i, :].item()
             elif i == 1:
-                best_smoothers["second"] = report[cols].iloc[min_score_i, :]
+                best_smoothers["second"] = report[cols].iloc[min_score_i, :].item()
             elif i == 2:
-                best_smoothers["third"] = report[cols].iloc[min_score_i, :]
-            best_smoothers[i] = report[cols].iloc[min_score_i, :]
+                best_smoothers["third"] = report[cols].iloc[min_score_i, :].item()
+            best_smoothers[i] = report[cols].iloc[min_score_i, :].item()
 
         # TODO: implement "best" trim
 
@@ -454,7 +457,7 @@ class TrimReport:
         self,
         title: str = "Trim fits",
         mode: PlotMode = PlotMode.Block,
-        outfile: Path = None,
+        outfile: Optional[Path] = None,
         width: int = 4,
         log_info: bool = True,
     ) -> PlotResult:
@@ -505,7 +508,7 @@ class TrimReport:
         scores = self.summary.filter(regex="score").abs()
         mean_best = scores[scores < scores.quantile(0.9)].mean().sort_values()[:5].index.to_list()
         best_trim_scores = self.summary.filter(regex=mean_best[0])  # e.g. regex="poly_3--score"
-        best_trim_id = int(best_trim_scores.abs().idxmin())
+        best_trim_id = int(best_trim_scores.abs().idxmin().item())
         best_unfolded = self.unfoldings[best_trim_id][mean_best[0].replace("--score", "")]
         orig_trimmed = self._trim_iters[best_trim_id].eigs
         return np.array(orig_trimmed), np.array(best_unfolded)
@@ -517,7 +520,7 @@ class TrimReport:
         max_iters: int = 7,
         show_progress: bool = False,
         **smoother_kwargs: Any,
-    ) -> List[DataFrame]:
+    ) -> List[TrimIter]:
         """Helper function to iteratively perform histogram-based outlier detection
         until reaching either max_trim or max_iters, saving outliers identified at
         each step.
@@ -657,7 +660,7 @@ class TrimReport:
         return trim_report
 
     @staticmethod
-    def __evaluate_unfolding(unfolded: ndarray) -> Tuple[float, float, float]:
+    def __evaluate_unfolding(unfolded: fArr) -> Tuple[floating, floating, floating]:
         """Calculate a naive unfolding score via comparison to the expected mean and
         variance of the level spacings of GOE matrices. Positive scores indicate
         there is too much variability in the unfolded eigenvalue spacings, negative
@@ -667,7 +670,7 @@ class TrimReport:
         mean, var = np.mean(spacings), np.var(spacings, ddof=1)
         # variance gets weight 1, i.e. mean is 0.05 times as important
         mean_weight = 0.5
-        mean_norm = (mean - EXPECTED_GOE_MEAN) / EXPECTED_GOE_MEAN
+        mean_norm = ((mean - EXPECTED_GOE_MEAN) / EXPECTED_GOE_MEAN)
         var_norm = (var - EXPECTED_GOE_VARIANCE) / EXPECTED_GOE_VARIANCE
         score = var_norm + mean_weight * mean_norm
         return mean, var, score

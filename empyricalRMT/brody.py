@@ -1,6 +1,5 @@
-from typing import Union
-
 import numpy as np
+from pandas import DataFrame
 from scipy.optimize import minimize_scalar
 from scipy.special import gamma
 from statsmodels.distributions.empirical_distribution import ECDF
@@ -135,7 +134,7 @@ def fit_brody_max_spacing(s: fArr) -> float:
 def brody_fit_evaluate(
     s: fArr,
     method: str = "spacing",
-) -> dict[str, Union[float, fArr]]:
+) -> DataFrame:
     beta = fit_brody(s, method)
     ecdf = ECDF(s)
     ecdf_x = ecdf.x[1:]  # ECDF always makes first x value -inf if `side`=="left"
@@ -143,11 +142,13 @@ def brody_fit_evaluate(
     bcdf = brody_cdf(ecdf_x, beta)
     mad = float(np.mean(np.abs(ecdf_y - bcdf)))
     msqd = float(np.mean((ecdf_y - bcdf) ** 2))
-    return {
-        "beta": beta,
-        "mad": mad,
-        "msqd": msqd,
-        "spacings": ecdf_x,
-        "ecdf": ecdf_y,
-        "brody_cdf": bcdf,
-    }  # type: ignore
+    return DataFrame(
+        {
+            "beta": beta,
+            "mad": mad,
+            "msqd": msqd,
+            "spacings": ecdf_x,
+            "ecdf": ecdf_y,
+            "brody_cdf": bcdf,
+        }
+    )

@@ -1,9 +1,11 @@
 from pathlib import Path
-from typing import Any, Callable, List, Mapping, Optional, Tuple, Type, Union
+from typing import Any, List, Mapping, Optional, Tuple, Type, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy import ndarray
 from pandas import DataFrame
 from statsmodels.nonparametric.kde import KDEUnivariate as KDE
@@ -12,7 +14,7 @@ from typing_extensions import Literal
 import empyricalRMT.plot as plot
 from empyricalRMT._constants import RIGIDITY_GRID
 from empyricalRMT._eigvals import EigVals
-from empyricalRMT._types import fArr
+from empyricalRMT._types import Smoother, fArr
 from empyricalRMT._validate import make_1d_array
 from empyricalRMT.brody import brody_fit_evaluate
 from empyricalRMT.compare import Compare, Metric
@@ -25,27 +27,29 @@ from empyricalRMT.plot import _unfolded_fit
 
 Observables = Literal["nnsd", "nnnsd", "rigidity", "levelvar"]
 
+plt.figure()
+
 
 class Unfolded(EigVals):
     def __init__(
         self,
-        originals: ndarray,
-        unfolded: ndarray,
-        smoother: Callable[[ndarray], ndarray] = None,
+        originals: fArr,
+        unfolded: fArr,
+        smoother: Optional[Smoother] = None,
     ):
         super().__init__(originals)
-        self._vals = np.array(unfolded)
+        self._vals: fArr = np.array(unfolded)
         self._smoother = smoother
 
     @property
-    def values(self) -> ndarray:
+    def values(self) -> fArr:
         return self._vals
 
     @property
-    def vals(self) -> ndarray:
+    def vals(self) -> fArr:
         return self._vals
 
-    def evaluate_smoother(self, x: ndarray) -> ndarray:
+    def evaluate_smoother(self, x: fArr) -> fArr:
         if self._smoother is None:
             raise NotImplementedError(
                 "Your unfolded eigenvalues were probably constructed by auto-trimming."
@@ -55,7 +59,7 @@ class Unfolded(EigVals):
 
     def spectral_rigidity(
         self,
-        L: fArr = np.arange(2, 50, 10000),
+        L: fArr = np.arange(2, 50, 1, dtype=np.float64),
         max_iters: int = 0,
         gridsize: int = RIGIDITY_GRID,
         tol: float = 0.01,
@@ -100,7 +104,14 @@ class Unfolded(EigVals):
             integration=integration,
             show_progress=show_progress,
         )
-        return pd.DataFrame({"L": L_vals, "delta": delta, "converged": converged, "iters": iters})
+        return pd.DataFrame(
+            {
+                "L": L_vals,
+                "delta": delta,
+                "converged": converged,
+                "iters": iters,
+            }
+        )
 
     def level_variance(
         self,
@@ -196,8 +207,8 @@ class Unfolded(EigVals):
         method: str = "spacing",
         title: str = "Brody distribution fit",
         mode: PlotMode = PlotMode.Block,
-        outfile: Path = None,
-        save_dpi: int = None,
+        outfile: Optional[Path] = None,
+        save_dpi: Optional[int] = None,
         ensembles: List[str] = ["goe", "poisson"],
         bins: int = 50,
         kde: bool = True,
@@ -321,13 +332,17 @@ class Unfolded(EigVals):
                 df["nnnsd"][metric] = compare(nnnsd_exp, nnnsd, "nnnsd", metric)
 
         if "rigidity" in observables:
-            rigidity = self.spectral_rigidity(L=L_rigidity, show_progress=show_progress)["delta"]
+            rigidity = self.spectral_rigidity(L=L_rigidity, show_progress=show_progress)[
+                "delta"
+            ].to_numpy()
             rigidity_exp = ensemble.spectral_rigidity(L=L_rigidity)
             for metric in metrics:
                 df["rigidity"][metric] = compare(rigidity_exp, rigidity, "rigidity", metric)
 
         if "levelvar" in observables:
-            levelvar = self.level_variance(L=L_levelvar, show_progress=show_progress)["sigma"]
+            levelvar = self.level_variance(L=L_levelvar, show_progress=show_progress)[
+                "sigma"
+            ].to_numpy()
             levelvar_exp = ensemble.level_variance(L=L_levelvar)
             for metric in metrics:
                 df["levelvar"][metric] = compare(levelvar_exp, levelvar, "levelvar", metric)
@@ -337,7 +352,7 @@ class Unfolded(EigVals):
         self,
         title: str = "Unfolding Fit",
         mode: PlotMode = PlotMode.Block,
-        outfile: Path = None,
+        outfile: Optional[Path] = None,
     ) -> PlotResult:
         return _unfolded_fit(self.original_eigs, self.vals, title=title, mode=mode, outfile=outfile)
 
@@ -352,10 +367,10 @@ class Unfolded(EigVals):
         brody_fit: str = "spacing",
         title: str = "Unfolded Spacing Distribution",
         mode: PlotMode = PlotMode.Block,
-        outfile: Path = None,
+        outfile: Optional[Path] = None,
         ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
-        fig: plt.Figure = None,
-        axes: plt.Axes = None,
+        fig: Optional[Figure] = None,
+        axes: Optional[Axes] = None,
     ) -> PlotResult:
         """Plots a histogram of the Nearest-Neighbors Spacing Distribution
 
@@ -454,10 +469,10 @@ class Unfolded(EigVals):
         brody_fit: str = "spacing",
         title: str = "next Nearest-Neigbors Spacing Distribution",
         mode: PlotMode = PlotMode.Block,
-        outfile: Path = None,
+        outfile: Optional[Path] = None,
         ensembles: List[str] = ["goe", "poisson"],
-        fig: plt.Figure = None,
-        axes: plt.Axes = None,
+        fig: Optional[Figure] = None,
+        axes: Optional[Axes] = None,
     ) -> PlotResult:
         """Plots a histogram of the next Nearest-Neighbors Spacing Distribution
 
@@ -557,7 +572,7 @@ class Unfolded(EigVals):
         integration: Literal["simps", "trapz"] = "simps",
         title: str = "Spectral Rigidity",
         mode: PlotMode = PlotMode.Block,
-        outfile: Path = None,
+        outfile: Optional[Path] = None,
         ensembles: List[str] = ["poisson", "goe"],
         show_iters: bool = False,
         show_progress: bool = True,
@@ -627,8 +642,13 @@ class Unfolded(EigVals):
                 integration=integration,
                 show_progress=show_progress,
             )
-            data = (
-                pd.DataFrame({"L": L_vals, "delta": delta, "converged": converged, "iters": iters}),
+            data = pd.DataFrame(
+                {
+                    "L": L_vals,
+                    "delta": delta,
+                    "converged": converged,
+                    "iters": iters,
+                }
             )
         plot_result = plot._spectral_rigidity(
             unfolded=unfolded,
@@ -644,13 +664,13 @@ class Unfolded(EigVals):
 
     def plot_level_variance(
         self,
-        L: ndarray = np.arange(0.5, 20, 0.2),
-        sigma: ndarray = None,
+        L: fArr = np.arange(0.5, 20, 0.2),
+        sigma: Optional[fArr] = None,
         tol: float = 0.01,
         max_L_iters: int = 0,
         title: str = "Level Number Variance",
         mode: PlotMode = PlotMode.Block,
-        outfile: Path = None,
+        outfile: Optional[Path] = None,
         ensembles: List[str] = ["goe"],
         show_iters: bool = False,
         show_progress: bool = True,
@@ -757,7 +777,7 @@ class Unfolded(EigVals):
         levelvar_L: ndarray = np.arange(0.2, 20, 0.2),
         title: str = "Spectral Observables",
         mode: PlotMode = PlotMode.Block,
-        outfile: Path = None,
+        outfile: Optional[Path] = None,
         ensembles: List[str] = ["goe", "poisson"],
         show_progress: bool = True,
         max_iters: int = int(1e6),
@@ -830,5 +850,5 @@ class Unfolded(EigVals):
         # evaluated = np.empty_like(s)
         # for i, _ in enumerate(evaluated):
         #     evaluated[i] = kde.evaluate(s[i])
-        evaluated: fArr = kde.evaluate(s)
+        evaluated: fArr = np.array(kde.evaluate(s))
         return evaluated
