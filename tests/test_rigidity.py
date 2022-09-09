@@ -34,13 +34,15 @@ def test_plot_call() -> None:
 def test_plot_rigidity(capsys: CaptureFixture) -> None:
     with capsys.disabled():
         # eigs = Eigenvalues(generate_eigs(2000, kind="goe", log=True))
-        eigs = Eigenvalues(generate_eigs(10000, kind="goe", log=True))
+        eigs = Eigenvalues(generate_eigs(10000, kind="poisson", log=True))
+        # eigs = Eigenvalues(generate_eigs(10000, kind="goe", log=True))
         # eigs = Eigenvalues(generate_eigs(2000, kind="goe", log=True))
         # eigs = Eigenvalues(generate_eigs(5000, kind="gue", log=True))
-        # unfolded = eigs.unfold(smoother="poly", degree=19)
-        unfolded = eigs.unfold(smoother="goe")
+        unfolded = eigs.unfold(smoother="poly", degree=19)
+        # unfolded = eigs.unfold(smoother="goe")
         df = unfolded.spectral_rigidity(
-            L=np.arange(2, 100, 1, dtype=np.float64),
+            # L=np.arange(2, 100, 1, dtype=np.float64),
+            L=np.arange(2, 20, 1, dtype=np.float64),
             integration="simps",
             tol=0.01,
             show_progress=True,
@@ -48,8 +50,7 @@ def test_plot_rigidity(capsys: CaptureFixture) -> None:
         print(df.tail())
         unfolded.plot_spectral_rigidity(
             data=df,
-            ensembles=["goe", "gue"],
-            mode=PlotMode.NoBlock,
+            ensembles=["goe", "gue", "poisson"],
+            mode=PlotMode.Block,
             show_iters=True,
         )
-        plt.show()

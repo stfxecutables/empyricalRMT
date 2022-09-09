@@ -27,8 +27,6 @@ from empyricalRMT.plot import _unfolded_fit
 
 Observables = Literal["nnsd", "nnnsd", "rigidity", "levelvar"]
 
-plt.figure()
-
 
 class Unfolded(EigVals):
     def __init__(
@@ -567,7 +565,6 @@ class Unfolded(EigVals):
         L: ndarray = np.arange(2, 50, 0.5),
         max_iters: int = int(1e6),
         gridsize: int = 1000,
-        min_iters: int = 1000,
         tol: float = 0.01,
         integration: Literal["simps", "trapz"] = "simps",
         title: str = "Spectral Rigidity",

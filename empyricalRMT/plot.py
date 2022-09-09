@@ -501,7 +501,7 @@ def _spacings(
     axes = sbn.histplot(
         _spacings,
         stat="probability",
-        bins=bins,  # doane
+        bins=bins,  # type: ignore
         kde=False,
         label="Empirical Spacing Distribution",
         color="black",
@@ -853,21 +853,22 @@ def _spectral_rigidity(
     s = L / np.mean(unfolded[1:] - unfolded[:-1]) if unfolded is not None else L
 
     if "poisson" in ensembles:
-        poisson = L / 15 / 2
-        poisson = axes.plot(L, poisson, label="Poisson")
-        plt.setp(poisson, color="#08FD4F")
+        # poisson = (L / 15) / 2
+        poisson = L / 15
+        poisson = axes.plot(L, poisson, label="Poisson", color="#08FD4F")
+        # plt.setp(poisson, color="#08FD4F")
     if "goe" in ensembles:
         goe = (1 / (p ** 2)) * (np.log(2 * p * s) + y - 5 / 4 - (p ** 2) / 8)
-        goe = axes.plot(L, goe, label="Gaussian Orthogonal")
-        plt.setp(goe, color="#FD8208")
+        goe = axes.plot(L, goe, label="Gaussian Orthogonal", color="#FD8208")
+        # plt.setp(goe, color="#FD8208")
     if "gue" in ensembles:
         gue = (1 / (2 * (p ** 2))) * (np.log(2 * p * s) + y - 5 / 4)
-        gue = axes.plot(L, gue, label="Gaussian Unitary")
-        plt.setp(gue, color="#0066FF")
+        gue = axes.plot(L, gue, label="Gaussian Unitary", color="#0066FF")
+        # plt.setp(gue, color="#0066FF")
     if "gse" in ensembles:
         gse = (1 / (4 * (p ** 2))) * (np.log(4 * p * s) + y - 5 / 4 + (p ** 2) / 8)
-        gse = axes.plot(L, gse, label="Gaussian Symplectic")
-        plt.setp(gse, color="#EA00FF")
+        gse = axes.plot(L, gse, label="Gaussian Symplectic", color="#EA00FF")
+        # plt.setp(gse, color="#EA00FF")
 
     axes.set(title=title, xlabel="L", ylabel="∆3(L)")
     axes.legend().set_visible(True)
@@ -1237,7 +1238,7 @@ def _handle_plot_mode(
 ) -> PlotResult:
     """Handle the various combinations of plotting arguments."""
     if mode is PlotMode.Block:
-        plt.show(block=True)
+        plt.show()
     elif mode is PlotMode.NoBlock:
         plt.show(block=False)
         plt.pause(0.001)
@@ -1303,18 +1304,3 @@ class HandlerColormap(HandlerBase):
             )
             stripes.append(s)
         return stripes
-
-
-if __name__ == "__main__":
-    from empyricalRMT.construct import generate_eigs
-    from empyricalRMT.eigenvalues import Eigenvalues
-
-    eigs = Eigenvalues(generate_eigs(100))
-    unfolded = eigs.unfold_goe()
-    # fig, axes = _step_function(eigs.eigs, gridsize=10000, mode="return")
-    # out = Path.home() / "Desktop/step_function.svg"
-    # fig.savefig(out)
-
-    out = Path.home() / "Desktop/unfolding.svg"
-    fig, axes = _unfolded_fit(eigs.vals, unfolded.vals, mode=PlotMode.Return)
-    fig.savefig(out)  # type: ignore
