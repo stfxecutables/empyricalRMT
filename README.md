@@ -30,17 +30,7 @@ computation and plotting of some spectral observables.
 
 For a sample of eigenvalues, computation of the spectral rigidity,
 
-$$
-\Delta_3(L) =
-\left\langle
-  \min_{A, B} \frac{1}{L}
-  \int_c^{c+L}
-    \Big(
-      \eta(\lambda) - A \lambda - B
-
-    \Big)^2 d\lambda
-\right\rangle_c
-$$
+$$ \Delta_3(L) = \left\langle \min_{A, B} \frac{1}{L} \int_c^{c+L} \Big( \eta(\lambda) - A \lambda - B \Big)^2 d\lambda \right\rangle_c $$
 
 and level number variance
 
