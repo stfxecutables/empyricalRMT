@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from math import factorial
 from time import strftime
 from typing import Any, List, Optional, Tuple, Type, Union
 from warnings import warn
@@ -11,7 +10,6 @@ import scipy.sparse.linalg
 from numpy import ndarray
 from numpy.typing import ArrayLike
 from scipy.integrate import quad
-from scipy.stats import norm, poisson
 from typing_extensions import Literal
 
 from empyricalRMT._constants import DEFAULT_POLY_DEGREE, DEFAULT_POLY_DEGREES, DEFAULT_SPLINE_SMOOTH
@@ -26,7 +24,7 @@ from empyricalRMT.unfold import Unfolded
 
 
 class Eigenvalues(EigVals):
-    """Basic class providing access to various items of interest in RMT. """
+    """Basic class providing access to various items of interest in RMT."""
 
     __WARNED_SMALL = False
 
@@ -49,7 +47,7 @@ class Eigenvalues(EigVals):
             )
             self.__class__.__WARNED_SMALL = True  # don't warn more than once per execution
 
-        self.kind = kind
+        self.kind: Optional[MatrixKind] = kind
         self._series_T: Optional[int] = None
         self._series_N: Optional[int] = None
         # get some Marchenko-Pastur endpoints
@@ -59,7 +57,7 @@ class Eigenvalues(EigVals):
     @staticmethod
     def generate(
         matsize: int,
-        kind: MatrixKind = "goe",
+        kind: MatrixKind = MatrixKind.GOE,
         seed: Optional[int] = None,
         log_time: bool = False,
         use_tridiagonal: bool = True,
@@ -377,7 +375,7 @@ class Eigenvalues(EigVals):
 
     def get_best_trimmed(
         self,
-        smoother: SmoothMethod = "poly",
+        smoother: SmoothMethod = SmoothMethod.Polynomial,
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         max_iters: int = 7,
@@ -748,6 +746,29 @@ class Eigenvalues(EigVals):
         steps: ndarray
             the step-function values
         """
+        if smoother is None:
+            if self.kind is MatrixKind.GOE:
+                print(
+                    "Using default Wigner surmise for (analytic) unfolding of GOE "
+                    "eigenvalues. To silence this message, specify `smoother` "
+                    "argument to Eigenvalues.unfold()."
+                )
+                return self.unfold_goe()
+            elif self.kind in [MatrixKind.GDE, MatrixKind.Poisson]:
+                print(
+                    "Using default (analytic, exponential) unfolding for GDE / "
+                    "Poisson eigenvalues. To silence this message, specify `smoother` "
+                    "argument to Eigenvalues.unfold()."
+                )
+                return self.unfold_poisson()
+            else:
+                print(
+                    "No smoother specified for unfolding. Using polynomial of degree "
+                    f"{DEFAULT_POLY_DEGREE}. To silence this message, specify `smoother` "
+                    "argument to Eigenvalues.unfold()."
+                )
+                smoother = SmoothMethod.Polynomial
+        smoother = SmoothMethod.validate(smoother)
         if smoother == "goe":
             return self.unfold_goe()  # type: ignore[unreachable]
         if smoother == "poisson":
@@ -770,14 +791,14 @@ class Eigenvalues(EigVals):
         )
 
     def unfold_goe(self) -> Unfolded:
-        """Unfold via Wigner's semicircle law. """
+        """Unfold via Wigner's semicircle law."""
 
         eigs = self.eigenvalues
         N = len(eigs)
         end = np.sqrt(2 * N)
 
         def __R1(x: float) -> np.float64:
-            """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004) """
+            """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004)"""
             if np.abs(x) < end:
                 return np.float64((1 / np.pi) * np.sqrt(2 * N - x * x))
             return np.float64(0.0)
@@ -828,7 +849,7 @@ class Eigenvalues(EigVals):
         N = len(eigs)
 
         def __R1(x: float) -> np.float64:
-            return np.exp(-np.abs(x))  # correct!
+            return np.float64(np.exp(-np.abs(x)))  # correct!
 
         def smooth_poisson(x: float) -> np.float64:
             return N * np.float64(quad(__R1, -np.inf, np.abs(x))[0])

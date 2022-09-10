@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
@@ -23,7 +26,26 @@ from empyricalRMT.exponentials import gompertz
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}
 
-SmoothMethod = Literal["poly", "spline", "gompertz", "goe"]
+
+class SmoothMethod(Enum):
+    Polynomial = "poly"
+    Spline = "spline"
+    Exponential = "exp"
+    Gompertz = "gompertz"
+    GOE = "goe"
+    Poisson = "poisson"
+
+    @classmethod
+    def validate(cls, s: str | SmoothMethod) -> SmoothMethod:
+        try:
+            if isinstance(s, str):
+                return cls(s)
+            return s
+        except Exception as e:
+            values = [e.value for e in cls]
+            raise ValueError(f"SmoothMethod must be one of {values}") from e
+
+
 SmoothArg = Union[List[float], Literal["heuristic"]]
 
 
@@ -51,7 +73,7 @@ class Smoother:
 
     def fit(
         self,
-        smoother: SmoothMethod = "poly",
+        smoother: SmoothMethod = SmoothMethod.Polynomial,
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         detrend: bool = False,
@@ -129,7 +151,7 @@ class Smoother:
             return unfolded, steps, func  # type: ignore
 
         if smoother == "exp":
-            func = lambda t, a, b: a * np.exp(-b * t)
+            func = lambda t, a, b: a * np.exp(-b * t)  # type: ignore
             [a, b], cov = curve_fit(
                 func,
                 eigs,
@@ -137,7 +159,7 @@ class Smoother:
                 p0=(len(eigs) / 2, 0.5),
             )
             print(f"Fit: {a} * exp({b} * eigs)")
-            unfolded = func(eigs, a, b)
+            unfolded = func(eigs, a, b)  # type: ignore
             if detrend:
                 unfolded = emd_detrend(unfolded)
             return unfolded, steps, func  # type: ignore
@@ -205,7 +227,7 @@ class Smoother:
         for d in poly_degrees:
             col_name = f"poly_{d}"
             unfolded, steps, closure = self.fit(
-                smoother="poly", degree=d, return_callable=True, detrend=detrend
+                smoother=SmoothMethod.Polynomial, degree=d, return_callable=True, detrend=detrend
             )
             col_names.append(col_name)
             sqes.append(np.mean((unfolded - steps) ** 2))
@@ -219,7 +241,7 @@ class Smoother:
                 for d in spline_degrees:
                     col_name = f"{_spline_name(d)}-spline_" "{:1.2f}_heuristic".format(s)
                     unfolded, steps, closure = self.fit(
-                        smoother="spline",
+                        smoother=SmoothMethod.Spline,
                         spline_smooth=len(self._eigs) ** s,
                         degree=d,
                         return_callable=True,
@@ -236,7 +258,7 @@ class Smoother:
                 for d in spline_degrees:
                     col_name = f"{_spline_name(d)}-spline_" "{:1.3f}".format(s)
                     unfolded, steps, closure = self.fit(
-                        smoother="spline",
+                        smoother=SmoothMethod.Spline,
                         spline_smooth=s,
                         degree=d,
                         return_callable=True,
@@ -250,7 +272,7 @@ class Smoother:
                     smoother_map[col_name] = closure
         if gompertz:
             unfolded, steps, closure = self.fit(
-                smoother="gompertz", return_callable=True, detrend=detrend
+                smoother=SmoothMethod.Gompertz, return_callable=True, detrend=detrend
             )
             col_names.append("gompertz")
             sqes.append(np.mean((unfolded - steps) ** 2))

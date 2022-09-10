@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple, Union, cast
+from typing import Optional, Tuple, cast
 from warnings import warn
 
 import numpy as np
@@ -52,7 +52,7 @@ class Ensemble(ABC):
 
 
 class Poisson(Ensemble):
-    """Class for Poisson "Gaussian Diagonal" matrices. """
+    """Class for Poisson "Gaussian Diagonal" matrices."""
 
     @staticmethod
     def nnsd(
@@ -60,7 +60,8 @@ class Poisson(Ensemble):
         n_points: int = 1000,
         spacings: Optional[fArr] = None,
     ) -> fArr:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -146,7 +147,7 @@ class Poisson(Ensemble):
             """
             b1 = beta + 1
             alpha = gamma((beta + 2) / b1) ** b1
-            return b1 * alpha * s ** beta * np.exp(-alpha * s ** b1)  # type: ignore
+            return b1 * alpha * s**beta * np.exp(-alpha * s**b1)  # type: ignore
 
         s = (
             spacings
@@ -218,7 +219,8 @@ class GOE(Ensemble):
         n_points: int = 1000,
         spacings: Optional[fArr] = None,
     ) -> fArr:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -246,7 +248,8 @@ class GOE(Ensemble):
         n_points: int = 1000,
         spacings: Optional[fArr] = None,
     ) -> fArr:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -333,7 +336,7 @@ class GOE(Ensemble):
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p, y = np.pi, np.euler_gamma
-        return (1 / (p ** 2)) * (np.log(2 * p * s) + y - 5 / 4 - (p ** 2) / 8)  # type: ignore
+        return (1 / (p**2)) * (np.log(2 * p * s) + y - 5 / 4 - (p**2) / 8)  # type: ignore
 
     @staticmethod
     def level_variance(
@@ -359,7 +362,7 @@ class GOE(Ensemble):
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p = np.pi
-        return (2 / (p ** 2)) * (np.log(2 * p * s) + np.euler_gamma + 1 - (p ** 2) / 8)  # type: ignore # noqa
+        return (2 / (p**2)) * (np.log(2 * p * s) + np.euler_gamma + 1 - (p**2) / 8)  # type: ignore # noqa
 
 
 class GUE(Ensemble):
@@ -369,7 +372,8 @@ class GUE(Ensemble):
         n_points: int = 1000,
         spacings: Optional[fArr] = None,
     ) -> fArr:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -389,7 +393,7 @@ class GUE(Ensemble):
             else np.linspace(spacings_range[0], spacings_range[1], 10000)
         )
         p = np.pi
-        return (32 / p ** 2) * (s * s) * np.exp(-(4 * s * s) / p)  # type: ignore
+        return (32 / p**2) * (s * s) * np.exp(-(4 * s * s) / p)  # type: ignore
 
     @staticmethod
     def nnnsd(
@@ -444,7 +448,7 @@ class GUE(Ensemble):
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p = np.pi
-        return (1 / (2 * (p ** 2))) * (np.log(2 * p * s) + np.euler_gamma - 5 / 4)  # type: ignore
+        return (1 / (2 * (p**2))) * (np.log(2 * p * s) + np.euler_gamma - 5 / 4)  # type: ignore
 
     @staticmethod
     def level_variance(
@@ -470,7 +474,7 @@ class GUE(Ensemble):
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p = np.pi
-        return (1 / (p ** 2)) * (np.log(2 * p * s) + np.euler_gamma + 1)  # type: ignore
+        return (1 / (p**2)) * (np.log(2 * p * s) + np.euler_gamma + 1)  # type: ignore
 
 
 class GSE:
@@ -480,7 +484,8 @@ class GSE:
         n_points: int = 1000,
         spacings: Optional[fArr] = None,
     ) -> ndarray:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -558,7 +563,7 @@ class GSE:
         # s = L / np.mean(spacings)
         s = L
         p, y = np.pi, np.euler_gamma
-        return (1 / (4 * (p ** 2))) * (np.log(4 * p * s) + y - 5 / 4 + (p ** 2) / 8)  # type: ignore
+        return (1 / (4 * (p**2))) * (np.log(4 * p * s) + y - 5 / 4 + (p**2) / 8)  # type: ignore
 
     @staticmethod
     def level_variance(
@@ -584,7 +589,7 @@ class GSE:
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p, y = np.pi, np.euler_gamma
-        return (1 / (2 * (p ** 2))) * (np.log(4 * p * s) + y + 1 + (p ** 2) / 8)  # type: ignore
+        return (1 / (2 * (p**2))) * (np.log(4 * p * s) + y + 1 + (p**2) / 8)  # type: ignore
 
 
 GDE = Poisson

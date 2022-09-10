@@ -70,7 +70,7 @@ class Trimmed(_eigvals.EigVals):
 
     def unfold(
         self,
-        smoother: SmoothMethod = "poly",
+        smoother: SmoothMethod = SmoothMethod.Polynomial,
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         detrend: bool = False,
@@ -670,7 +670,7 @@ class TrimReport:
         mean, var = np.mean(spacings), np.var(spacings, ddof=1)
         # variance gets weight 1, i.e. mean is 0.05 times as important
         mean_weight = 0.5
-        mean_norm = ((mean - EXPECTED_GOE_MEAN) / EXPECTED_GOE_MEAN)
+        mean_norm = (mean - EXPECTED_GOE_MEAN) / EXPECTED_GOE_MEAN
         var_norm = (var - EXPECTED_GOE_VARIANCE) / EXPECTED_GOE_VARIANCE
         score = var_norm + mean_weight * mean_norm
         return mean, var, score

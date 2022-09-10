@@ -1,15 +1,13 @@
 import numpy as np
-import pytest
-from numpy import ndarray
 
-from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.plot import PlotMode
+from empyricalRMT.smoother import SmoothMethod
 
 
 def test_plot_calls() -> None:
     eigs = Eigenvalues.generate(2000, log_time=True)
-    unfolded = eigs.unfold(smoother="poly", degree=19)
+    unfolded = eigs.unfold(smoother=SmoothMethod.Polynomial, degree=19)
 
     unfolded.plot_nnsd(mode=PlotMode.Test)
     # unfolded.plot_next_nnsd(mode=PlotMode.Test)

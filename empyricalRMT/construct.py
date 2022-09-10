@@ -1,5 +1,5 @@
 import time
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 from warnings import warn
 
 import numpy as np
@@ -7,13 +7,10 @@ from numpy import ndarray
 from scipy.integrate import quad
 from scipy.linalg import eigvalsh_tridiagonal
 from scipy.sparse import diags
-from typing_extensions import Literal
 
-from empyricalRMT._types import fArr
+from empyricalRMT._types import MatrixKind, fArr
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.unfold import Unfolded
-
-MatrixKind = Union[Literal["goe"], Literal["gue"], Literal["uniform"], Literal["poisson"]]
 
 
 def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
@@ -39,7 +36,7 @@ def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
     end = np.sqrt(2 * N)
 
     def __R1(x: float) -> np.float64:
-        """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004) """
+        """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004)"""
         if np.abs(x) < end:
             return np.float64((1 / np.pi) * np.sqrt(2 * N - x * x))
         return np.float64(0.0)
@@ -94,7 +91,7 @@ def correlated_eigs(
 def tracy_widom_eigs(
     n_eigs: int = 1000,
     sub_matsize: int = 100,
-    kind: MatrixKind = "goe",
+    kind: MatrixKind = MatrixKind.GOE,
     use_tridiagonal: bool = False,
     return_normalized: bool = False,
 ) -> ndarray:

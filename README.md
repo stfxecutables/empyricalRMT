@@ -5,7 +5,7 @@
 
 A python library for investigating some of the basic / classical elements of
 Random Matrix Theory, including eigenvalue generation, trimming, unfolding and
-computation and plotting of some popular spectral observables.
+computation and plotting of some spectral observables.
 
 # Table of Contents
 - [Introduction](#introduction)
