@@ -2,6 +2,7 @@
 
 ## Plotting
 **/*.png
+!readme/*.png
 empyricalRMT/plots
 
 ## Testing Remnants
