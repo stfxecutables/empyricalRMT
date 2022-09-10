@@ -10,121 +10,81 @@ computation and plotting of some spectral observables.
 # Table of Contents
 - [Introduction](#introduction)
 - [Table of Contents](#table-of-contents)
-  - [Notes on Development](#notes-on-development)
 - [Installation](#installation)
-  - [Local Installation Using `venv` (recommended)](#local-installation-using-venv-recommended)
-  - [Global Installation](#global-installation)
+  - [Pip](#pip)
+  - [Poetry](#poetry)
+  - [Development](#development)
   - [Windows](#windows)
 - [A Brief Tour](#a-brief-tour)
+  - [`examples/basic.py`](#examplesbasicpy)
 - [Documentation](#documentation)
   - [API Overview](#api-overview)
     - [Main Classes and Methods](#main-classes-and-methods)
-- [Development](#development)
+- [Development](#development-1)
   - [Installation](#installation-1)
   - [Testing](#testing)
 - [Limitations](#limitations)
 
 
 
-## Notes on Development
-
-This libary is still undergoing significant development. The overall API (e.g.
-basic classes, properties, and methods) will likely remain stable from this
-point, but function and method arguments are still quite likely to change. I
-can't provide any guarantees at this point that numerical results will be stable
-from version to version.
-
-In the meantime, please feel free to post issues or ask *any* questions relating
-to the library on [Github](https://github.com/stfxecutables/empyricalRMT/issues).
-
 # Installation
 
-As always, using a virtual environment is recommended to minimize the chance of
-conflicts. However, you _should_ be okay doing a global `pip install empyricalRMT`
-to try out the library.
 
+## Pip
 
-## Local Installation Using `venv` (recommended)
-
-Navigate to the project that you wish to use empyricalRMT in.
-
-```bash
-cd MyProject
-```
-
-Create and active the virtual environment. Replace "env" with whatever name
-you prefer.
-
-```bash
-python -m venv env && source env/bin/activate
-```
-
-Now install locally either from pip:
-
-```bash
-pip install --upgrade empyricalRMT
-```
-
-or from source:
-
-```bash
-git clone https://github.com/stfxecutables/empyricalRMT /path/to/your/favourite/location/empyricalRMT
-cd MyProject  #
-pip install -e /path/to/your/favourite/location/empyricalRMT
-```
-
-If using Windows (which I haven't tested this library on), you *should* be able to
-install this in whatever manner you usually install libraries from source or pip.
-
-
-## Global Installation
-
-Via pip:
-
-```bash
+```sh
 pip install empyricalRMT
 ```
 
-From source:
+## Poetry
 
-```bash
-git clone https://github.com/stfxecutables/empyricalRMT
-cd empyricalRMT
-pip install -e .
+In your project using [Poetry](https://python-poetry.org):
+
+```sh
+poetry add empyricalRMT && poetry install
 ```
 
-Note that this will install the library "globally" if you haven't activated
-a virtual environment of some kind.
+## Development
 
-
+```sh
+git clone https://github.com/stfxecutables/empyricalRMT
+cd empyricalRMT
+poetry install --with dev
+```
 
 ## Windows
 
-The above *should* still all work on Windows, although you may have to follow
-[modified instructions for setting up the *venv*](https://docs.python.org/3/library/venv.html).
-
-If you run into issues specific to this library that you think might be
-Windows-related, please do report them, but keep in mind I currently can only
-test on Windows via virtual machine :(
+Note this library is completely untested on Windows, but *might* work, if the
+dependencies also work on Windows. I've tried to use practices that have led
+to successful portability to Windows in the past, and there is nothing *too*
+fancy going on here, but it still very likely something will break on Windows.
 
 # A Brief Tour
 
-Numerically investigate the extent to which a GOE matrix agrees with theory:
+## [`examples/basic.py`](https://github.com/stfxecutables/empyricalRMT/tree/master/examples/basic.py)
+
+Sample a random GOE matrix and investigate some basic properties:
 
 ```python
-import empyricalRMT as rmt
+import numpy as np
 
-from empyricalRMT.construct import generate_eigs
+from empyricalRMT._types import MatrixKind
 from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.smoother import SmoothMethod
 
-# generate eigenvalues from a 1000x1000 matrix from the Gaussian Orthogonal Ensemble
-vals = generate_eigs(matsize=1000, kind="goe")
-eigs = Eigenvalues(eigs)
-
-# verify Wigner's semicircle law:
-eigs.plot_distribution()
+# generate eigenvalues from a 2000x2000 sample from the Gaussian Orthogonal Ensemble
+eigs = Eigenvalues.generate(matsize=2000, kind=MatrixKind.GOE)
+# unfold "analytically" using Wigner semi-circle
+unfolded = eigs.unfold(smoother=SmoothMethod.GOE)
+# visualize core spectral observables and unfolding fit
+unfolded.plot_observables(
+    rigidity_L=np.arange(2, 20, 0.5),
+    levelvar_L=np.arange(2, 20, 0.5),
+    title="GOE Spectral Observables - Analytic Unfolding",
+)
 ```
-![Wigner's Semicircle](readme/semicircle.png)
+
+![Spectral observables](readme/observables.png)
 
 ```python
 # unfold the eigenvalues via Wigner's semi-circle law:

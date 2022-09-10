@@ -8,3 +8,5 @@
 ignore = E203,E226,E302,E41,E221,E221,E731,W503,F407
 max-line-length = 100
 exclude = tests/test_current.py
+per-file-ignores =
+  readme/*:E402

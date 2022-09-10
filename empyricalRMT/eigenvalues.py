@@ -93,25 +93,25 @@ class Eigenvalues(EigVals):
             matrix. *Dramatically* speeds up computation of eigenvalues, and is
             recommended for generating matrices of approximately size N >= 2000.
         """
-        if kind == "poisson":
+        if kind == MatrixKind.Poisson:
             np.random.seed(seed)
             # eigenvalues of diagonal are just the entries
             return Eigenvalues(np.sort(np.random.standard_normal(matsize)), kind=kind)
-        elif kind == "uniform":
+        elif kind == MatrixKind.Uniform:
             raise NotImplementedError("Uniform random matrices not implemeted.")
-        elif kind == "gue":
+        elif kind == MatrixKind.GUE:
             size = [matsize, matsize]
             if seed is not None:
                 np.random.seed(seed)
             A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
             M: fArr = (A + A.conjugate().T) / 2  # type: ignore
-        elif kind == "goe":
+        elif kind == MatrixKind.GOE:
             if matsize > 500 and use_tridiagonal:
                 M = _generate_GOE_tridiagonal(size=matsize, seed=seed)
             else:
                 M = _generate_GOE_matrix(matsize, seed=seed)
         else:
-            kinds = ["goe", "gue", "poisson", "uniform"]  # type: ignore[unreachable]
+            kinds = [e.value for e in MatrixKind]  # type: ignore[unreachable]
             raise ValueError(f"`kind` must be one of {kinds}")
 
         if log_time:
@@ -769,9 +769,9 @@ class Eigenvalues(EigVals):
                 )
                 smoother = SmoothMethod.Polynomial
         smoother = SmoothMethod.validate(smoother)
-        if smoother == "goe":
+        if smoother is SmoothMethod.GOE:
             return self.unfold_goe()  # type: ignore[unreachable]
-        if smoother == "poisson":
+        if smoother is SmoothMethod.Poisson:
             return self.unfold_poisson()
 
         eigs = self.eigs
