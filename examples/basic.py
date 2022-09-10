@@ -12,8 +12,9 @@ from empyricalRMT._types import MatrixKind
 from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.smoother import SmoothMethod
 
-# generate eigenvalues from a 2000x2000 sample from the Gaussian Orthogonal Ensemble
-eigs = Eigenvalues.generate(matsize=2000, kind=MatrixKind.GOE)
+# efficiently generate eigenvalues from a 5000x5000 sample from the
+# Gaussian Orthogonal Ensemble via a tridiagonal matrix
+eigs = Eigenvalues.generate(matsize=5000, kind=MatrixKind.GOE)
 # unfold "analytically" using Wigner semi-circle
 unfolded = eigs.unfold(smoother=SmoothMethod.GOE)
 # visualize core spectral observables and unfolding fit
