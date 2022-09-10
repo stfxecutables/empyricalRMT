@@ -9,7 +9,7 @@ from scipy.special import gamma
 from empyricalRMT._types import fArr
 
 
-class _Ensemble(ABC):
+class Ensemble(ABC):
     """Base class for various ensembles."""
 
     @staticmethod
@@ -51,7 +51,7 @@ class _Ensemble(ABC):
         pass
 
 
-class Poisson(_Ensemble):
+class Poisson(Ensemble):
     """Class for Poisson "Gaussian Diagonal" matrices. """
 
     @staticmethod
@@ -181,7 +181,8 @@ class Poisson(_Ensemble):
             other parameters if provided.
         """
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
-        return L / 15 / 2
+        # return L / 15 / 2
+        return L / 15
 
     @staticmethod
     def level_variance(
@@ -206,10 +207,11 @@ class Poisson(_Ensemble):
         """
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
-        return s / 2
+        # return s / 2
+        return s
 
 
-class GOE(_Ensemble):
+class GOE(Ensemble):
     @staticmethod
     def nnsd(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
@@ -360,7 +362,7 @@ class GOE(_Ensemble):
         return (2 / (p ** 2)) * (np.log(2 * p * s) + np.euler_gamma + 1 - (p ** 2) / 8)  # type: ignore # noqa
 
 
-class GUE(_Ensemble):
+class GUE(Ensemble):
     @staticmethod
     def nnsd(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
@@ -586,4 +588,3 @@ class GSE:
 
 
 GDE = Poisson
-Ensemble = Union[GOE, GDE, Poisson, GUE, GSE]

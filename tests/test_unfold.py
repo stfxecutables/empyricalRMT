@@ -1,14 +1,12 @@
 import numpy as np
 import pytest
 
-from empyricalRMT._types import fArr
-from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
 
 
 @pytest.mark.fast
 def test_unfold_methods() -> None:
-    eigs = Eigenvalues(generate_eigs(500, seed=2))
+    eigs = Eigenvalues.generate(500, seed=2)
     trimmed = eigs.get_best_trimmed()
     print("Trim starts and ends:")
     print(trimmed.vals[0])

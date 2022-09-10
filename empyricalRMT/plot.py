@@ -876,6 +876,7 @@ def _spectral_rigidity(
 
 
 def _level_number_variance(
+    unfolded: fArr,
     data: pd.DataFrame,
     title: str = "Level Number Variance",
     mode: PlotMode = PlotMode.Block,
@@ -995,7 +996,8 @@ def _level_number_variance(
         return float(res)
 
     if "poisson" in ensembles:
-        poisson = L / 2  # waste of time, too large very often
+        # poisson = L / 2  # waste of time, too large very often
+        poisson = L
         poisson = axes.plot(L, poisson, label="Poisson")
         plt.setp(poisson, color="#08FD4F")
     if "goe" in ensembles:
@@ -1094,6 +1096,7 @@ def _observables(
         ensembles=ensembles,
     )
     _level_number_variance(
+        unfolded=unfolded,
         data=levelvar_df,
         fig=fig,
         axes=axes[1, 1],  # type: ignore

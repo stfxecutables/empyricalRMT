@@ -3,7 +3,6 @@ import numpy as np
 import pytest
 from matplotlib.axes import Axes
 
-from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.plot import PlotMode, _handle_plot_mode
 
@@ -11,7 +10,7 @@ from empyricalRMT.plot import PlotMode, _handle_plot_mode
 @pytest.mark.fast
 class TestBrodyFit:
 
-    unfoldeds = [Eigenvalues(generate_eigs(N)).unfold(degree=7) for N in [100, 250, 500, 1000]]
+    unfoldeds = [Eigenvalues.generate(N).unfold(degree=7) for N in [100, 250, 500, 1000]]
 
     def test_spacing_fit(self) -> None:
         for unfolded in self.__class__.unfoldeds:
@@ -41,7 +40,6 @@ class TestBrodyFit:
                 raise ValueError("Invalid values in brody cdf.")
 
 
-@pytest.mark.plot
 class TestPlotting:
     def test_GOE_eigs(self) -> None:
         # test GOE eigs
@@ -52,8 +50,8 @@ class TestPlotting:
             axes: Axes
             fig, axes = plt.subplots(2, 2)  # type: ignore
             for i in range(4):
-                eigs = generate_eigs(N)
-                Eigenvalues(eigs).unfold(degree=7).plot_nnsd(
+                eigs = Eigenvalues.generate(N)
+                eigs.unfold(degree=7).plot_nnsd(
                     brody=True,
                     kde_bw=bw,
                     title=f"GOE N={N}",

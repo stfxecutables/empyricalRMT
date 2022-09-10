@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import factorial
+from time import strftime
 from typing import Any, List, Optional, Tuple, Type, Union
 from warnings import warn
 
@@ -9,11 +11,13 @@ import scipy.sparse.linalg
 from numpy import ndarray
 from numpy.typing import ArrayLike
 from scipy.integrate import quad
+from scipy.stats import norm, poisson
 from typing_extensions import Literal
 
 from empyricalRMT._constants import DEFAULT_POLY_DEGREE, DEFAULT_POLY_DEGREES, DEFAULT_SPLINE_SMOOTH
 from empyricalRMT._eigvals import EigVals
-from empyricalRMT._types import fArr
+from empyricalRMT._types import MatrixKind, fArr
+from empyricalRMT.construct import _generate_GOE_matrix, _generate_GOE_tridiagonal
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.detrend import emd_detrend
 from empyricalRMT.smoother import Smoother, SmoothMethod
@@ -26,7 +30,7 @@ class Eigenvalues(EigVals):
 
     __WARNED_SMALL = False
 
-    def __init__(self, eigenvalues: ArrayLike):
+    def __init__(self, eigenvalues: ArrayLike, kind: Optional[MatrixKind] = None):
         """Construct an Eigenvalues object.
 
         Parameters
@@ -45,11 +49,79 @@ class Eigenvalues(EigVals):
             )
             self.__class__.__WARNED_SMALL = True  # don't warn more than once per execution
 
+        self.kind = kind
         self._series_T: Optional[int] = None
         self._series_N: Optional[int] = None
         # get some Marchenko-Pastur endpoints
         self._marchenko: Optional[Tuple[float, float]] = None
         self._marchenko_shifted: Optional[Tuple[float, float]] = None
+
+    @staticmethod
+    def generate(
+        matsize: int,
+        kind: MatrixKind = "goe",
+        seed: Optional[int] = None,
+        log_time: bool = False,
+        use_tridiagonal: bool = True,
+    ) -> Eigenvalues:
+        """Generate a random square matrix and return the computed eigenvalues.
+
+        Parameters
+        ----------
+        matsize: int
+            The size (e.g. width or height) of the square matrix that will be
+            generated.
+
+        kind: "goe" | "gue" | "poisson" | "gde" | "uniform"
+            From which ensemble to sample the matrix:
+
+               - "goe" is a matrix from the Gaussian Orthogonal Ensemble
+               - "gue" is a matrix from the Gaussian Unitary Ensemble
+               - "poisson" or "gde" is a "Gaussian Diagonal Ensemble", a
+                 diagonal matrix with all entries being samples from a standard
+                 normal distribution.
+               - "uniform" is currently unimplemented
+
+        seed: int
+            Seed value for `np.random.seed`. Ensures reproducible results.
+
+        log_time: bool
+            Whether or not to log to stdout the start and end times for
+            computing eigenvalues.
+
+        use_tridiagonal: bool
+            For `kind` "goe" only. Generate a tridiagonal matrix with identical
+            eigenvalue distributions to a GOE matrix instead of a full GOE
+            matrix. *Dramatically* speeds up computation of eigenvalues, and is
+            recommended for generating matrices of approximately size N >= 2000.
+        """
+        if kind == "poisson":
+            np.random.seed(seed)
+            # eigenvalues of diagonal are just the entries
+            return Eigenvalues(np.sort(np.random.standard_normal(matsize)), kind=kind)
+        elif kind == "uniform":
+            raise NotImplementedError("Uniform random matrices not implemeted.")
+        elif kind == "gue":
+            size = [matsize, matsize]
+            if seed is not None:
+                np.random.seed(seed)
+            A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
+            M: fArr = (A + A.conjugate().T) / 2  # type: ignore
+        elif kind == "goe":
+            if matsize > 500 and use_tridiagonal:
+                M = _generate_GOE_tridiagonal(size=matsize, seed=seed)
+            else:
+                M = _generate_GOE_matrix(matsize, seed=seed)
+        else:
+            kinds = ["goe", "gue", "poisson", "uniform"]  # type: ignore[unreachable]
+            raise ValueError(f"`kind` must be one of {kinds}")
+
+        if log_time:
+            print(f"\n{strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
+        eigs: fArr = np.linalg.eigvalsh(M)
+        if log_time:
+            print(f"{strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
+        return Eigenvalues(eigs, kind=kind)
 
     @classmethod
     def from_correlations(
@@ -632,7 +704,7 @@ class Eigenvalues(EigVals):
 
     def unfold(
         self,
-        smoother: SmoothMethod = "poly",
+        smoother: Optional[SmoothMethod] = None,
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         detrend: bool = False,
@@ -644,13 +716,18 @@ class Eigenvalues(EigVals):
         eigs: ndarray
             sorted eigenvalues
 
-        smoother: "poly" | "spline" | "gompertz" | "goe" | lambda
+        smoother: "poly" | "spline" | "gompertz" | "goe" | lambda | None
             The type of smoothing function used to fit the step function.
             - "poly": perform polynomial unfolding.
             - "spline": use fit a univarate spline.
             - "gompertz": fit a Gompertz exponential curve.
             - "goe": perform a "smooth" unfolding via the semicircle law
             - lambda: not implemented.
+            - None (default):
+              - if constructed from Eigenvalues.generate(..., kind="goe"),
+              then uses the analytic unfolding, smoother="goe"
+              - if constructed from Eigenvalues.generate(..., kind="poisson"),
+              then uses a polynomial of degree 19
 
         degree: int
             The degree of the polynomial or spline.
@@ -671,9 +748,10 @@ class Eigenvalues(EigVals):
         steps: ndarray
             the step-function values
         """
-
         if smoother == "goe":
             return self.unfold_goe()  # type: ignore[unreachable]
+        if smoother == "poisson":
+            return self.unfold_poisson()
 
         eigs = self.eigs
         unfolded, _, closure = Smoother(eigs).fit(
@@ -712,6 +790,52 @@ class Eigenvalues(EigVals):
             return np.float64(quad(__R1, -end, x)[0])
 
         unfolded = np.sort(np.vectorize(smooth_goe)(eigs))
+        return Unfolded(originals=eigs, unfolded=unfolded)
+
+    def unfold_poisson(self) -> Unfolded:
+        """
+        See https://iopscience.iop.org/article/10.1088/1742-6596/492/1/012011/pdf
+        pg.2, middle paragraph, which notes:
+
+            In the traditional approach to the unfolding procedure (see e.g.
+            [12]), a mapping of the sequence of actual energy levels
+            {E(i): i = 1...N}, into dimensionless levels e(i), where
+
+                E(i) -> e(i) =def= N[E(i)] = int_{-inf}^{E(i)} p(E')dE'
+
+            (1) realizes this process. Here, N[E] is a smooth
+            approximation to the accumulated or integrated density function
+            (IDOS)
+
+                N[E(i)] = sum_{i=1}^N [H * (E − E(i))],
+
+            where H is the Heaviside step function. N[E(i)] counts the exact
+            number of levels i up to excitation energy E(i), and increases by
+            one unit as the energy E passes a (non-degenerate) eigenvalue E(i)
+            [6, 7, 13]. The unfolding procedure is straightforward if a
+            theoretical prediction for the average level density p(E) is
+            available, e.g. the Weyl formula in the case of quantum billiards
+            [9], the semi-circular distribution in the case of GOE, and the
+            normal distribution in the Poisson case [3]. However, an analytical
+            form for p(E) is usually only valid in the asymptotic limit for
+            spectra with a very large number of levels N -> inf [8] and often is
+            not known [7]. In those cases, a local unfolding can be applied,
+            which can only be used to study short-range correlations [14].
+
+        Another way to look at it is that the limiting
+        """
+        eigs = self.eigenvalues
+        N = len(eigs)
+
+        def __R1(x: float) -> np.float64:
+            return np.exp(-np.abs(x))  # correct!
+
+        def smooth_poisson(x: float) -> np.float64:
+            return N * np.float64(quad(__R1, -np.inf, np.abs(x))[0])
+
+        # we are in the case https://math.stackexchange.com/a/115132
+        # but where mu and lambda are both 1
+        unfolded = np.sort(np.vectorize(smooth_poisson)(eigs))  # correct!
         return Unfolded(originals=eigs, unfolded=unfolded)
 
 

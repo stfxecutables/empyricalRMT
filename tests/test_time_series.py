@@ -29,7 +29,7 @@ def unfold_and_plot(eigs: ndarray, suptitle: str) -> None:
         rigidity_df=unfolded.spectral_rigidity(show_progress=True),
         levelvar_df=unfolded.level_variance(show_progress=True),
         suptitle=suptitle + f" ({trimmed}% removed)",
-        mode=PlotMode.NoBlock,
+        mode=PlotMode.Test,
     )
     # unfolded.plot_steps(mode="noblock")
     # unfolded.plot_nnsd(ensembles=["goe", "poisson"], mode="noblock")
@@ -41,7 +41,6 @@ def unfold_and_plot(eigs: ndarray, suptitle: str) -> None:
     # )
 
 
-@pytest.mark.plot
 def test_gaussian_noise() -> None:
     A = np.random.standard_normal([1000, 250])
     M = correlate_fast(A)
@@ -49,7 +48,6 @@ def test_gaussian_noise() -> None:
     unfold_and_plot(eigs, "Gaussian Noise")
 
 
-@pytest.mark.plot
 def test_correlated_gaussian_noise() -> None:
     var = 0.1
     for percent in [25, 50, 75, 95]:
@@ -67,7 +65,6 @@ def test_correlated_gaussian_noise() -> None:
     plt.show()
 
 
-@pytest.mark.plot
 def test_uniform_noise() -> None:
     A = np.random.uniform(0, 1, size=[1000, 250])
     M = correlate_fast(A)

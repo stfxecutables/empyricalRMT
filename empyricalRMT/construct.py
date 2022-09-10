@@ -16,71 +16,6 @@ from empyricalRMT.unfold import Unfolded
 MatrixKind = Union[Literal["goe"], Literal["gue"], Literal["uniform"], Literal["poisson"]]
 
 
-def generate_eigs(
-    matsize: int,
-    kind: MatrixKind = "goe",
-    seed: Optional[int] = None,
-    log: bool = False,
-    use_tridiagonal: bool = True,
-) -> fArr:
-    """Generate a random matrix as specified by arguments, and compute and return
-    the eigenvalues.
-
-    Parameters
-    ----------
-    matsize: int
-        The size (e.g. width or height) of the square matrix that will be
-        generated.
-
-    kind: "goe" | "gue" | "poisson" | "uniform"
-        From which ensemble to sample the matrix:
-        - "goe" is a matrix from the Gaussian Orthogonal Ensemble
-        - "gue" is a matrix from the Gaussian Unitary Ensemble
-        - "poisson" is a "Gaussian Diagonal Ensemble", a diagonal matrix with
-          all entries being samples from a standard normal distribution.
-        - "uniform" is currently unimplemented
-
-    seed: int
-        Seed value for `np.random.seed`. Ensures reproducible results.
-
-    log: bool
-        Whether or not to log start and end times for computing eigenvalues.
-
-    use_tridiagonal: bool
-        For `kind` "gue" only. Generate a tridiagonal matrix with identical
-        eigenvalue distributions to a GOE matrix instead of a full GOE matrix.
-        *Dramatically* speeds up computation of eigenvalues, and is strongly
-        recommended for generating matrices of approximately size N >= 2000.
-    """
-    if kind == "poisson":
-        np.random.seed(seed)
-        # eigenvalues of diagonal are just the entries
-        return np.sort(np.random.standard_normal(matsize))
-    elif kind == "uniform":
-        raise Exception("UNIMPLEMENTED!")
-    elif kind == "gue":
-        size = [matsize, matsize]
-        if seed is not None:
-            np.random.seed(seed)
-        A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
-        M: fArr = (A + A.conjugate().T) / 2  # type: ignore
-    elif kind == "goe":
-        if matsize > 500 and use_tridiagonal:
-            M = _generate_GOE_tridiagonal(size=matsize, seed=seed)
-        else:
-            M = _generate_GOE_matrix(matsize, seed=seed)
-    else:
-        kinds = ["goe", "gue", "poisson", "uniform"]  # type: ignore[unreachable]
-        raise ValueError(f"`kind` must be one of {kinds}")
-
-    if log:
-        print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
-    eigs: fArr = np.linalg.eigvalsh(M)
-    if log:
-        print(f"{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
-    return eigs
-
-
 def goe_unfolded(matsize: int, log: bool = False) -> Unfolded:
     """Generate GOE eigenvalues and perform a smooth / analytic unfolding
     using the expected limiting distribution, e.g. Wigner's semicricle law.
@@ -192,14 +127,18 @@ def tracy_widom_eigs(
     numerical computation and applications. Modern Aspects of Random Matrix
     Theory, 72, 53, [pg 3., Algorithm 1]
     """
+
+    """
     max_eigs = np.empty([n_eigs])
     for i in range(n_eigs):
-        sub_eigs = generate_eigs(matsize=sub_matsize, use_tridiagonal=use_tridiagonal)
+        sub_eigs = Eigenvalues.generate(matsize=sub_matsize, use_tridiagonal=use_tridiagonal)
         max_eigs[i] = sub_eigs.max()
     if return_normalized:
         max_eigs *= float(n_eigs) ** (1.0 / 6.0)
         max_eigs -= 2.0 * np.sqrt(n_eigs)
     return max_eigs
+    """
+    raise NotImplementedError()
 
 
 # TODO, WIP

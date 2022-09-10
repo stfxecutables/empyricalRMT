@@ -128,6 +128,20 @@ class Smoother:
                 unfolded = emd_detrend(unfolded)
             return unfolded, steps, func  # type: ignore
 
+        if smoother == "exp":
+            func = lambda t, a, b: a * np.exp(-b * t)
+            [a, b], cov = curve_fit(
+                func,
+                eigs,
+                steps,
+                p0=(len(eigs) / 2, 0.5),
+            )
+            print(f"Fit: {a} * exp({b} * eigs)")
+            unfolded = func(eigs, a, b)
+            if detrend:
+                unfolded = emd_detrend(unfolded)
+            return unfolded, steps, func  # type: ignore
+
         if smoother == "gompertz":
             # use steps[end] as guess for the asymptote, a, of gompertz curve
             [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[-1], 1, 1))
@@ -324,7 +338,7 @@ class Smoother:
                 raise ValueError("Degree of spline must be an int <= 5")
             if spline_smooth is not None and spline_smooth != "heuristic":
                 spline_smooth = float(spline_smooth)
-        elif smoother == "gompertz":
+        elif smoother in ["gompertz", "exp"]:
             pass  # just allow this for now
         elif callable(smoother):
             # NOTE: above is not a great check, but probably good enough for our purposes

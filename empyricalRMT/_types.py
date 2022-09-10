@@ -1,4 +1,5 @@
-from typing import Callable
+from enum import Enum
+from typing import Callable, Literal, Union
 
 from numba.extending import as_numba_type
 from numpy import bool_, floating, signedinteger, unsignedinteger
@@ -15,3 +16,5 @@ uArr = NDArray[unsignedinteger]
 bArr = NDArray[bool_]
 
 Smoother = Callable[[fArr], fArr]
+
+MatrixKind = Literal["goe", "gue", "gde", "uniform", "poisson"]

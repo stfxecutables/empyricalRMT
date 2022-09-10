@@ -735,6 +735,7 @@ class Unfolded(EigVals):
             sigma = make_1d_array(sigma)
             converged = np.ones_like(sigma, dtype=bool)
             plot_result = plot._level_number_variance(
+                unfolded=unfolded,
                 data=pd.DataFrame({"L": L, "sigma": sigma, "converged": converged}),
                 title=title,
                 mode=mode,
@@ -752,6 +753,7 @@ class Unfolded(EigVals):
             show_progress=show_progress,
         )
         plot_result = plot._level_number_variance(
+            unfolded=unfolded,
             data=pd.DataFrame(
                 {
                     "L": L,
@@ -777,7 +779,7 @@ class Unfolded(EigVals):
         outfile: Optional[Path] = None,
         ensembles: List[str] = ["goe", "poisson"],
         show_progress: bool = True,
-        max_iters: int = int(1e6),
+        max_iters: int = 0,
         **levelvar_kwargs: Any,
     ) -> PlotResult:
         """Plot some popular spectral observables, as well as a plot of the unfolding

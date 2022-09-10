@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from empyricalRMT.compare import Compare, Metric
-from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.ensemble import GDE, GOE
 
@@ -181,7 +180,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     print("Comparing a GOE matrix to GOE")
     print("=" * 80)
-    eigs = Eigenvalues(generate_eigs(2000, seed=2))
+    eigs = Eigenvalues.generate(2000, seed=2)
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
@@ -190,7 +189,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     print("Comparing a Poisson / GDE matrix to GOE")
     print("=" * 80)
-    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    eigs = Eigenvalues.generate(2000, kind="poisson", seed=2)
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
@@ -199,7 +198,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     print("Comparing a Poisson / GDE matrix to GOE")
     print("=" * 80)
-    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    eigs = Eigenvalues.generate(2000, kind="poisson", seed=2)
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
@@ -208,7 +207,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     print("Comparing a Poisson / GDE matrix to Poisson / GDE")
     print("=" * 80)
-    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    eigs = Eigenvalues.generate(2000, kind="poisson", seed=2)
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GDE, metrics=metrics, show_progress=True)
     print(df)

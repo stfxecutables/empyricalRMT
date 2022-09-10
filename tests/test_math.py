@@ -6,8 +6,9 @@ import pytest
 from numpy import ndarray
 from scipy.integrate import simps, trapz
 
-from empyricalRMT.construct import _generate_GOE_tridiagonal, generate_eigs
+from empyricalRMT.construct import _generate_GOE_tridiagonal
 from empyricalRMT.correlater import correlate_fast
+from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.eigenvalues import _eigs_via_transpose as eigv
 from empyricalRMT.observables.rigidity import (
     _int_simps_nonunif,
@@ -273,7 +274,7 @@ def test_tridiag() -> None:
         print(f"Time for tridiagonal (N = {size}): {duration}")
 
         start = time.time()
-        generate_eigs(size)
+        Eigenvalues.generate(size)
         duration = time.time() - start
         print(f"Time for normal (N = {size}): {duration}")
 
