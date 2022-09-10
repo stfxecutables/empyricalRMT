@@ -15,8 +15,8 @@ OUTDIR = Path(__file__).resolve().parent
 
 
 def make_observables_plot() -> None:
-    # generate eigenvalues from a 2000x2000 sample from the Gaussian Orthogonal Ensemble
-    eigs = Eigenvalues.generate(matsize=2000, kind=MatrixKind.GOE)
+    # generate eigenvalues from a 5000x5000 sample from the Gaussian Orthogonal Ensemble
+    eigs = Eigenvalues.generate(matsize=5000, kind=MatrixKind.GOE)
     # unfold "analytically" using Wigner semi-circle
     unfolded = eigs.unfold(smoother=SmoothMethod.GOE)
     # visualize core spectral observables and unfolding fit
@@ -28,6 +28,7 @@ def make_observables_plot() -> None:
         mode=PlotMode.Save,
         outfile=OUTDIR / "observables.png",
     )
+
 
 if __name__ == "__main__":
     make_observables_plot()

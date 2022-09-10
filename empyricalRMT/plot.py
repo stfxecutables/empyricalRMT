@@ -500,11 +500,11 @@ def _spacings(
     # axes: Axes
     axes = sbn.histplot(
         _spacings,
-        stat="probability",
+        stat="density",
         bins=bins,  # type: ignore
         kde=False,
         label="Empirical Spacing Distribution",
-        color="black",
+        color="grey",
         ax=axes,
     )
     axes = cast(Axes, axes)
@@ -858,15 +858,15 @@ def _spectral_rigidity(
         poisson = axes.plot(L, poisson, label="Poisson", color="#08FD4F")
         # plt.setp(poisson, color="#08FD4F")
     if "goe" in ensembles:
-        goe = (1 / (p ** 2)) * (np.log(2 * p * s) + y - 5 / 4 - (p ** 2) / 8)
+        goe = (1 / (p**2)) * (np.log(2 * p * s) + y - 5 / 4 - (p**2) / 8)
         goe = axes.plot(L, goe, label="Gaussian Orthogonal", color="#FD8208")
         # plt.setp(goe, color="#FD8208")
     if "gue" in ensembles:
-        gue = (1 / (2 * (p ** 2))) * (np.log(2 * p * s) + y - 5 / 4)
+        gue = (1 / (2 * (p**2))) * (np.log(2 * p * s) + y - 5 / 4)
         gue = axes.plot(L, gue, label="Gaussian Unitary", color="#0066FF")
         # plt.setp(gue, color="#0066FF")
     if "gse" in ensembles:
-        gse = (1 / (4 * (p ** 2))) * (np.log(4 * p * s) + y - 5 / 4 + (p ** 2) / 8)
+        gse = (1 / (4 * (p**2))) * (np.log(4 * p * s) + y - 5 / 4 + (p**2) / 8)
         gse = axes.plot(L, gse, label="Gaussian Symplectic", color="#EA00FF")
         # plt.setp(gse, color="#EA00FF")
 
@@ -990,7 +990,7 @@ def _level_number_variance(
         # sici(x) returns (Sine integral from 0 to x, gamma + log(x) + Cosine integral from 0 to x)
         int_3 = (sici(np.inf)[0] - sici(p * x)[0]) ** 2
         t1 = 4 * x / p
-        t2 = 2 / p ** 2
+        t2 = 2 / p**2
         t3 = t2 / 2
         res = t1 * quad(f1, p * x, np.inf, limit=100)[0] + t2 * int_2 - 0.25 + t3 * int_3
         return float(res)
@@ -1008,15 +1008,15 @@ def _level_number_variance(
                 if L[i] < 10:
                     goe[i] = exact(s_val)
                 else:
-                    goe[i] = (2 / (p ** 2)) * (np.log(2 * p * s_val) + y + 1 - (p ** 2) / 8)
+                    goe[i] = (2 / (p**2)) * (np.log(2 * p * s_val) + y + 1 - (p**2) / 8)
         goe = axes.plot(L, goe, label="Gaussian Orthogonal")
         plt.setp(goe, color="#FD8208")
     if "gue" in ensembles:
-        gue = (1 / (p ** 2)) * (np.log(2 * p * s) + y + 1)
+        gue = (1 / (p**2)) * (np.log(2 * p * s) + y + 1)
         gue = axes.plot(L, gue, label="Gaussian Unitary")
         plt.setp(gue, color="#0066FF")
     if "gse" in ensembles:
-        gse = (1 / (2 * (p ** 2))) * (np.log(4 * p * s) + y + 1 + (p ** 2) / 8)
+        gse = (1 / (2 * (p**2))) * (np.log(4 * p * s) + y + 1 + (p**2) / 8)
         gse = axes.plot(L, gse, label="Gaussian Symplectic")
         plt.setp(gse, color="#EA00FF")
 
