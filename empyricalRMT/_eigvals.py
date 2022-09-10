@@ -12,13 +12,25 @@ from empyricalRMT.plot import _step_function
 
 
 class EigVals:
-    """Base class, not to be instantiated. """
+    """Base class, not to be instantiated."""
 
-    def __init__(self, eigenvalues: ArrayLike):
-        if eigenvalues is None:
+    def __init__(self, values: ArrayLike):
+        if values is None:
             raise ValueError("`eigenvalues` must be ArrayLike.")
+        vals = np.array(values, dtype=np.float64)
+        if vals.ndim > 2:
+            raise ValueError(f"Cannot interpret input {vals} as 1D or 2D.")
+        if vals.ndim == 2:
+            vals = np.asmatrix(vals)
+            if np.array_equal(vals.H, vals):
+                eigs = np.linalg.eigvalsh(vals)
+            else:
+                eigs = np.linalg.eigvals(vals)
+        else:
+            eigs = make_1d_array(vals)
+        eigs = np.sort(np.array(eigs, dtype=np.float64))
 
-        self.__construct_vals: fArr = make_1d_array(eigenvalues)
+        self.__construct_vals: fArr = eigs
         self._steps: Optional[iArr] = None
         self._vals: fArr = np.sort(self.__construct_vals)  # to be overridden in actual classes
 

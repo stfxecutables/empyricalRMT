@@ -28,16 +28,17 @@ class Eigenvalues(EigVals):
 
     __WARNED_SMALL = False
 
-    def __init__(self, eigenvalues: ArrayLike, kind: Optional[MatrixKind] = None):
+    def __init__(self, values: ArrayLike, kind: Optional[MatrixKind] = None):
         """Construct an Eigenvalues object.
 
         Parameters
         ----------
-        eigs: Sized
-            An object for which np.array(eigs) will return a sensible, one-dimensional
-            array of floats which are the computed eigenvalues of some matrix.
+        values: ArrayLike
+            If 0D or 1D, then `values` are assumed to be eigenvalues. If 2D, then
+            eigs will be computed via np.linalg.eigvalsh or np.linalg.eigvals, depending
+            on if the matrix is symmetric Hermititian or not.
         """
-        super().__init__(eigenvalues)
+        super().__init__(values)
         if len(self._vals) < 50 and not self.__class__.__WARNED_SMALL:
             warn(
                 "You have less than 50 eigenvalues, and the assumptions of Random "
@@ -93,6 +94,7 @@ class Eigenvalues(EigVals):
             matrix. *Dramatically* speeds up computation of eigenvalues, and is
             recommended for generating matrices of approximately size N >= 2000.
         """
+        kind = MatrixKind.validate(kind)
         if kind == MatrixKind.Poisson:
             np.random.seed(seed)
             # eigenvalues of diagonal are just the entries

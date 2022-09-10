@@ -49,7 +49,7 @@ def _raw_eig_dist(
     bins: int = 50,
     kde: bool = True,
     title: str = "Raw Eigenvalue Distribution",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     fig: Optional[Figure] = None,
     axes: Optional[Axes] = None,
@@ -122,7 +122,7 @@ def _step_function(
     eigs: ndarray,
     gridsize: int = 100000,
     title: str = "Eigenvalue Step Function",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     fig: Optional[Figure] = None,
     axes: Optional[Axes] = None,
@@ -178,7 +178,7 @@ def _step_function(
 def _raw_eig_sorted(
     eigs: ndarray,
     title: str = "Raw Eigenvalues",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     kind: Union[Literal["scatter"], Literal["line"]] = "scatter",
     fig: Optional[Figure] = None,
@@ -238,7 +238,7 @@ def _unfolded_dist(
     bins: int = 50,
     kde: bool = True,
     title: str = "Unfolded Eigenvalues",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     fig: Optional[Figure] = None,
     axes: Optional[Axes] = None,
@@ -311,7 +311,7 @@ def _unfolded_fit(
     eigs: ndarray,
     unfolded: ndarray,
     title: str = "Unfolding Fit",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     fig: Optional[Figure] = None,
     axes: Optional[Axes] = None,
@@ -398,7 +398,7 @@ def _unfolded_fit(
         handles=line_handles + cmap_handles,
         labels=labels,
         handler_map=handler_map,
-        fontsize=12,
+        fontsize=10,
     ).set_visible(True)
     return _handle_plot_mode(mode, fig, axes, outfile)
 
@@ -414,7 +414,7 @@ def _spacings(
     brody: bool = False,
     brody_fit: str = "spacing",
     title: str = "Unfolded Spacing Distribution",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
     fig: Optional[Figure] = None,
@@ -503,7 +503,7 @@ def _spacings(
         stat="density",
         bins=bins,  # type: ignore
         kde=False,
-        label="Empirical Spacing Distribution",
+        label="Spacing Distribution",
         color="grey",
         ax=axes,
     )
@@ -545,7 +545,7 @@ def _spacings(
     # many large eigenvalue spacings
     # axes.set_xlim(left=0, right=np.percentile(_spacings, 99))
     axes.set_ylim(top=1.5, bottom=0)
-    axes.set_xlim(left=0, right=2.5)
+    axes.set_xlim(left=0, right=5.0)
     axes.set(title=title, ylabel="Density p(s)")
     axes.legend().set_visible(True)
 
@@ -556,7 +556,7 @@ def _brody_fit(
     unfolded: ndarray,
     method: str = "spacing",
     title: str = "Brody distribution fit",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     save_dpi: Optional[int] = None,
     ensembles: List[str] = ["goe", "poisson"],
@@ -614,7 +614,7 @@ def _next_spacings(
     brody: bool = False,
     brody_fit: str = "spacing",
     title: str = "next Nearest-Neigbors Spacing Distribution",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     ensembles: List[str] = ["goe", "poisson"],
     fig: Optional[Figure] = None,
@@ -746,7 +746,7 @@ def _spectral_rigidity(
     unfolded: fArr,
     data: pd.DataFrame,
     title: str = "Spectral Rigidity",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
     show_iters: bool = False,
@@ -879,7 +879,7 @@ def _level_number_variance(
     unfolded: fArr,
     data: pd.DataFrame,
     title: str = "Level Number Variance",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
     show_iters: bool = False,
@@ -1031,7 +1031,7 @@ def _observables(
     rigidity_df: pd.DataFrame,
     levelvar_df: pd.DataFrame,
     suptitle: str = "Spectral Observables",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
     ensembles: List[str] = ["goe", "poisson"],
 ) -> PlotResult:
@@ -1110,7 +1110,7 @@ def _plot_trim_iters(
     trims: List["TrimIter"],
     width: int = 4,
     title: str = "Trim fits",
-    mode: PlotMode = PlotMode.Block,
+    mode: PlotMode = PlotMode.Return,
     outfile: Optional[Path] = None,
 ) -> PlotResult:
     """Plot the trim regions.

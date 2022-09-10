@@ -204,7 +204,7 @@ class Unfolded(EigVals):
         self,
         method: str = "spacing",
         title: str = "Brody distribution fit",
-        mode: PlotMode = PlotMode.Block,
+        mode: PlotMode = PlotMode.Return,
         outfile: Optional[Path] = None,
         save_dpi: Optional[int] = None,
         ensembles: List[str] = ["goe", "poisson"],
@@ -349,22 +349,32 @@ class Unfolded(EigVals):
     def plot_fit(
         self,
         title: str = "Unfolding Fit",
-        mode: PlotMode = PlotMode.Block,
+        mode: PlotMode = PlotMode.Return,
         outfile: Optional[Path] = None,
+        fig: Optional[Figure] = None,
+        axes: Optional[Axes] = None,
     ) -> PlotResult:
-        return _unfolded_fit(self.original_eigs, self.vals, title=title, mode=mode, outfile=outfile)
+        return _unfolded_fit(
+            self.original_eigs,
+            self.vals,
+            title=title,
+            mode=mode,
+            outfile=outfile,
+            fig=fig,
+            axes=axes,
+        )
 
     def plot_nnsd(
         self,
         bins: int = 50,
         kde: bool = True,
-        trim: float = 5.0,
+        trim: float = 10.0,
         trim_kde: bool = False,
         kde_bw: Union[float, str] = "scott",
         brody: bool = False,
         brody_fit: str = "spacing",
         title: str = "Unfolded Spacing Distribution",
-        mode: PlotMode = PlotMode.Block,
+        mode: PlotMode = PlotMode.Return,
         outfile: Optional[Path] = None,
         ensembles: List[str] = ["poisson", "goe", "gue", "gse"],
         fig: Optional[Figure] = None,
@@ -466,7 +476,7 @@ class Unfolded(EigVals):
         brody: bool = False,
         brody_fit: str = "spacing",
         title: str = "next Nearest-Neigbors Spacing Distribution",
-        mode: PlotMode = PlotMode.Block,
+        mode: PlotMode = PlotMode.Return,
         outfile: Optional[Path] = None,
         ensembles: List[str] = ["goe", "poisson"],
         fig: Optional[Figure] = None,
@@ -556,7 +566,7 @@ class Unfolded(EigVals):
         )
 
     def plot_nnnsd(self, *args: Any, **kwargs: Any) -> PlotResult:
-        """Alias for Unfolded.plot_next_nnsd(). """
+        """Alias for Unfolded.plot_next_nnsd()."""
         return self.plot_next_nnsd(*args, **kwargs)
 
     def plot_spectral_rigidity(
@@ -568,7 +578,7 @@ class Unfolded(EigVals):
         tol: float = 0.01,
         integration: Literal["simps", "trapz"] = "simps",
         title: str = "Spectral Rigidity",
-        mode: PlotMode = PlotMode.Block,
+        mode: PlotMode = PlotMode.Return,
         outfile: Optional[Path] = None,
         ensembles: List[str] = ["poisson", "goe"],
         show_iters: bool = False,
@@ -666,7 +676,7 @@ class Unfolded(EigVals):
         tol: float = 0.01,
         max_L_iters: int = 0,
         title: str = "Level Number Variance",
-        mode: PlotMode = PlotMode.Block,
+        mode: PlotMode = PlotMode.Return,
         outfile: Optional[Path] = None,
         ensembles: List[str] = ["goe"],
         show_iters: bool = False,
@@ -775,7 +785,7 @@ class Unfolded(EigVals):
         rigidity_L: ndarray = np.arange(2, 50, 0.5),
         levelvar_L: ndarray = np.arange(0.2, 20, 0.2),
         title: str = "Spectral Observables",
-        mode: PlotMode = PlotMode.Block,
+        mode: PlotMode = PlotMode.Return,
         outfile: Optional[Path] = None,
         ensembles: List[str] = ["goe", "poisson"],
         show_progress: bool = True,

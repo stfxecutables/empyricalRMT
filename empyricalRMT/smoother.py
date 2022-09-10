@@ -117,7 +117,7 @@ class Smoother:
         steps = np.arange(0, len(eigs)) + 1
         self.__validate_args(smoother=smoother, degree=degree, spline_smooth=spline_smooth)
 
-        if smoother == "poly":
+        if smoother is SmoothMethod.Polynomial:
             poly_coef = polyfit(eigs, steps, degree)
             unfolded = polyval(eigs, poly_coef)
             func = lambda x: polyval(x, poly_coef) if return_callable else None
@@ -125,7 +125,7 @@ class Smoother:
                 unfolded = emd_detrend(unfolded)
             return unfolded, steps, func  # type: ignore
 
-        if smoother == "spline":
+        if smoother is SmoothMethod.Spline:
             k = DEFAULT_SPLINE_DEGREE
             try:
                 k = int(degree)
@@ -150,7 +150,7 @@ class Smoother:
                 unfolded = emd_detrend(unfolded)
             return unfolded, steps, func  # type: ignore
 
-        if smoother == "exp":
+        if smoother is SmoothMethod.Exponential:
             func = lambda t, a, b: a * np.exp(-b * t)  # type: ignore
             [a, b], cov = curve_fit(
                 func,
@@ -158,13 +158,12 @@ class Smoother:
                 steps,
                 p0=(len(eigs) / 2, 0.5),
             )
-            print(f"Fit: {a} * exp({b} * eigs)")
             unfolded = func(eigs, a, b)  # type: ignore
             if detrend:
                 unfolded = emd_detrend(unfolded)
             return unfolded, steps, func  # type: ignore
 
-        if smoother == "gompertz":
+        if smoother is SmoothMethod.Gompertz:
             # use steps[end] as guess for the asymptote, a, of gompertz curve
             [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[-1], 1, 1))
             func = lambda x: gompertz(x, a, b, c) if return_callable else None
@@ -331,13 +330,13 @@ class Smoother:
 
     def __validate_args(self, **kwargs: Any) -> None:
         """throw an error if smoother args are in any way invalid"""
-        smoother = kwargs.get("smoother")
+        smoother = SmoothMethod.validate(kwargs.get("smoother"))  # type: ignore
         degree = kwargs.get("degree")
         spline_smooth = kwargs.get("spline_smooth")
         emd = kwargs.get("detrend")  # TODO: implement
         method = kwargs.get("method")
 
-        if smoother == "poly":
+        if smoother is SmoothMethod.Polynomial:
             if degree is None:
                 warn(
                     "No degree set for polynomial unfolding."
@@ -348,7 +347,7 @@ class Smoother:
                 raise ValueError("Polynomial degree must be of type `int`")
             if degree < 3:
                 raise ValueError("Unfolding polynomial must have minimum degree 3.")
-        elif smoother == "spline":
+        elif smoother is SmoothMethod.Spline:
             spline_degree = degree
             if degree is None:
                 warn(
@@ -360,7 +359,12 @@ class Smoother:
                 raise ValueError("Degree of spline must be an int <= 5")
             if spline_smooth is not None and spline_smooth != "heuristic":
                 spline_smooth = float(spline_smooth)
-        elif smoother in ["gompertz", "exp"]:
+        elif smoother in [
+            SmoothMethod.Gompertz,
+            SmoothMethod.Exponential,
+            SmoothMethod.GOE,
+            SmoothMethod.Poisson,
+        ]:
             pass  # just allow this for now
         elif callable(smoother):
             # NOTE: above is not a great check, but probably good enough for our purposes

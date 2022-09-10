@@ -456,7 +456,7 @@ class TrimReport:
     def plot_trim_steps(
         self,
         title: str = "Trim fits",
-        mode: PlotMode = PlotMode.Block,
+        mode: PlotMode = PlotMode.Return,
         outfile: Optional[Path] = None,
         width: int = 4,
         log_info: bool = True,

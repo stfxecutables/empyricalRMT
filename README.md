@@ -10,8 +10,10 @@ computation and plotting of some spectral observables.
 
 - [empyricalRMT - Random Matrix Theory Tools for Python](#empyricalrmt---random-matrix-theory-tools-for-python)
 - [Features](#features)
+  - [Easy Unfolding, Trimming and De-Trending](#easy-unfolding-trimming-and-de-trending)
   - [Optimized Performance](#optimized-performance)
     - [Spectral Observables](#spectral-observables)
+    - [GOE Eigenvalues](#goe-eigenvalues)
 - [Examples](#examples)
   - [`examples/basic.py`](#examplesbasicpy)
 - [Documentation](#documentation)
@@ -24,21 +26,84 @@ computation and plotting of some spectral observables.
 
 # Features
 
+## Easy Unfolding, Trimming and De-Trending
+
+Comparing actual eigenvalues to theory requires, in most cases, unfolding. This procedure
+is often ad hoc, poorly documented, and dramatically impacts conclusions about the nature
+of the systems under study.  With `empyricalRMT`, it is easy to unfold and visualize
+different unfolding decisions:
+
+```python
+import matplotlib.pyplot as plt
+
+from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.smoother import SmoothMethod
+
+eigs = Eigenvalues.generate(1000, kind="goe")
+unfoldings = {
+    "Exponential": eigs.unfold(smoother=SmoothMethod.Exponential),
+    "Polynomial": eigs.unfold(smoother=SmoothMethod.Polynomial, degree=5),
+    "Gompertz": eigs.unfold(smoother=SmoothMethod.Gompertz),
+    "GOE": eigs.unfold(smoother=SmoothMethod.GOE),
+}
+N = len(unfoldings)
+fig, axes = plt.subplots(ncols=2, nrows=N)
+for i, (label, unfolded) in enumerate(unfoldings.items()):
+    title = f"{label} Unfolding"
+    unfolded.plot_fit(title=title, fig=fig, axes=axes[i][0])
+    unfolded.plot_nnsd(
+        title=title,
+        brody=True,
+        brody_fit="mle",
+        ensembles=["goe", "poisson"],
+        fig=fig,
+        axes=axes[i][1],
+    )
+    axes[i][0].legend().set_visible(False) if i != 0 else None
+    axes[i][1].legend().set_visible(False) if i != 0 else None
+plt.show()
+```
+
+![Comparing unfoldings](readme/unfold_compare.png)
+
+
+
 ## Optimized Performance
 
 ### Spectral Observables
 
-For a sample of eigenvalues, computation of the spectral rigidity,
+For a sample of unfolded eigenvalues, computation of the spectral rigidity,
 
 $$ \Delta_3(L) = \left\langle \min_{A, B} \frac{1}{L} \int_c^{c+L} \Big( \eta(\lambda) - A \lambda - B \Big)^2 d\lambda \right\rangle_c $$
 
 and level number variance
 
-$$
-$$
+$$ \Sigma^2(L) = \big\langle  \eta^2(L, \lambda) \big\rangle -   \big\langle  \eta(L, \lambda) \big\rangle^2 $$
 
-, $\Sigma^2(L)$ requires Monte-Carlo
-computations of some highly non-trivial expressions.
+requires some non-trivial Monte-Carlo computations that border on intractable
+with plain Python and even NumPy / scikit-learn / scipy. `empyricalRMT` uses
+Numba and carefully written code to dramatically speed-up and parallelize the
+computation of these metrics.
+
+### GOE Eigenvalues
+
+Sample eigenvalues from *large* GOE matrices (provided they can fit in memory) ***fast*** via
+[equivalently distributed tridiagonal matrices](https://dspace.mit.edu/handle/1721.1/115982):
+
+```python
+from empyricalRMT.construct import generate_eigs
+
+eigs = generate_eigs(matsize=30000, kind="goe", log_time=True)
+
+""" Output:
+>>> 15:40:39 (Mar10) -- computing eigenvalues...
+>>> 15:41:05 (Mar10) -- computed eigenvalues.
+"""
+```
+E.g. under 30 seconds (Processor: 4-core / 8-threads, Intel(R)
+Xeon(R) CPU E3-1575M v5 @ 3.00GHz).
+
+
 
 # Examples
 
@@ -101,22 +166,6 @@ unfolded.plot_fit()
 
 ![bad fit](readme/unfoldfit.png)
 
-
-Sample eigenvalues from *large* GOE matrices (provided they can fit in memory) ***fast*** via
-[equivalently distributed tridiagonal matrices](https://dspace.mit.edu/handle/1721.1/115982):
-
-```python
-from empyricalRMT.construct import generate_eigs
-
-eigs = generate_eigs(matsize=30000, kind="goe", log=True)
-
-""" Output:
->>> 15:40:39 (Mar10) -- computing eigenvalues...
->>> 15:41:05 (Mar10) -- computed eigenvalues.
-"""
-```
-E.g. under 30 seconds (Processor: 4-core / 8-threads, Intel(R)
-Xeon(R) CPU E3-1575M v5 @ 3.00GHz).
 
 
 
