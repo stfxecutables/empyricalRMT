@@ -84,7 +84,33 @@ $$ \Sigma^2(L) = \big\langle  \eta^2(L, \lambda) \big\rangle -   \big\langle  \e
 requires some non-trivial Monte-Carlo computations that border on intractable
 with plain Python and even NumPy / scikit-learn / scipy. `empyricalRMT` uses
 Numba and carefully written code to dramatically speed-up and parallelize the
-computation of these metrics.
+computation of these metrics:
+
+```python
+import numpy as np
+from timeit import repeat
+from empyricalRMT.eigenvalues import Eigenvalues
+
+unfolded = Eigenvalues.generate(5000, kind="goe").unfold(smoother="goe")
+L = np.arange(2, 50, 1, dtype=np.float64)
+results = repeat(
+    "unfolded.spectral_rigidity(L)", number=10, globals=dict(unfolded=unfolded, L=L), repeat=10
+)
+print(f"Mean: {np.mean(results):0.2f}s. Range: [{np.min(results):0.2f}, {np.max(results):0.2f}]")
+
+# Level number variance is far more variable for larger L, so use a smaller range here
+L = np.arange(2, 20, 1, dtype=np.float64)
+results = repeat(
+    "unfolded.level_variance(L)", number=10, globals=dict(unfolded=unfolded, L=L), repeat=10
+)
+print(
+    f"Mean: {np.mean(results):0.2f}s. Range: [{np.min(results):0.2f}, {np.max(results):0.2f}]"
+)
+```
+```
+Mean: 3.18s. Range: [2.88, 3.62]
+Mean: 3.56s. Range: [3.08, 6.46]
+```
 
 ### GOE Eigenvalues
 

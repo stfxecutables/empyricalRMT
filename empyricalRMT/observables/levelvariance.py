@@ -162,6 +162,8 @@ def sigma_parallel(
         if show_progress and (i % prog_interval == 0):
             prog = int(100 * np.sum(all_sigmas > 0) / len(L_vals))
             print(LEVELVAR_PROG, prog, PERCENT)
+    if show_progress:
+        print("")
 
     return L_vals, all_sigmas, converged, iters
 
@@ -268,5 +270,6 @@ def sigma_L(
 
     if show_progress:
         print(CONVERG_PROG, int(k), ITER_COUNT)
+        print("")
     converged = np.abs(np.max(sigmas) - np.min(sigmas)) < tol
     return sigma, converged, k

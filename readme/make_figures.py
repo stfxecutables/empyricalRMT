@@ -60,11 +60,47 @@ def make_unfolding_compare_plots() -> None:
         axes[i][0].legend().set_visible(False) if i != 0 else None
         axes[i][1].legend().set_visible(False) if i != 0 else None
     fig.subplots_adjust(top=0.95, bottom=0.05, left=0.08, right=0.95, hspace=0.383)
-    fig.set_size_inches(w=8.5*1.5, h=11*1.5)
+    fig.set_size_inches(w=8.5 * 1.5, h=11 * 1.5)
     fig.savefig(OUTDIR / "unfold_compare.png", dpi=300)
     plt.show()
 
 
+def time_rigidity() -> None:
+    from timeit import repeat
+
+    import numpy as np
+
+    from empyricalRMT.eigenvalues import Eigenvalues
+
+    unfolded = Eigenvalues.generate(5000, kind="goe").unfold(smoother="goe")
+    L = np.arange(2, 50, 1, dtype=np.float64)
+    results = repeat(
+        "unfolded.spectral_rigidity(L)", number=10, globals=dict(unfolded=unfolded, L=L), repeat=10
+    )
+    print(
+        f"Mean: {np.mean(results):0.2f}s. Range: [{np.min(results):0.2f}, {np.max(results):0.2f}]"
+    )
+
+
+def time_levelvar() -> None:
+    from timeit import repeat
+
+    import numpy as np
+
+    from empyricalRMT.eigenvalues import Eigenvalues
+
+    unfolded = Eigenvalues.generate(5000, kind="goe").unfold(smoother="goe")
+    L = np.arange(2, 20, 1, dtype=np.float64)
+    results = repeat(
+        "unfolded.level_variance(L)", number=10, globals=dict(unfolded=unfolded, L=L), repeat=10
+    )
+    print(
+        f"Mean: {np.mean(results):0.2f}s. Range: [{np.min(results):0.2f}, {np.max(results):0.2f}]"
+    )
+
+
 if __name__ == "__main__":
     # make_observables_plot()
-    make_unfolding_compare_plots()
+    # make_unfolding_compare_plots()
+    # time_rigidity()
+    time_levelvar()
