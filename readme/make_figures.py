@@ -44,23 +44,25 @@ def make_unfolding_compare_plots() -> None:
         "GOE": eigs.unfold(smoother=SmoothMethod.GOE),
     }
     N = len(unfoldings)
-    fig, axes = plt.subplots(ncols=2, nrows=N)
+    fig, axes = plt.subplots(ncols=3, nrows=N)
     for i, (label, unfolded) in enumerate(unfoldings.items()):
         title = f"{label} Unfolding"
-        unfolded.plot_fit(title=title, fig=fig, axes=axes[i][0])
         unfolded.plot_nnsd(
             title=title,
             brody=True,
             brody_fit="mle",
             ensembles=["goe", "poisson"],
             fig=fig,
-            axes=axes[i][1],
+            axes=axes[i][0],
         )
+        unfolded.plot_spectral_rigidity(title=title, ensembles=["goe"], fig=fig, axes=axes[i][1])
+        unfolded.plot_level_variance(title=title, ensembles=["goe"], fig=fig, axes=axes[i][2])
         axes[i][0].legend().set_visible(False) if i != 0 else None
         axes[i][1].legend().set_visible(False) if i != 0 else None
     fig.subplots_adjust(top=0.95, bottom=0.05, left=0.08, right=0.95, hspace=0.383)
-    fig.set_size_inches(w=8.5, h=11)
+    fig.set_size_inches(w=8.5*1.5, h=11*1.5)
     fig.savefig(OUTDIR / "unfold_compare.png", dpi=300)
+    plt.show()
 
 
 if __name__ == "__main__":

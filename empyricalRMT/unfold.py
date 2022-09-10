@@ -583,6 +583,8 @@ class Unfolded(EigVals):
         ensembles: List[str] = ["poisson", "goe"],
         show_iters: bool = False,
         show_progress: bool = True,
+        fig: Optional[Figure] = None,
+        axes: Optional[Axes] = None,
         **kwargs: Mapping,
     ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
         """Compute and plot the spectral rigidity.
@@ -665,6 +667,8 @@ class Unfolded(EigVals):
             outfile=outfile,
             ensembles=ensembles,
             show_iters=show_iters,
+            fig=fig,
+            axes=axes,
             **kwargs,
         )
         return L, data["delta"], plot_result  # type: ignore
@@ -681,6 +685,8 @@ class Unfolded(EigVals):
         ensembles: List[str] = ["goe"],
         show_iters: bool = False,
         show_progress: bool = True,
+        fig: Optional[Figure] = None,
+        axes: Optional[Axes] = None,
     ) -> Tuple[ndarray, ndarray, Optional[PlotResult]]:
         """Compute and plot the level number variance of the current unfolded
         eigenvalues.
@@ -752,6 +758,8 @@ class Unfolded(EigVals):
                 outfile=outfile,
                 ensembles=ensembles,
                 show_iters=show_iters,
+                fig=fig,
+                axes=axes,
             )
             return L, sigma, plot_result
 
@@ -777,6 +785,8 @@ class Unfolded(EigVals):
             outfile=outfile,
             ensembles=ensembles,
             show_iters=show_iters,
+            fig=fig,
+            axes=axes,
         )
         return L_vals, sigma, plot_result
 
