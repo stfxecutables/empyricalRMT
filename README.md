@@ -16,6 +16,7 @@ computation and plotting of some spectral observables.
     - [GOE Eigenvalues](#goe-eigenvalues)
 - [Examples](#examples)
   - [`examples/basic.py`](#examplesbasicpy)
+- [plot some classic observables and compare to theory](#plot-some-classic-observables-and-compare-to-theory)
 - [Documentation](#documentation)
 - [Installation](#installation)
   - [Pip](#pip)
@@ -159,21 +160,25 @@ unfolded.plot_observables(
 
 ![Spectral observables](readme/observables.png)
 
-```python
-# unfold the eigenvalues via Wigner's semi-circle law:
-unfolded = eigs.unfold(smoother="goe")
-# or unfold via polynomial:
-unfolded = eigs.unfold(smoother="poly", degree=7)
-# optionally detrend unfolded vals via Empirical Mode Decomposition:
-unfolded = eigs.unfold(smoother="poly", degree=7, detrend=True)
 
 # plot some classic observables and compare to theory
+
+```python
+import numpy as np
+
+from empyricalRMT._types import MatrixKind
+from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.smoother import SmoothMethod
+
+# generate eigenvalues from a 2000x2000 sample from the Gaussian Orthogonal Ensemble
+eigs = Eigenvalues.generate(matsize=5000, kind=MatrixKind.GOE)
 ensembles = ["poisson", "goe"]  # theoretically expected curves to plot
 unfolded.plot_nnsd(ensembles=ensembles)  # nearest neighbours spacings
 unfolded.plot_nnnsd(ensembles=["goe"])  # next-nearest neighbours spacings
 unfolded.plot_spectral_rigidity(ensembles=ensembles)
 unfolded.plot_level_variance(ensembles=ensembles)
 ```
+
 ![nnsd](readme/nnsd.png)
 ![nnnsd](readme/nnnsd.png)
 ![rigidity](readme/rigidity.png)
@@ -182,13 +187,22 @@ unfolded.plot_level_variance(ensembles=ensembles)
 Visually inspect / detect a bad unfolding fit:
 
 ```python
+import matplotlib.pyplot as plt
+
 from empyricalRMT.eigenvalues import Eigenvalues
+from empyricalRMT.smoother import SmoothMethod
 
 # generate time series data
 T = np.random.standard_normal([1000, 250])
 eigs = Eigenvalues.from_time_series(T, trim_zeros=False)
-unfolded = eigs.unfold(degree=5)
-unfolded.plot_fit()
+
+exp_unfolded = eigs.unfold(smoother=SmoothMethod.Exponential)
+poly_unfolded = eigs.unfold(smoother=SmoothMethod.Polynomial, degree=5)
+
+fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True)
+exp_unfolded.plot_fit(fig=fig, axes=ax1, title="Exponential Unfolding")
+poly_unfolded.plot_fit(fig=fig, axes=ax2, title="Polynomial Degree 5 Unfolding")
+plt.show()
 ```
 
 ![bad fit](readme/unfoldfit.png)

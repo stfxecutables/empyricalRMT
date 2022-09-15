@@ -361,39 +361,30 @@ def _unfolded_fit(
     N = len(unfolded)
     step_vals = np.arange(0, N)
     df_line = pd.DataFrame({"Step Function": step_vals, "Unfolded λ": unfolded})
-    # df_scatter = pd.DataFrame({"Step Function": steps, "Outlier": np.abs(unfolded)})
     sbn.lineplot(data=df_line, ax=axes)
-    mean = np.mean(np.abs(unfolded))
 
-    # 0 is left of cmap, color_max is right of cmap
-    color = (5 * np.abs(unfolded) / mean) ** 2
-    size = (10 * (np.abs(unfolded) - mean) / mean) ** 2
-    inlier = np.abs(unfolded - step_vals) < 5
-    color[inlier] = color.min()
-    min_size = 0.5
-    size[inlier] = min_size
-    size[size < 1] = min_size
     axes.scatter(
         x=step_vals,
         y=unfolded,
-        s=size,  # size of points
-        c=color,  # color of points
+        s=np.abs(step_vals - unfolded),  # size of points
+        c=np.abs(step_vals - unfolded) ** 1.5,  # 1.5 factor improves color contrast
+        # s=size,  # size of points
+        # c=color,  # color of points
         cmap=cmap,  # should be color blind safe
         marker=MarkerStyle("o"),
         edgecolors="white",
         linewidths=0.1,
-        label="Outlier",
+        label="MSE",
         alpha=0.4,
     )
     # plt.setp(ax_scatter, label="Outlier")
     axes.set(title=title, xlabel="Eigenvalue Index", ylabel="Unfolded Value")
     handles, labels = axes.get_legend_handles_labels()
     line_handles, line_labels = handles[:-1], labels[:-1]
-    # axes.legend(line_handles, line_labels)
     cmap_handles = [Rectangle((0, 0), 1, 1)]
     # seems you only need a handler map for legend element that need a custom handler
     handler_map = dict(zip(cmap_handles, [HandlerColormap(cmap, num_stripes=16)]))
-    labels = [line_labels[0], line_labels[1], "Inlier / Outlier"]
+    labels = [line_labels[0], line_labels[1], "Difference"]
     axes.legend(
         handles=line_handles + cmap_handles,
         labels=labels,
@@ -698,17 +689,18 @@ def _next_spacings(
 
     axes = cast(
         Axes,
-        sbn.distplot(
+        sbn.histplot(
             _spacings,
-            norm_hist=True,
-            bins=bins,  # doane
+            stat="density",
+            bins=bins,  # type: ignore
             kde=False,
             label="next NNSD",
-            axlabel="spacing (s_2)",
-            color="black",
+            color="grey",
             ax=axes,
         ),
     )
+    axes = cast(Axes, axes)
+    axes.set_xlabel("spacing (s_2)")
 
     if kde is True:
         if trim_kde:
@@ -1221,10 +1213,20 @@ def _kde_plot(
     inconsistent behaviours like https://github.com/mwaskom/seaborn/issues/938
     and https://github.com/mwaskom/seaborn/issues/796
     """
+    idx = values <= 0
+    if np.sum(idx) == len(values):
+        warn("Spacings are all zero. Cannot plot kernel density estimate.")
+        return
     values = values[values > 0]  # prevent floating-point bad behaviour
     kde = KDE(values)
     # kde.fit(kernel="gau", bw="scott", cut=0)
-    kde.fit(kernel="gau", bw=bw, cut=0)  # type: ignore
+    try:
+        kde.fit(kernel="gau", bw=bw, cut=0)  # type: ignore
+    except ZeroDivisionError:
+        # kde.fit(kernel="cos", cut=0, fft=False)  # type: ignore
+        print(values)
+        kde.fit()  # type: ignore
+
     evaluated = np.empty_like(grid)
     for i, _ in enumerate(evaluated):
         evaluated[i] = kde.evaluate(grid[i])

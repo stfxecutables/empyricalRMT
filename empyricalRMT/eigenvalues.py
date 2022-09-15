@@ -18,6 +18,8 @@ from empyricalRMT._types import MatrixKind, fArr
 from empyricalRMT.construct import _generate_GOE_matrix, _generate_GOE_tridiagonal
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.detrend import emd_detrend
+from empyricalRMT.signalproc.detrend import DetrendMethod
+from empyricalRMT.signalproc.detrend import detrend as _detrend
 from empyricalRMT.smoother import Smoother, SmoothMethod
 from empyricalRMT.trim import Trimmed, TrimReport
 from empyricalRMT.unfold import Unfolded
@@ -28,7 +30,12 @@ class Eigenvalues(EigVals):
 
     __WARNED_SMALL = False
 
-    def __init__(self, values: ArrayLike, kind: Optional[MatrixKind] = None):
+    def __init__(
+        self,
+        values: ArrayLike,
+        kind: Optional[MatrixKind] = None,
+        detrending: Optional[DetrendMethod] = None,
+    ):
         """Construct an Eigenvalues object.
 
         Parameters
@@ -49,6 +56,7 @@ class Eigenvalues(EigVals):
             self.__class__.__WARNED_SMALL = True  # don't warn more than once per execution
 
         self.kind: Optional[MatrixKind] = kind
+        self.deterending: Optional[DetrendMethod] = detrending
         self._series_T: Optional[int] = None
         self._series_N: Optional[int] = None
         # get some Marchenko-Pastur endpoints
@@ -296,6 +304,13 @@ class Eigenvalues(EigVals):
     def eigs(self) -> ndarray:
         """Return the stored eigenvalues. Alternate for Eigenvalues.values"""
         return self._vals
+
+    def detrend(self, method: DetrendMethod) -> Eigenvalues:
+        if self.deterending is not None:
+            raise ValueError("Eigenvalues have already been detrended")
+        detrended = _detrend(self.vals, method)
+        print(method, np.mean(np.diff(detrended)))
+        return Eigenvalues(detrended, detrending=method)
 
     def trim_report(
         self,
