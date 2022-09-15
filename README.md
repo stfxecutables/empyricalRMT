@@ -15,8 +15,6 @@ computation and plotting of some spectral observables.
     - [Spectral Observables](#spectral-observables)
     - [GOE Eigenvalues](#goe-eigenvalues)
 - [Examples](#examples)
-  - [`examples/basic.py`](#examplesbasicpy)
-- [plot some classic observables and compare to theory](#plot-some-classic-observables-and-compare-to-theory)
 - [Documentation](#documentation)
 - [Installation](#installation)
   - [Pip](#pip)
@@ -135,8 +133,6 @@ Xeon(R) CPU E3-1575M v5 @ 3.00GHz).
 
 # Examples
 
-## [`examples/basic.py`](https://github.com/stfxecutables/empyricalRMT/tree/master/examples/basic.py)
-
 Sample a random GOE matrix and investigate some basic properties:
 
 ```python
@@ -161,7 +157,7 @@ unfolded.plot_observables(
 ![Spectral observables](readme/observables.png)
 
 
-# plot some classic observables and compare to theory
+Plot some classic observables and compare to theory:
 
 ```python
 import numpy as np
@@ -184,7 +180,7 @@ unfolded.plot_level_variance(ensembles=ensembles)
 ![rigidity](readme/rigidity.png)
 ![variance](readme/variance.png)
 
-Visually inspect / detect a bad unfolding fit:
+Visually inspect / detect a questionable unfolding fit:
 
 ```python
 import matplotlib.pyplot as plt
