@@ -1,11 +1,11 @@
 import numpy as np
-from numpy import ndarray
+from numba import njit
 
-from numba import jit
+from empyricalRMT._types import fArr
 
 
-@jit(nopython=True, fastmath=True)
-def derivative(x: ndarray, y: ndarray) -> ndarray:
+@njit(fastmath=True)
+def derivative(x: fArr, y: fArr) -> fArr:
     res = np.empty(x.shape, dtype=np.float64)
     # for i = 1 (i.e. y[1], we compute (y[0] - y[2]) / 2*spacing)
     # ...
@@ -18,8 +18,8 @@ def derivative(x: ndarray, y: ndarray) -> ndarray:
     return res
 
 
-@jit(nopython=True, fastmath=True)
-def inverse_gompertz(x: ndarray, a: float, b: float, c: float) -> ndarray:
+@njit(fastmath=True)
+def inverse_gompertz(x: fArr, a: float, b: float, c: float) -> fArr:
     """
     Parameters
     ----------
@@ -40,15 +40,15 @@ def inverse_gompertz(x: ndarray, a: float, b: float, c: float) -> ndarray:
     """
     # return np.log(b / np.log(1 / t)) / c
     # return np.log((np.log(x/ a) - np.log(a)) / -b2) / np.log(b3)
-    return np.log(np.log(b) - np.log(np.log(-x / a))) / c
+    return np.log(np.log(b) - np.log(np.log(-x / a))) / c  # type: ignore
 
 
-@jit(nopython=True, fastmath=True)
-def gompertz(x: ndarray, a: float, b: float, c: float) -> ndarray:
-    return a * np.exp(-b * np.exp(-c * x))
+@njit(fastmath=True)
+def gompertz(x: fArr, a: float, b: float, c: float) -> fArr:
+    return a * np.exp(-b * np.exp(-c * x))  # type: ignore
 
 
-@jit(nopython=True, fastmath=True)
-def exponential(x: ndarray, a: float, b: float, c: float, d: float) -> ndarray:
+@njit(fastmath=True)
+def exponential(x: fArr, a: float, b: float, c: float, d: float) -> fArr:
     """b is intercept """
-    return b - a * np.exp(-c * x ** (1 / d))
+    return b - a * np.exp(-c * x ** (1 / d))  # type: ignore

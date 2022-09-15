@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Motivation for this module
 
@@ -14,29 +16,29 @@ conditioned fits. So it makes sense to identify a set of likely trims first,
 and then check the fits from there.
 """
 
-import numpy as np
-import pandas as pd
-
-from numpy import ndarray
-from pandas import DataFrame
 from pathlib import Path
-from pyod.models.hbos import HBOS
-from scipy.stats import trim_mean
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from empyricalRMT._constants import (
-    EXPECTED_GOE_MEAN,
-    EXPECTED_GOE_VARIANCE,
-    DEFAULT_POLY_DEGREE,
-    DEFAULT_POLY_DEGREES,
-    DEFAULT_SPLINE_SMOOTH,
-    DEFAULT_SPLINE_SMOOTHS,
-    DEFAULT_SPLINE_DEGREES,
-)
+import numpy as np
+import pandas as pd
+from numpy import floating, ndarray
+from pandas import DataFrame
+from pyod.models.hbos import HBOS
+from scipy.stats import trim_mean
 
 # from empyricalRMT._eigvals import EigVals
 import empyricalRMT._eigvals as _eigvals
-from empyricalRMT.plot import _plot_trim_iters, PlotMode, PlotResult
+from empyricalRMT._constants import (
+    DEFAULT_POLY_DEGREE,
+    DEFAULT_POLY_DEGREES,
+    DEFAULT_SPLINE_DEGREES,
+    DEFAULT_SPLINE_SMOOTH,
+    DEFAULT_SPLINE_SMOOTHS,
+    EXPECTED_GOE_MEAN,
+    EXPECTED_GOE_VARIANCE,
+)
+from empyricalRMT._types import fArr
+from empyricalRMT.plot import PlotMode, PlotResult, _plot_trim_iters
 from empyricalRMT.smoother import Smoother, SmoothMethod
 from empyricalRMT.unfold import Unfolded
 from empyricalRMT.utils import find_first, find_last
@@ -68,7 +70,7 @@ class Trimmed(_eigvals.EigVals):
 
     def unfold(
         self,
-        smoother: SmoothMethod = "poly",
+        smoother: SmoothMethod = SmoothMethod.Polynomial,
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         detrend: bool = False,
@@ -239,9 +241,7 @@ class TrimReport:
             detrend=detrend,
             show_progress=show_progress,
         )
-        self._all_unfolds = list(
-            map(lambda trim: trim.unfolds, self._trim_iters)  # type: ignore
-        )
+        self._all_unfolds = list(map(lambda trim: trim.unfolds, self._trim_iters))  # type: ignore
         # set self._unfold_info, self._all_unfolds
         self._summary = self.__iters_to_dataframe(
             poly_degrees, spline_smooths, spline_degrees, gompertz
@@ -353,8 +353,8 @@ class TrimReport:
         raise NotImplementedError("Work in progress!")
 
     def best_overall(
-        self
-    ) -> Tuple[Dict[Union[str, int], str], DataFrame, List[Tuple[int, int]], List[str]]:
+        self,
+    ) -> tuple[Dict[Union[str, int], str], list[DataFrame], list[Tuple[int, int]], list[str]]:
         """Computes GOE fit scores for the unfoldings performed, and returns various
         "best" fits.
 
@@ -390,9 +390,7 @@ class TrimReport:
         """
         report, all_unfolds = self.summary, self._all_unfolds
         if report is None or all_unfolds is None:
-            raise RuntimeError(
-                "Eigenvalues have not yet been unfolded. This should be impossible."
-            )
+            raise RuntimeError("Eigenvalues have not yet been unfolded. This should be impossible.")
         scores = report.filter(regex=".*score.*").abs()
 
         # get column names so we don't have to deal with terrible Pandas return types
@@ -407,12 +405,8 @@ class TrimReport:
 
         # take the mean GOE score across smoothers for each trimming, find the row
         # with the lowest mean score, and call this the "best overall" trim
-        sorted_row_mean_scores = (
-            report.filter(regex="score").abs().mean(axis=1).sort_values()
-        )
-        best_three = list(
-            sorted_row_mean_scores[:3].index
-        )  # get indices of best three rows
+        sorted_row_mean_scores = report.filter(regex="score").abs().mean(axis=1).sort_values()
+        best_three = list(sorted_row_mean_scores[:3].index)  # get indices of best three rows
         best_trim_indices = []
         for i, row_id in enumerate(best_three):
             best_trim_eigs = np.array(self._trim_iters[row_id].eigs)
@@ -434,12 +428,12 @@ class TrimReport:
                 col,
             ]
             if i == 0:
-                best_smoothers["best"] = report[cols].iloc[min_score_i, :]
+                best_smoothers["best"] = report[cols].iloc[min_score_i, :].item()
             elif i == 1:
-                best_smoothers["second"] = report[cols].iloc[min_score_i, :]
+                best_smoothers["second"] = report[cols].iloc[min_score_i, :].item()
             elif i == 2:
-                best_smoothers["third"] = report[cols].iloc[min_score_i, :]
-            best_smoothers[i] = report[cols].iloc[min_score_i, :]
+                best_smoothers["third"] = report[cols].iloc[min_score_i, :].item()
+            best_smoothers[i] = report[cols].iloc[min_score_i, :].item()
 
         # TODO: implement "best" trim
 
@@ -452,9 +446,7 @@ class TrimReport:
         top_smoothers_median = set(score_cols[best_median_col_idx])
         top_smoothers_mean = set(score_cols[best_mean_col_idx])
         consistent = list(top_smoothers_mean.intersection(top_smoothers_median))
-        consistent_smoothers = list(
-            map(lambda s: str(s.replace("--score", "")), consistent)
-        )
+        consistent_smoothers = list(map(lambda s: str(s.replace("--score", "")), consistent))
 
         return best_smoothers, best_unfoldeds, best_trim_indices, consistent_smoothers
 
@@ -464,8 +456,8 @@ class TrimReport:
     def plot_trim_steps(
         self,
         title: str = "Trim fits",
-        mode: PlotMode = "block",
-        outfile: Path = None,
+        mode: PlotMode = PlotMode.Return,
+        outfile: Optional[Path] = None,
         width: int = 4,
         log_info: bool = True,
     ) -> PlotResult:
@@ -514,19 +506,10 @@ class TrimReport:
 
     def _get_autounfold_vals(self) -> Tuple[ndarray, ndarray]:
         scores = self.summary.filter(regex="score").abs()
-        mean_best = (
-            scores[scores < scores.quantile(0.9)]
-            .mean()
-            .sort_values()[:5]
-            .index.to_list()
-        )
-        best_trim_scores = self.summary.filter(
-            regex=mean_best[0]  # e.g. regex="poly_3--score"
-        )
-        best_trim_id = int(best_trim_scores.abs().idxmin())
-        best_unfolded = self.unfoldings[best_trim_id][
-            mean_best[0].replace("--score", "")
-        ]
+        mean_best = scores[scores < scores.quantile(0.9)].mean().sort_values()[:5].index.to_list()
+        best_trim_scores = self.summary.filter(regex=mean_best[0])  # e.g. regex="poly_3--score"
+        best_trim_id = int(best_trim_scores.abs().idxmin().item())
+        best_unfolded = self.unfoldings[best_trim_id][mean_best[0].replace("--score", "")]
         orig_trimmed = self._trim_iters[best_trim_id].eigs
         return np.array(orig_trimmed), np.array(best_unfolded)
 
@@ -537,7 +520,7 @@ class TrimReport:
         max_iters: int = 7,
         show_progress: bool = False,
         **smoother_kwargs: Any,
-    ) -> List[DataFrame]:
+    ) -> List[TrimIter]:
         """Helper function to iteratively perform histogram-based outlier detection
         until reaching either max_trim or max_iters, saving outliers identified at
         each step.
@@ -677,7 +660,7 @@ class TrimReport:
         return trim_report
 
     @staticmethod
-    def __evaluate_unfolding(unfolded: ndarray) -> Tuple[float, float, float]:
+    def __evaluate_unfolding(unfolded: fArr) -> Tuple[floating, floating, floating]:
         """Calculate a naive unfolding score via comparison to the expected mean and
         variance of the level spacings of GOE matrices. Positive scores indicate
         there is too much variability in the unfolded eigenvalue spacings, negative
@@ -697,9 +680,7 @@ class TrimIter:
     """Helper class for storing data and improving code readability of trimming
     process"""
 
-    def __init__(
-        self, origs: ndarray, eigs: ndarray, outlier_tol: float, **smoother_kwargs: Any
-    ):
+    def __init__(self, origs: ndarray, eigs: ndarray, outlier_tol: float, **smoother_kwargs: Any):
         self.origs = origs
         self.eigs = eigs
         self.id = 0
@@ -751,10 +732,10 @@ class TrimIter:
 
     @property
     def inliers(self) -> ndarray:
-        return np.copy(self.eigs[self.clusters == "inlier"])
+        return np.copy(self.eigs[self.clusters == "inlier"])  # type: ignore
 
     def is_all_inliers(self) -> bool:
-        return bool(np.alltrue(self.clusters == "inlier"))
+        return bool(np.alltrue(self.clusters == "inlier"))  # type: ignore
 
     def next_iter(self) -> "TrimIter":
         trim = TrimIter(self.origs, self.inliers, self.tol, **self.kwargs)
@@ -768,12 +749,8 @@ class TrimIter:
         var = float(trim_mean(self.spacings.var(ddof=1), 0.2))
         mmsqe = float(trim_mean(self.msqes, 0.2, axis=1))
         iter_info = "Iteration {:d}:".format(self.id)
-        trim_info = "{:4.1f}% trimmed - Trim indices: ({:d},{:d})".format(
-            percent, start, end
-        )
-        fit_info = "<s> = {:1.6f}, var(s) = {:04.5f}, <MSQE>: {:5.5f}.".format(
-            mean, var, mmsqe
-        )
+        trim_info = "{:4.1f}% trimmed - Trim indices: ({:d},{:d})".format(percent, start, end)
+        fit_info = "<s> = {:1.6f}, var(s) = {:04.5f}, <MSQE>: {:5.5f}.".format(mean, var, mmsqe)
         legend = (
             "\n<MSQE>: 20% trimmed mean MSQE across unfoldings.\n"
             "<s>: 20% trimmed mean of mean spacings across unfoldings.\n"

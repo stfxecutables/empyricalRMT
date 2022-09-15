@@ -1,11 +1,12 @@
-import numpy as np
-from numpy import ndarray
-import pytest
-
 from pathlib import Path
+from typing import Optional
+
+import numpy as np
+import pytest
+from numpy import ndarray
 
 from empyricalRMT.construct import _generate_GOE_matrix
-from empyricalRMT.plot import _raw_eig_dist
+from empyricalRMT.plot import PlotMode, _raw_eig_dist
 from empyricalRMT.utils import eprint
 
 CUR_DIR = Path(__file__).parent
@@ -37,12 +38,14 @@ def generate_eigs(matsize: int) -> ndarray:
 
 @pytest.mark.fast
 def test_semicircle(
-    matsize: int = 1000, new_eigs: bool = False, eigs: ndarray = None
+    matsize: int = 1000,
+    new_eigs: bool = False,
+    eigs: Optional[ndarray] = None,
 ) -> None:
     if eigs is not None:
         pass  # use passed in eigenvalues
     else:
         eigs = generate_eigs(matsize) if new_eigs else load_eigs(matsize)
     _raw_eig_dist(
-        eigs, bins=100, title="Wigner Semicircle PLotting Test", kde=False, mode="test"
+        eigs, bins=100, title="Wigner Semicircle PLotting Test", kde=False, mode=PlotMode.Test
     )

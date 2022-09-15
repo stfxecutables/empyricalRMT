@@ -1,13 +1,13 @@
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-import time
-
 from numpy import ndarray
 
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.eigenvalues import Eigenvalues
-from empyricalRMT.plot import _observables
+from empyricalRMT.plot import PlotMode, _observables
 
 
 def get_eigs(arr: ndarray) -> ndarray:
@@ -26,10 +26,10 @@ def unfold_and_plot(eigs: ndarray, suptitle: str) -> None:
     _observables(
         eigs=unfolded.original_eigs,
         unfolded=unfolded.vals,
-        rigidity_df=unfolded.spectral_rigidity(c_iters=10000, show_progress=True),
+        rigidity_df=unfolded.spectral_rigidity(show_progress=True),
         levelvar_df=unfolded.level_variance(show_progress=True),
         suptitle=suptitle + f" ({trimmed}% removed)",
-        mode="noblock",
+        mode=PlotMode.Test,
     )
     # unfolded.plot_steps(mode="noblock")
     # unfolded.plot_nnsd(ensembles=["goe", "poisson"], mode="noblock")
@@ -41,7 +41,6 @@ def unfold_and_plot(eigs: ndarray, suptitle: str) -> None:
     # )
 
 
-@pytest.mark.plot
 def test_gaussian_noise() -> None:
     A = np.random.standard_normal([1000, 250])
     M = correlate_fast(A)
@@ -49,7 +48,6 @@ def test_gaussian_noise() -> None:
     unfold_and_plot(eigs, "Gaussian Noise")
 
 
-@pytest.mark.plot
 def test_correlated_gaussian_noise() -> None:
     var = 0.1
     for percent in [25, 50, 75, 95]:
@@ -59,9 +57,7 @@ def test_correlated_gaussian_noise() -> None:
         corr_indices = correlated[:last]
         # introduce correlation in A
         for i in corr_indices:
-            A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(
-                0, var, size=A.shape[1]
-            )
+            A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(0, var, size=A.shape[1])
         M = correlate_fast(A)
         eigs = get_eigs(M)
         print(f"\nPercent correlated noise: {percent}%")
@@ -69,7 +65,6 @@ def test_correlated_gaussian_noise() -> None:
     plt.show()
 
 
-@pytest.mark.plot
 def test_uniform_noise() -> None:
     A = np.random.uniform(0, 1, size=[1000, 250])
     M = correlate_fast(A)

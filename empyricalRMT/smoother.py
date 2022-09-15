@@ -1,14 +1,17 @@
+from __future__ import annotations
+
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from warnings import warn
+
 import numpy as np
 import pandas as pd
-
-from numpy import ndarray
 from numpy.polynomial.polynomial import polyfit, polyval
+from numpy.typing import ArrayLike
 from pandas import DataFrame
 from scipy.interpolate import UnivariateSpline as USpline
 from scipy.optimize import curve_fit
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from typing_extensions import Literal
-from warnings import warn
 
 from empyricalRMT._constants import (
     DEFAULT_POLY_DEGREE,
@@ -17,13 +20,32 @@ from empyricalRMT._constants import (
     DEFAULT_SPLINE_SMOOTH,
     DEFAULT_SPLINE_SMOOTHS,
 )
-from empyricalRMT.exponentials import gompertz
+from empyricalRMT._types import fArr
 from empyricalRMT.detrend import emd_detrend
-
+from empyricalRMT.exponentials import gompertz
 
 SPLINE_DICT = {3: "cubic", 4: "quartic", 5: "quintic"}
 
-SmoothMethod = Union[Literal["poly"], Literal["spline"], Literal["gompertz"]]
+
+class SmoothMethod(Enum):
+    Polynomial = "poly"
+    Spline = "spline"
+    Exponential = "exp"
+    Gompertz = "gompertz"
+    GOE = "goe"
+    Poisson = "poisson"
+
+    @classmethod
+    def validate(cls, s: str | SmoothMethod) -> SmoothMethod:
+        try:
+            if isinstance(s, str):
+                return cls(s)
+            return s
+        except Exception as e:
+            values = [e.value for e in cls]
+            raise ValueError(f"SmoothMethod must be one of {values}") from e
+
+
 SmoothArg = Union[List[float], Literal["heuristic"]]
 
 
@@ -32,7 +54,7 @@ def _spline_name(i: int) -> str:
 
 
 class Smoother:
-    def __init__(self, eigenvalues: ndarray):
+    def __init__(self, eigenvalues: ArrayLike):
         """Initialize a Smoother.
 
         Parameters
@@ -41,21 +63,22 @@ class Smoother:
             Eigenvalues for fitting to the step function.
         """
         try:
-            eigs = np.array(eigenvalues).ravel()
+            eigs = np.array(eigenvalues).astype(np.float64)
         except BaseException as e:
             raise ValueError("Could not convert eigenvalues into numpy array.") from e
-        if len(eigs) != len(eigenvalues):
+        if len(eigs) != len(eigs.reshape((-1,))):
             raise ValueError("Input array must be one-dimensional.")
+        eigs = eigs.flatten()
         self._eigs = np.sort(eigs)
 
     def fit(
         self,
-        smoother: SmoothMethod = "poly",
+        smoother: SmoothMethod = SmoothMethod.Polynomial,
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         detrend: bool = False,
         return_callable: bool = False,
-    ) -> Tuple[ndarray, ndarray, Optional[Callable[[ndarray], ndarray]]]:
+    ) -> Tuple[fArr, fArr, Optional[Callable[[fArr], fArr]]]:
         """Computer the specified smoothing function values for a set of eigenvalues.
 
         Parameters
@@ -92,19 +115,17 @@ class Smoother:
         eigs = self._eigs
         # steps = _step_function_fast(eigs, eigs)
         steps = np.arange(0, len(eigs)) + 1
-        self.__validate_args(
-            smoother=smoother, degree=degree, spline_smooth=spline_smooth
-        )
+        self.__validate_args(smoother=smoother, degree=degree, spline_smooth=spline_smooth)
 
-        if smoother == "poly":
+        if smoother is SmoothMethod.Polynomial:
             poly_coef = polyfit(eigs, steps, degree)
             unfolded = polyval(eigs, poly_coef)
             func = lambda x: polyval(x, poly_coef) if return_callable else None
             if detrend:
                 unfolded = emd_detrend(unfolded)
-            return unfolded, steps, func
+            return unfolded, steps, func  # type: ignore
 
-        if smoother == "spline":
+        if smoother is SmoothMethod.Spline:
             k = DEFAULT_SPLINE_DEGREE
             try:
                 k = int(degree)
@@ -123,20 +144,33 @@ class Smoother:
                     "Unreachable: All possible spline_smooth arguments should have been handled."
                 )
                 spline = USpline(eigs, steps, k=k, s=spline_smooth)
-            func = lambda x: spline(x) if return_callable else None
-            unfolded = spline(eigs)
+            func = spline if return_callable else None
+            unfolded = np.array(spline(eigs))
             if detrend:
                 unfolded = emd_detrend(unfolded)
-            return unfolded, steps, func
+            return unfolded, steps, func  # type: ignore
 
-        if smoother == "gompertz":
+        if smoother is SmoothMethod.Exponential:
+            func = lambda t, a, b: a * np.exp(-b * t)  # type: ignore
+            [a, b], cov = curve_fit(
+                func,
+                eigs,
+                steps,
+                p0=(len(eigs) / 2, 0.5),
+            )
+            unfolded = func(eigs, a, b)  # type: ignore
+            if detrend:
+                unfolded = emd_detrend(unfolded)
+            return unfolded, steps, func  # type: ignore
+
+        if smoother is SmoothMethod.Gompertz:
             # use steps[end] as guess for the asymptote, a, of gompertz curve
             [a, b, c], cov = curve_fit(gompertz, eigs, steps, p0=(steps[-1], 1, 1))
             func = lambda x: gompertz(x, a, b, c) if return_callable else None
             unfolded = gompertz(eigs, a, b, c)
             if detrend:
                 unfolded = emd_detrend(unfolded)
-            return unfolded, steps, func
+            return unfolded, steps, func  # type: ignore
         raise RuntimeError("Unreachable!")
 
     def fit_all(
@@ -192,7 +226,7 @@ class Smoother:
         for d in poly_degrees:
             col_name = f"poly_{d}"
             unfolded, steps, closure = self.fit(
-                smoother="poly", degree=d, return_callable=True, detrend=detrend
+                smoother=SmoothMethod.Polynomial, degree=d, return_callable=True, detrend=detrend
             )
             col_names.append(col_name)
             sqes.append(np.mean((unfolded - steps) ** 2))
@@ -204,11 +238,9 @@ class Smoother:
         if spline_smooths == "heuristic":
             for s in DEFAULT_SPLINE_SMOOTHS:
                 for d in spline_degrees:
-                    col_name = f"{_spline_name(d)}-spline_" "{:1.2f}_heuristic".format(
-                        s
-                    )
+                    col_name = f"{_spline_name(d)}-spline_" "{:1.2f}_heuristic".format(s)
                     unfolded, steps, closure = self.fit(
-                        smoother="spline",
+                        smoother=SmoothMethod.Spline,
                         spline_smooth=len(self._eigs) ** s,
                         degree=d,
                         return_callable=True,
@@ -225,7 +257,7 @@ class Smoother:
                 for d in spline_degrees:
                     col_name = f"{_spline_name(d)}-spline_" "{:1.3f}".format(s)
                     unfolded, steps, closure = self.fit(
-                        smoother="spline",
+                        smoother=SmoothMethod.Spline,
                         spline_smooth=s,
                         degree=d,
                         return_callable=True,
@@ -239,7 +271,7 @@ class Smoother:
                     smoother_map[col_name] = closure
         if gompertz:
             unfolded, steps, closure = self.fit(
-                smoother="gompertz", return_callable=True, detrend=detrend
+                smoother=SmoothMethod.Gompertz, return_callable=True, detrend=detrend
             )
             col_names.append("gompertz")
             sqes.append(np.mean((unfolded - steps) ** 2))
@@ -275,9 +307,7 @@ class Smoother:
                 if not isinstance(spline_degrees, list):
                     raise ValueError("spline_degrees must be a list of integer values")
                 for deg in spline_degrees:
-                    col_name = (
-                        f"{_spline_name(deg)}-spline_" "{:1.3f}_heuristic".format(s)
-                    )
+                    col_name = f"{_spline_name(deg)}-spline_" "{:1.3f}_heuristic".format(s)
                     col_names.append(col_name)
         else:
             try:
@@ -287,9 +317,7 @@ class Smoother:
             if isinstance(spline_smooths, list):
                 for s in spline_smooths:
                     if not isinstance(spline_degrees, list):
-                        raise ValueError(
-                            "spline_degrees must be a list of integer values"
-                        )
+                        raise ValueError("spline_degrees must be a list of integer values")
                     for deg in spline_degrees:
                         col_name = f"{_spline_name(deg)}-spline_" "{:1.3f}".format(s)
                         col_names.append(col_name)
@@ -302,13 +330,13 @@ class Smoother:
 
     def __validate_args(self, **kwargs: Any) -> None:
         """throw an error if smoother args are in any way invalid"""
-        smoother = kwargs.get("smoother")
+        smoother = SmoothMethod.validate(kwargs.get("smoother"))  # type: ignore
         degree = kwargs.get("degree")
         spline_smooth = kwargs.get("spline_smooth")
         emd = kwargs.get("detrend")  # TODO: implement
         method = kwargs.get("method")
 
-        if smoother == "poly":
+        if smoother is SmoothMethod.Polynomial:
             if degree is None:
                 warn(
                     "No degree set for polynomial unfolding."
@@ -319,18 +347,24 @@ class Smoother:
                 raise ValueError("Polynomial degree must be of type `int`")
             if degree < 3:
                 raise ValueError("Unfolding polynomial must have minimum degree 3.")
-        elif smoother == "spline":
+        elif smoother is SmoothMethod.Spline:
             spline_degree = degree
             if degree is None:
                 warn(
-                    f"No degree set for spline unfolding. Will default to spline of degree {DEFAULT_SPLINE_DEGREE}.",
+                    "No degree set for spline unfolding. Will default to "
+                    f"spline of degree {DEFAULT_SPLINE_DEGREE}.",
                     category=UserWarning,
                 )
             if not isinstance(spline_degree, int) or spline_degree > 5:
                 raise ValueError("Degree of spline must be an int <= 5")
             if spline_smooth is not None and spline_smooth != "heuristic":
                 spline_smooth = float(spline_smooth)
-        elif smoother == "gompertz":
+        elif smoother in [
+            SmoothMethod.Gompertz,
+            SmoothMethod.Exponential,
+            SmoothMethod.GOE,
+            SmoothMethod.Poisson,
+        ]:
             pass  # just allow this for now
         elif callable(smoother):
             # NOTE: above is not a great check, but probably good enough for our purposes

@@ -1,12 +1,12 @@
+from typing import List
+
 import numpy as np
 import pytest
 
-from typing import List
-
+from empyricalRMT._types import MatrixKind
 from empyricalRMT.compare import Compare, Metric
-from empyricalRMT.construct import generate_eigs
 from empyricalRMT.eigenvalues import Eigenvalues
-from empyricalRMT.ensemble import GOE, GDE
+from empyricalRMT.ensemble import GDE, GOE
 
 
 @pytest.mark.fast
@@ -106,7 +106,7 @@ def test_msqd() -> None:
         assert df.shape == (n, 1)
 
     # very trivial correctness checks
-    curves = [[1, 1, 1], [2, 2, 2]]
+    curves = [np.array([1, 1, 1]), np.array([2, 2, 2])]
     labels = ["ones", "twos"]
     compare = Compare(curves, labels)
     df = compare.mean_sq_difference()
@@ -115,7 +115,7 @@ def test_msqd() -> None:
     assert df["ones"]["ones"] == 0.0
     assert df["twos"]["twos"] == 0.0
 
-    curves = [[1, 1, 1], [3, 3, 3]]
+    curves = [np.array([1, 1, 1]), np.array([3, 3, 3])]
     labels = ["ones", "threes"]
     compare = Compare(curves, labels)
     df = compare.mean_sq_difference()
@@ -155,7 +155,7 @@ def test_mad() -> None:
         assert np.all(df.columns == base_label)
         assert df.shape == (n, 1)
 
-    curves = [[1, 1, 1], [2, 2, 2]]
+    curves = [np.array([1, 1, 1]), np.array([2, 2, 2])]
     labels = ["ones", "twos"]
     compare = Compare(curves, labels)
     df = compare.mean_abs_difference()
@@ -164,7 +164,7 @@ def test_mad() -> None:
     assert df["ones"]["ones"] == 0.0
     assert df["twos"]["twos"] == 0.0
 
-    curves = [[1, 1, 1], [3, 3, 3]]
+    curves = [np.array([1, 1, 1]), np.array([3, 3, 3])]
     labels = ["ones", "threes"]
     compare = Compare(curves, labels)
     df = compare.mean_abs_difference()
@@ -181,7 +181,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     print("Comparing a GOE matrix to GOE")
     print("=" * 80)
-    eigs = Eigenvalues(generate_eigs(2000, seed=2))
+    eigs = Eigenvalues.generate(2000, seed=2)
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
@@ -190,7 +190,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     print("Comparing a Poisson / GDE matrix to GOE")
     print("=" * 80)
-    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    eigs = Eigenvalues.generate(2000, kind=MatrixKind.Poisson, seed=2)
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
@@ -199,7 +199,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     print("Comparing a Poisson / GDE matrix to GOE")
     print("=" * 80)
-    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    eigs = Eigenvalues.generate(2000, kind=MatrixKind.Poisson, seed=2)
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GOE, metrics=metrics, show_progress=True)
     print(df)
@@ -208,7 +208,7 @@ def test_unfold_compare() -> None:
     print("=" * 80)
     print("Comparing a Poisson / GDE matrix to Poisson / GDE")
     print("=" * 80)
-    eigs = Eigenvalues(generate_eigs(2000, kind="poisson", seed=2))
+    eigs = Eigenvalues.generate(2000, kind=MatrixKind.Poisson, seed=2)
     unfolded = eigs.unfold(degree=13)
     df = unfolded.ensemble_compare(ensemble=GDE, metrics=metrics, show_progress=True)
     print(df)

@@ -1,39 +1,22 @@
 import numpy as np
-import pytest
-import time
-
-from numpy import ndarray
-
 
 from empyricalRMT.eigenvalues import Eigenvalues
-from empyricalRMT.construct import goe_unfolded
-from empyricalRMT.correlater import correlate_fast
+from empyricalRMT.plot import PlotMode
+from empyricalRMT.smoother import SmoothMethod
 
 
-def get_eigs(arr: ndarray) -> ndarray:
-    print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
-    eigs = np.linalg.eigvalsh(arr)
-    print(f"\n{time.strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues...")
-    return eigs
+def test_plot_calls() -> None:
+    eigs = Eigenvalues.generate(2000, log_time=True)
+    unfolded = eigs.unfold(smoother=SmoothMethod.Polynomial, degree=19)
 
-
-@pytest.mark.plot
-def test_axes_configuring() -> None:
-    var = 0.1
-    percent = 25
-    A = np.random.standard_normal([1000, 500])
-    correlated = np.random.permutation(A.shape[0] - 1) + 1  # don't select first row
-    last = int(np.floor((percent / 100) * A.shape[0]))
-    corr_indices = correlated[:last]
-    # introduce correlation in A
-    for i in corr_indices:
-        A[i, :] = np.random.uniform(1, 2) * A[0, :] + np.random.normal(
-            0, var, size=A.shape[1]
-        )
-    M = correlate_fast(A)
-    eigs = get_eigs(M)
-    print(f"\nPercent correlated noise: {percent}%")
-    unfolded = Eigenvalues(eigs).unfold(degree=13)
-    unfolded.plot_fit(mode="noblock")
-
-    goe_unfolded(1000, log=True).plot_fit(mode="block")
+    unfolded.plot_nnsd(mode=PlotMode.Test)
+    # unfolded.plot_next_nnsd(mode=PlotMode.Test)
+    L = np.arange(2, 20, 1, dtype=np.float64)
+    unfolded.plot_level_variance(L=L, mode=PlotMode.Test, ensembles=["goe", "poisson"])
+    unfolded.plot_spectral_rigidity(L=L, mode=PlotMode.Test)
+    unfolded.plot_observables(
+        rigidity_L=L,
+        levelvar_L=L,
+        mode=PlotMode.Test,
+        ensembles=["goe", "poisson"],
+    )

@@ -1,12 +1,13 @@
+from typing import Any, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-
-from numba import jit
+from numba import njit
 from numpy import ndarray
 from pandas import DataFrame
-from typing import Any, List, Tuple
 from typing_extensions import Literal
 
+from empyricalRMT._types import fArr
 from empyricalRMT._validate import make_1d_array
 
 Metric = Literal["mad", "msqd", "corr"]
@@ -17,16 +18,16 @@ class Compare:
 
     def __init__(
         self,
-        curves: List[ndarray],
+        curves: List[fArr],
         labels: List[str],
-        base_curve: ndarray = None,
-        base_label: str = None,
+        base_curve: Optional[fArr] = None,
+        base_label: Optional[str] = None,
     ):
         """Construct a Compare object for accessing various comparison methods.
 
         Parameters
         ----------
-        curves: List[ndarray]
+        curves: List[NDArray[floating]]
             A list of unidimensional numpy arrays of values to compare. For most
             comparison methods besides some piecewise / quantile comparison methods, the
             curves must have identical lengths.
@@ -36,16 +37,18 @@ class Compare:
             curves, and labels[i] must be the label for curves[i], for all valid
             values of i.
 
-        base_curve: ndarray
+        base_curve: NDArray[floating]
             The base curve against which each curve of `curves` will be compared, if the
             desire is to compare multiple curves only to one single curve.
 
         base_label: str
             The label for identifying the base_curve.
         """
-        self.curves = [make_1d_array(curve) for curve in curves]
+        self.curves: List[fArr] = [make_1d_array(curve) for curve in curves]
         self.labels = labels.copy()
-        self.base_curve = make_1d_array(base_curve) if base_curve is not None else None
+        self.base_curve: Optional[fArr] = (
+            make_1d_array(base_curve) if base_curve is not None else None
+        )
         self.base_label = base_label  # don't need to copy strings in Python
         self.__validate_curve_lengths()
         self.dict = dict(zip(self.labels, self.curves))
@@ -67,7 +70,10 @@ class Compare:
     def mean_sq_difference(self) -> DataFrame:
         """Return the grid of mean square differences across curves."""
         self.__validate_curve_lengths(
-            message="Comparing via mean squared differences requires all curves have identical lengths",
+            message=(
+                "Comparing via mean squared differences requires "
+                "all curves have identical lengths"
+            ),
             check_all_equal=True,
         )
         curves = np.array(self.curves)
@@ -75,16 +81,17 @@ class Compare:
             diffs = np.empty(curves.shape[0])
             for i in range(len(diffs)):
                 diffs[i] = np.mean((self.base_curve - curves[i]) ** 2)
-                return pd.DataFrame(
-                    data=diffs, index=self.labels, columns=[self.base_label]
-                )
+                return pd.DataFrame(data=diffs, index=self.labels, columns=[self.base_label])
         data = self.__fast_msqd(curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
     def mean_abs_difference(self) -> DataFrame:
         """Return the grid of mean absolute differences across curves."""
         self.__validate_curve_lengths(
-            message="Comparing via mean absolute differences requires all curves have identical lengths",
+            message=(
+                "Comparing via mean squared differences requires "
+                "all curves have identical lengths"
+            ),
             check_all_equal=True,
         )
         curves = np.array(self.curves)
@@ -92,9 +99,7 @@ class Compare:
             diffs = np.empty(curves.shape[0])
             for i in range(len(diffs)):
                 diffs[i] = np.mean(np.abs(self.base_curve - curves[i]))
-                return pd.DataFrame(
-                    data=diffs, index=self.labels, columns=[self.base_label]
-                )
+                return pd.DataFrame(data=diffs, index=self.labels, columns=[self.base_label])
         data = self.__fast_mad(curves)
         return pd.DataFrame(data=data, index=self.labels, columns=self.labels)
 
@@ -102,7 +107,7 @@ class Compare:
         self.__validate_curve_lengths(**kwargs)
 
     @staticmethod
-    @jit(nopython=True, fastmath=True)
+    @njit(fastmath=True)
     def __fast_msqd(curves: ndarray) -> ndarray:
         n = curves.shape[0]
         data = np.empty((n, n), dtype=np.float64)
@@ -112,7 +117,7 @@ class Compare:
         return data
 
     @staticmethod
-    @jit(nopython=True, fastmath=True)
+    @njit(fastmath=True)
     def __fast_mad(curves: ndarray) -> ndarray:
         n = curves.shape[0]
         data = np.empty((n, n), dtype=np.float64)
@@ -140,9 +145,7 @@ class Compare:
         """
         vals1 = np.sort(curve1)
         vals2 = np.sort(curve2)
-        endpoints = np.linspace(
-            min(vals1[0], vals2[0]), max(vals1[-1], vals2[-1]), n_bins + 1
-        )
+        endpoints = np.linspace(min(vals1[0], vals2[0]), max(vals1[-1], vals2[-1]), n_bins + 1)
         n, counts1, counts2 = 0, np.arange(n_bins), np.arange(n_bins)
         for val in vals1:
             if val < endpoints[n]:
@@ -163,7 +166,7 @@ class Compare:
         return endpoints, counts1, counts2
 
     def __validate_curve_lengths(
-        self, message: str = None, check_all_equal: bool = False
+        self, message: Optional[str] = None, check_all_equal: bool = False
     ) -> None:
         """Ensure curve lengths are appropriate for desired comparison methods."""
         curves = self.curves
@@ -172,9 +175,7 @@ class Compare:
         if len(curves) < 1:
             raise ValueError("There must be more than one curve to compare.")
         if len(curves) == 1 and self.base_curve is None:
-            raise ValueError(
-                "There must be more than one curve to compare to the base curve."
-            )
+            raise ValueError("There must be more than one curve to compare to the base curve.")
         if len(self.curves) != len(labels):
             raise ValueError("`labels` must have the same length as `curves`.")
 

@@ -1,14 +1,24 @@
-import numpy as np
-from numpy import ndarray
-
-from colorama import Fore
-from numba import jit, prange
-from progressbar import AdaptiveETA, Percentage, ProgressBar, Timer
 from typing import Tuple
+
+import numpy as np
+from numba import jit, prange
+from numpy import float64 as f64
+from numpy import ndarray
 from typing_extensions import Literal
 
+from empyricalRMT._constants import (
+    AUTO_MAX_ITERS,
+    CONVERG_PROG,
+    CONVERG_PROG_INTERVAL,
+    ITER_COUNT,
+    MIN_ITERS,
+    PERCENT,
+    RIGIDITY_GRID,
+    RIGIDITY_PROG,
+)
+from empyricalRMT._types import bArr, fArr, iArr
 from empyricalRMT.observables.step import _step_function_fast
-
+from empyricalRMT.utils import ConvergenceError, kahan_add
 
 # spectral rigidity ∆3
 # the least square devation of the unfolded cumulative eigenvalue
@@ -40,16 +50,21 @@ from empyricalRMT.observables.step import _step_function_fast
 #    appropriate number of times to generate a dataset consisting of
 #    datapoints (L, ∆3(L)).
 def spectral_rigidity(
-    unfolded: ndarray,
-    L: ndarray = np.arange(2, 50, 10000),
-    c_iters: int = 10000,
+    unfolded: fArr,
+    L: fArr = np.arange(2, 20, 0.5),
+    tol: float = 0.01,
+    max_iters: int = 0,
+    gridsize: int = RIGIDITY_GRID,
     integration: Literal["simps", "trapz"] = "simps",
     show_progress: bool = True,
-) -> Tuple[ndarray, ndarray]:
+) -> Tuple[fArr, fArr, bArr, iArr]:
     """Compute the spectral rigidity for a particular unfolding.
 
-    Computes the spectral rigidity (delta_3, ∆₃ [1]_) for a
-    particular set of eigenvalues and their unfolding.
+    Computes the spectral rigidity (delta_3, ∆₃ [1]) for a
+    particular set of eigenvalues and their unfoldings via random samling.
+    The internal integral of the staircase deviation from a linear fit is
+    computed via Simpson's method, and samples of c are drawn iteratively
+    for each L value, until a convergence criterion is met.
 
     Parameters
     ----------
@@ -57,18 +72,38 @@ def spectral_rigidity(
         The unfolded eigenvalues.
 
     L: ndarray
-        The values of L to compute the rigidity.
+        The values of L at which to compute the rigidity.
 
-    c_iters: int
+    max_iters: int = -1
         How many times the location of the center, c, of the interval
         [c - L/2, c + L/2] should be chosen uniformly at random for
         each L in order to compute the estimate of the spectral
-        rigidity. Default 10000.
+        rigidity.
+
+        For an NxN GOE matrix where N in [5000, 10 000, 20 000], unfolded with a
+        high-degree polynomial or analytically unfolded, the default values of
+        `tol=0.01` and `max_iters=int(1e4)`, the algorithm should converge for L
+        values up to about 70-90. Larger L-values than this will require
+        increasing `max_iters` to about `1e5` for consistent convergence.
+        Smaller matrices (e.g. N=2000) struggle to converge past L values of
+        60 for the defaults.
+
+    tol: float = 0.01
+        Convergence criterion. Convergence is reached when the range of
+        the last 1000 computed values is less than `tol`.
+
+
+    gridsize: int = 100
+        Each internal integral is computed over a grid
+        of `gridsize` points on [c - L/2, c + L/2]. Smaller values here
+        increase the variance of sampled values of delta_3, and increase the
+        likelihood that `max_iters` is reached. Probably best to leave at the
+        default value.
 
     integration: "simps" | "trapz"
         Whether to use the trapezoidal or simpson's rule for integration. Default
-        `simps`. Method "trapz" might be faster in some cases, but final
-        calculations will be considerably more inaccurate.
+        `simps`. Method "trapz" might be faster in some cases, at the cost of some
+        accuracy.
 
 
     Returns
@@ -106,88 +141,187 @@ def spectral_rigidity(
     ----------
     .. [1] Mehta, M. L. (2004). Random matrices (Vol. 142). Elsevier
     """
-    L_vals = np.copy(L)
-    L_grid_size = len(L_vals)
-    delta3 = np.zeros(L_vals.shape)
-    if show_progress:
-        pbar_widgets = [
-            f"{Fore.GREEN}Computing spectral rigidity: {Fore.RESET}",
-            f"{Fore.BLUE}",
-            Percentage(),
-            f" {Fore.RESET}",
-            " ",
-            Timer(),
-            f"|{Fore.YELLOW}",
-            AdaptiveETA(),
-            f"{Fore.RESET}",
-        ]
-        pbar = ProgressBar(widgets=pbar_widgets, maxval=L_vals.shape[0]).start()
-    for i, L in enumerate(L_vals):
-        delta3_L_vals = np.empty((c_iters))
-        if integration == "trapz":
-            _spectral_iter(
-                unfolded, delta3_L_vals, L, c_iters, L_grid_size, use_simpsons=False
+    # delta3 = _spectral_iter_grid(
+    #     unfolded=unfolded,
+    #     L_vals=L.copy().ravel(),
+    #     gridsize=gridsize,
+    #     use_simpson=True,
+    # )
+    if max_iters <= 0:
+        success, max_iters = delta_L(
+            unfolded=unfolded,
+            L=float(np.max(L)),
+            gridsize=RIGIDITY_GRID,
+            max_iters=AUTO_MAX_ITERS,
+            min_iters=10 * MIN_ITERS,  # also safety
+            tol=tol,
+            use_simpson=integration != "trapz",
+            show_progress=True,
+        )[1:]
+        max_iters = int(max_iters * 2)  # precaution
+        if not success:
+            raise ConvergenceError(
+                f"For the largest L-value in your provided Ls, {np.max(L)}, the "
+                f"spectral rigidity at L did not converge in {AUTO_MAX_ITERS} "
+                "iterations. Either reduce the range of L values, reduce the "
+                "`tol` tolerance value, or manually set `max_iters` to be some "
+                "value other than the default of 0 to disable this check. Note "
+                "the convergence criterion involves the range on the last 1000 "
+                "values, which are themselves iteratively-computed means, so is "
+                "a somewhat strict convergence criterion. However, setting "
+                "`max_iters` too low then provides NO guarantee on the error for "
+                "non-converging L values."
             )
-        else:
-            _spectral_iter(unfolded, delta3_L_vals, L, c_iters, L_grid_size)
-        if len(delta3_L_vals) != c_iters:
-            raise Exception("We aren't computing enough L values")
-        delta3[i] = np.mean(delta3_L_vals)
-        if show_progress:
-            pbar.update(i)
+
+    delta3, converged, iters = delta_parallel(
+        unfolded=unfolded,
+        L_vals=L.copy().ravel(),
+        gridsize=gridsize,
+        max_iters=max_iters,
+        min_iters=MIN_ITERS,
+        tol=tol,
+        use_simpson=integration != "trapz",
+        show_progress=show_progress,
+    )
+    return L, delta3, converged, iters
+
+
+@jit(nopython=True, cache=False, parallel=True, fastmath=True)
+def delta_parallel(
+    unfolded: fArr,
+    L_vals: fArr,
+    tol: float = 0.01,
+    max_iters: int = int(1e6),
+    gridsize: int = 1000,
+    min_iters: int = MIN_ITERS,
+    use_simpson: bool = True,
+    show_progress: bool = True,
+) -> Tuple[fArr, bArr, iArr]:
+    prog_interval = len(L_vals) // 50
+    if prog_interval == 0:
+        prog_interval = 1
+    delta3 = np.zeros(L_vals.shape)
+    iters = np.zeros(L_vals.shape, dtype=np.int64)
+    converged = np.zeros_like(L_vals, dtype=np.bool_)
     if show_progress:
-        pbar.finish()
-    return L_vals, delta3
+        print(RIGIDITY_PROG, 0, PERCENT)
+    for i in prange(len(L_vals)):
+        L = L_vals[i]
+        delta3[i], converged[i], iters[i] = delta_L(
+            unfolded=unfolded,
+            L=L,
+            gridsize=gridsize,
+            max_iters=max_iters,
+            min_iters=min_iters,
+            tol=tol,
+            use_simpson=use_simpson,
+        )
+
+        if show_progress and i % prog_interval == 0:
+            prog = int(100 * np.sum(delta3 != 0) / len(delta3))
+            print(RIGIDITY_PROG, prog, PERCENT)
+    return delta3, converged, iters
 
 
-@jit(nopython=True, fastmath=True, cache=True, parallel=True)
-def _spectral_iter(
+# See https://stackoverflow.com/a/54078906 for why Kahan summation *might* be worth
+# it here. However, keep in mind our convergence criterion sort-of implies this is
+# not an issue.
+@jit(nopython=True, cache=False, fastmath=True)
+def delta_L(
     unfolded: ndarray,
-    delta3_L_vals: ndarray,
     L: float,
-    c_iters: int = 10000,
-    interval_gridsize: int = 10000,  # does not tend to effect performance significantly
-    use_simpsons: bool = True,
-) -> ndarray:
-    """Compute c_iters values of L and save them in delta3_L_vals.
+    gridsize: int = 100,
+    max_iters: int = int(1e6),
+    min_iters: int = 100,
+    tol: float = 0.01,
+    use_simpson: bool = True,
+    show_progress: bool = False,
+) -> Tuple[float, bool, int]:
+    buf = 1000
+    prog_interval = CONVERG_PROG_INTERVAL
+    if L > 100:
+        prog_interval *= 10
 
-    Parameters
-    ----------
-    unfolded: ndarray
-        The sorted unfolded eigenvalues.
-
-    delta3_L_vals: ndarray
-        The array to store all the c_iters computed L values.
-
-    L: float
-        The current L value for which the spectral rigidity is being calculated.
-
-    c_iters: int
-        The number of centre-points (c) to choose (i.e. the number of L values to
-        compute).
-
-    interval_gridsize: int
-        The number of points for which to evaluate the deviation from a straight
-        line on [c - L/2, c + L/2].
-    """
-    # make each iteration centred at a random value on the unfolded spectrum
-    starts = np.random.uniform(unfolded[0], unfolded[-1], c_iters)
-    for i in prange(len(starts)):
-        # c_start is in space of unfolded, not unfolded
-        grid = np.linspace(starts[i] - L / 2, starts[i] + L / 2, interval_gridsize)
+    delta_running = np.zeros((buf,))
+    k = np.uint64(0)
+    c = np.float64(0.0)  # compensation (carry-over) term for Kahan summation
+    d3_mean: f64 = np.float64(0.0)
+    if show_progress:
+        print(CONVERG_PROG, 0, ITER_COUNT)
+    while True:
+        if k != 0:  # awkward, want uint64 k
+            k += 1
+        start = np.random.uniform(unfolded[0], unfolded[-1])
+        grid = np.linspace(start - L / 2, start + L / 2, gridsize)
         steps = _step_function_fast(unfolded, grid)  # performance bottleneck
         K = _slope(grid, steps)
         w = _intercept(grid, steps, K)
         y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
-        if use_simpsons:
+        if use_simpson:
+            delta3_c = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
+        else:
+            delta3_c = _integrate_fast(grid, y_vals)  # O(len(grid))
+        d3 = delta3_c / L
+        if k == 0:  # initial value
+            d3_mean = d3
+            delta_running[0] = d3_mean
+            k += 1
+            continue
+        else:
+            # Regular sum
+            # d3_mean = (k * d3_mean + d3) / (k + 1)
+            # d3_mean += (d3 - d3_mean) / k
+
+            # Kahan sum - but can we be sure Numba isn't optimizing away?
+            update = (d3 - d3_mean) / k  # mean + update is new mean
+            d3_mean, c = kahan_add(current_sum=d3_mean, update=update, carry_over=c)
+            # remainder = update - c
+            # lossy = d3_mean + remainder
+            # c = (lossy - d3_mean) - remainder
+            # d3_mean = lossy
+            delta_running[int(k) % buf] = d3_mean
+
+        if show_progress and k % prog_interval == 0:
+            print(CONVERG_PROG, int(k * 2), ITER_COUNT)  # x2 for safety factor
+        if k >= max_iters:
+            break
+        if (
+            (k > min_iters)
+            and (k % buf == 0)  # all buffer values must have changed
+            and (np.abs(np.max(delta_running) - np.min(delta_running)) < tol)
+        ):
+            break
+
+    if show_progress:
+        print(CONVERG_PROG, int(k), ITER_COUNT)
+    converged = np.abs(np.max(delta_running) - np.min(delta_running)) < tol
+    # I don't think it matters much if we use median, mean, max, or min for the
+    # final returned single value, given our convergence criterion is so strict
+    # return d3_mean, converged, k
+    return np.mean(delta_running), converged, k  # type: ignore
+
+
+@jit(nopython=True, cache=True, fastmath=True)
+def _delta_grid(
+    unfolded: ndarray, starts: ndarray, L: float, gridsize: int, use_simpson: bool
+) -> f64:
+    delta3s = np.empty_like(starts)
+    for i, start in enumerate(starts):
+        grid = np.linspace(start - L / 2, start + L / 2, gridsize)
+        steps = _step_function_fast(unfolded, grid)  # performance bottleneck
+        K = _slope(grid, steps)
+        w = _intercept(grid, steps, K)
+        y_vals = _sq_lin_deviation(unfolded, steps, K, w, grid)
+        if use_simpson:
             delta3 = _int_simps_nonunif(grid, y_vals)  # O(len(grid))
         else:
             delta3 = _integrate_fast(grid, y_vals)  # O(len(grid))
-        delta3_L_vals[i] = delta3 / L
+        delta3s[i] = delta3 / L
+    return np.mean(delta3s)  # type: ignore
 
 
-@jit(nopython=True, fastmath=True, cache=True)
-def _slope(x: ndarray, y: ndarray) -> np.float64:
+@jit(nopython=True, cache=True, fastmath=True)
+def _slope(x: ndarray, y: ndarray) -> f64:
     """Perform linear regression to compute the slope."""
     x_mean = np.mean(x)
     y_mean = np.mean(y)
@@ -195,18 +329,18 @@ def _slope(x: ndarray, y: ndarray) -> np.float64:
     y_dev = y - y_mean
     cov = np.sum(x_dev * y_dev)
     var = np.sum(x_dev * x_dev)
-    if var == 0:
-        return 0
-    return cov / var
+    if var == 0.0:
+        return 0.0  # type: ignore
+    return cov / var  # type: ignore
 
 
-@jit(nopython=True, fastmath=True, cache=True)
-def _intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
-    return np.mean(y) - slope * np.mean(x)
+@jit(nopython=True, cache=True, fastmath=True)
+def _intercept(x: ndarray, y: ndarray, slope: f64) -> f64:
+    return np.mean(y) - slope * np.mean(x)  # type: ignore
 
 
-@jit(nopython=True, fastmath=True, cache=True)
-def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
+@jit(nopython=True, cache=True, fastmath=True)
+def _integrate_fast(grid: ndarray, values: ndarray) -> f64:
     """scipy.integrate.trapz is excruciatingly slow and unusable for our purposes.
     This tiny rewrite seems to result in a near 20x speedup. However, being trapezoidal
     integration, it is quite inaccurate."""
@@ -215,15 +349,13 @@ def _integrate_fast(grid: ndarray, values: ndarray) -> np.float64:
         w = grid[i + 1] - grid[i]
         h = values[i] + values[i + 1]
         integral += w * h / 2
-    return integral
+    return integral  # type: ignore
 
 
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
 # the outer loops. Adding it inside *dramatically* slows performance.
-@jit(nopython=True, fastmath=True, cache=True)
-def _sq_lin_deviation(
-    eigs: ndarray, steps: ndarray, K: float, w: float, grid: ndarray
-) -> ndarray:
+@jit(nopython=True, cache=True, fastmath=True)
+def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: f64, w: f64, grid: fArr) -> fArr:
     """Compute the sqaured deviation of the staircase function of the best fitting
     line, over the region in `grid`.
 
@@ -249,8 +381,8 @@ def _sq_lin_deviation(
     sq_deviations: ndarray
         The squared deviations.
     """
-    ret = np.empty((len(grid)), dtype=np.float64)
-    for i in prange(len(grid)):
+    ret = np.empty(len(grid))
+    for i in range(len(grid)):
         n = steps[i]
         deviation = n - K * grid[i] - w
         ret[i] = deviation * deviation
@@ -258,8 +390,8 @@ def _sq_lin_deviation(
 
 
 # fmt: off
-@jit(nopython=True, fastmath=True, cache=True)
-def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
+@jit(nopython=True, cache=True, fastmath=True)
+def _int_simps_nonunif(grid: fArr, vals: fArr) -> f64:
     """
     Simpson rule for irregularly spaced data. Copied shamelessly from
     https://en.wikipedia.org/w/index.php?title=Simpson%27s_rule&oldid=938527913#Composite_Simpson's_rule_for_irregularly_spaced_data
@@ -281,7 +413,7 @@ def _int_simps_nonunif(grid: np.array, vals: np.array) -> float:
     N = len(grid) - 1
     h = np.diff(grid)
 
-    result = 0.0
+    result = f64(0.0)
     for i in range(1, N, 2):
         hph = h[i] + h[i - 1]
         result += vals[i] * (h[i]**3 + h[i-1]**3 + 3.0*h[i]*h[i-1]*hph) / (6*h[i]*h[i-1])

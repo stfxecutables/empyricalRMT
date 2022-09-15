@@ -1,75 +1,143 @@
-import numpy as np
-import scipy.sparse as sparse
+from __future__ import annotations
 
-from numpy import ndarray
-from scipy.integrate import quad
-from typing import Any, List, Optional, Sized, Tuple, TypeVar, Type, Union
-from typing_extensions import Literal
+from time import strftime
+from typing import Any, List, Optional, Tuple, Type, Union
 from warnings import warn
 
-from empyricalRMT._constants import (
-    DEFAULT_POLY_DEGREE,
-    DEFAULT_SPLINE_SMOOTH,
-    DEFAULT_POLY_DEGREES,
-)
+import numpy as np
+import scipy.sparse
+import scipy.sparse.linalg
+from numpy import ndarray
+from numpy.typing import ArrayLike
+from scipy.integrate import quad
+from typing_extensions import Literal
+
+from empyricalRMT._constants import DEFAULT_POLY_DEGREE, DEFAULT_POLY_DEGREES, DEFAULT_SPLINE_SMOOTH
 from empyricalRMT._eigvals import EigVals
+from empyricalRMT._types import MatrixKind, fArr
+from empyricalRMT.construct import _generate_GOE_matrix, _generate_GOE_tridiagonal
 from empyricalRMT.correlater import correlate_fast
 from empyricalRMT.detrend import emd_detrend
+from empyricalRMT.signalproc.detrend import DetrendMethod
+from empyricalRMT.signalproc.detrend import detrend as _detrend
 from empyricalRMT.smoother import Smoother, SmoothMethod
 from empyricalRMT.trim import Trimmed, TrimReport
 from empyricalRMT.unfold import Unfolded
 
 
-_WARNED_SMALL = False
-
-# see https://stackoverflow.com/a/44644576, for class methods
-Eigens = TypeVar("Eigens", bound="Eigenvalues")
-
-
 class Eigenvalues(EigVals):
-    """Basic class providing access to various items of interest in RMT. """
+    """Basic class providing access to various items of interest in RMT."""
 
-    def __init__(self, eigenvalues: Sized):
+    __WARNED_SMALL = False
+
+    def __init__(
+        self,
+        values: ArrayLike,
+        kind: Optional[MatrixKind] = None,
+        detrending: Optional[DetrendMethod] = None,
+    ):
         """Construct an Eigenvalues object.
 
         Parameters
         ----------
-        eigs: Sized
-            An object for which np.array(eigs) will return a sensible, one-dimensional
-            array of floats which are the computed eigenvalues of some matrix.
+        values: ArrayLike
+            If 0D or 1D, then `values` are assumed to be eigenvalues. If 2D, then
+            eigs will be computed via np.linalg.eigvalsh or np.linalg.eigvals, depending
+            on if the matrix is symmetric Hermititian or not.
         """
-        global _WARNED_SMALL
-        if eigenvalues is None:
-            raise ValueError("`eigenvalues` must be an array_like.")
-        try:
-            length = len(eigenvalues)
-            if length < 50 and not _WARNED_SMALL:
-                warn(
-                    "You have less than 50 eigenvalues, and the assumptions of Random "
-                    "Matrix Theory are almost certainly not justified. Any results "
-                    "obtained should be interpreted with caution",
-                    category=UserWarning,
-                )
-                _WARNED_SMALL = True  # don't warn more than once per execution
-        except TypeError:
-            raise ValueError(
-                "The `eigs` passed to unfolded must be an object with a defined length via `len()`."
+        super().__init__(values)
+        if len(self._vals) < 50 and not self.__class__.__WARNED_SMALL:
+            warn(
+                "You have less than 50 eigenvalues, and the assumptions of Random "
+                "Matrix Theory are almost certainly not justified. Any results "
+                "obtained should be interpreted with caution",
+                category=UserWarning,
             )
+            self.__class__.__WARNED_SMALL = True  # don't warn more than once per execution
 
-        super().__init__(eigenvalues)
+        self.kind: Optional[MatrixKind] = kind
+        self.deterending: Optional[DetrendMethod] = detrending
         self._series_T: Optional[int] = None
         self._series_N: Optional[int] = None
         # get some Marchenko-Pastur endpoints
         self._marchenko: Optional[Tuple[float, float]] = None
         self._marchenko_shifted: Optional[Tuple[float, float]] = None
 
+    @staticmethod
+    def generate(
+        matsize: int,
+        kind: MatrixKind = MatrixKind.GOE,
+        seed: Optional[int] = None,
+        log_time: bool = False,
+        use_tridiagonal: bool = True,
+    ) -> Eigenvalues:
+        """Generate a random square matrix and return the computed eigenvalues.
+
+        Parameters
+        ----------
+        matsize: int
+            The size (e.g. width or height) of the square matrix that will be
+            generated.
+
+        kind: "goe" | "gue" | "poisson" | "gde" | "uniform"
+            From which ensemble to sample the matrix:
+
+               - "goe" is a matrix from the Gaussian Orthogonal Ensemble
+               - "gue" is a matrix from the Gaussian Unitary Ensemble
+               - "poisson" or "gde" is a "Gaussian Diagonal Ensemble", a
+                 diagonal matrix with all entries being samples from a standard
+                 normal distribution.
+               - "uniform" is currently unimplemented
+
+        seed: int
+            Seed value for `np.random.seed`. Ensures reproducible results.
+
+        log_time: bool
+            Whether or not to log to stdout the start and end times for
+            computing eigenvalues.
+
+        use_tridiagonal: bool
+            For `kind` "goe" only. Generate a tridiagonal matrix with identical
+            eigenvalue distributions to a GOE matrix instead of a full GOE
+            matrix. *Dramatically* speeds up computation of eigenvalues, and is
+            recommended for generating matrices of approximately size N >= 2000.
+        """
+        kind = MatrixKind.validate(kind)
+        if kind == MatrixKind.Poisson:
+            np.random.seed(seed)
+            # eigenvalues of diagonal are just the entries
+            return Eigenvalues(np.sort(np.random.standard_normal(matsize)), kind=kind)
+        elif kind == MatrixKind.Uniform:
+            raise NotImplementedError("Uniform random matrices not implemeted.")
+        elif kind == MatrixKind.GUE:
+            size = [matsize, matsize]
+            if seed is not None:
+                np.random.seed(seed)
+            A = np.random.standard_normal(size) + 1j * np.random.standard_normal(size)
+            M: fArr = (A + A.conjugate().T) / 2  # type: ignore
+        elif kind == MatrixKind.GOE:
+            if matsize > 500 and use_tridiagonal:
+                M = _generate_GOE_tridiagonal(size=matsize, seed=seed)
+            else:
+                M = _generate_GOE_matrix(matsize, seed=seed)
+        else:
+            kinds = [e.value for e in MatrixKind]  # type: ignore[unreachable]
+            raise ValueError(f"`kind` must be one of {kinds}")
+
+        if log_time:
+            print(f"\n{strftime('%H:%M:%S (%b%d)')} -- computing eigenvalues...")
+        eigs: fArr = np.linalg.eigvalsh(M)
+        if log_time:
+            print(f"{strftime('%H:%M:%S (%b%d)')} -- computed eigenvalues.")
+        return Eigenvalues(eigs, kind=kind)
+
     @classmethod
     def from_correlations(
-        cls: Type[Eigens],
+        cls: Type[Eigenvalues],
         data: ndarray,
-        atol: float = 1e3 * np.finfo(np.float).eps,
+        atol: float = float(1e3 * np.finfo(np.float64).eps),
         lower: bool = True,
-    ) -> Eigens:
+    ) -> Eigenvalues:
         """Use positive semi-definiteness to identify likely zero-valued eigenvalues
         due to floating point imprecision.
 
@@ -94,9 +162,7 @@ class Eigenvalues(EigVals):
             The Eigenvalues object, with values close to zero pre-trimmed away.
         """
         if len(data.shape) > 2:
-            raise ValueError(
-                "`data` must be either flat, 1-dimensional, or 2-dimensional."
-            )
+            raise ValueError("`data` must be either flat, 1-dimensional, or 2-dimensional.")
         if len(data.shape) == 2 and np.min(data.shape) > 1:
             eigs = np.linalg.eigvalsh(data, "L" if lower else "U")
         eigs = data.reshape(-1)  # equivalent to ravel but less likely to copy
@@ -106,7 +172,7 @@ class Eigenvalues(EigVals):
     # instead of going through the covariance matrix
     @classmethod
     def from_time_series(
-        cls: Type[Eigens],
+        cls: Type[Eigenvalues],
         data: ndarray,
         covariance: bool = True,
         trim_zeros: bool = True,
@@ -114,7 +180,7 @@ class Eigenvalues(EigVals):
         time_axis: int = 1,
         use_sparse: bool = False,
         **sp_args: Any,
-    ) -> Eigens:
+    ) -> Eigenvalues:
         """Use Marchenko-Pastur and positive semi-definiteness to identify likely noise
         values and zero-valued eigenvalues due to floating point imprecision
 
@@ -172,17 +238,19 @@ class Eigenvalues(EigVals):
             data = data.T
 
         N, T = data.shape
-        M, eigs = None, None
+        M = None
+        eigs: fArr
         if N <= T:  # no benefit from intermediate transposition
             M = np.cov(data, ddof=1) if covariance else correlate_fast(data, ddof=1)
             if use_sparse:
-                M = sparse.tril(M)
+                M = scipy.sparse.tril(M)
                 if sp_args.get("return_eigenvectors") is True:
                     raise ValueError(
-                        "This function is intended only as a helper to extract eigenvalues from time-series."
+                        "This function is intended only as a helper "
+                        "to extract eigenvalues from time-series."
                     )
 
-                eigs = sparse.linalg.eigsh(M, **sp_args)
+                eigs = np.array(scipy.sparse.linalg.eigsh(M, **sp_args))
             else:
                 eigs = np.linalg.eigvalsh(M)
         else:
@@ -190,7 +258,7 @@ class Eigenvalues(EigVals):
 
         if trim_zeros:
             if zeros == "heuristic":
-                e_min = eigs.min()
+                e_min = eigs.min()  # type: ignore[unreachable]
                 minval = 0
                 if e_min <= 0:
                     minval = -100 * e_min
@@ -236,6 +304,13 @@ class Eigenvalues(EigVals):
     def eigs(self) -> ndarray:
         """Return the stored eigenvalues. Alternate for Eigenvalues.values"""
         return self._vals
+
+    def detrend(self, method: DetrendMethod) -> Eigenvalues:
+        if self.deterending is not None:
+            raise ValueError("Eigenvalues have already been detrended")
+        detrended = _detrend(self.vals, method)
+        print(method, np.mean(np.diff(detrended)))
+        return Eigenvalues(detrended, detrending=method)
 
     def trim_report(
         self,
@@ -317,7 +392,7 @@ class Eigenvalues(EigVals):
 
     def get_best_trimmed(
         self,
-        smoother: SmoothMethod = "poly",
+        smoother: SmoothMethod = SmoothMethod.Polynomial,
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         max_iters: int = 7,
@@ -412,8 +487,8 @@ class Eigenvalues(EigVals):
 
     def trim_marchenko_pastur(
         self,
-        series_length: int = None,
-        n_series: int = None,
+        series_length: Optional[int] = None,
+        n_series: Optional[int] = None,
         largest: bool = True,
         use_shifted: bool = True,
     ) -> Tuple[Trimmed, Tuple[float, float]]:
@@ -644,7 +719,7 @@ class Eigenvalues(EigVals):
 
     def unfold(
         self,
-        smoother: SmoothMethod = "poly",
+        smoother: Optional[SmoothMethod] = None,
         degree: int = DEFAULT_POLY_DEGREE,
         spline_smooth: float = DEFAULT_SPLINE_SMOOTH,
         detrend: bool = False,
@@ -656,13 +731,18 @@ class Eigenvalues(EigVals):
         eigs: ndarray
             sorted eigenvalues
 
-        smoother: "poly" | "spline" | "gompertz" | "goe" | lambda
+        smoother: "poly" | "spline" | "gompertz" | "goe" | lambda | None
             The type of smoothing function used to fit the step function.
             - "poly": perform polynomial unfolding.
             - "spline": use fit a univarate spline.
             - "gompertz": fit a Gompertz exponential curve.
             - "goe": perform a "smooth" unfolding via the semicircle law
             - lambda: not implemented.
+            - None (default):
+              - if constructed from Eigenvalues.generate(..., kind="goe"),
+              then uses the analytic unfolding, smoother="goe"
+              - if constructed from Eigenvalues.generate(..., kind="poisson"),
+              then uses a polynomial of degree 19
 
         degree: int
             The degree of the polynomial or spline.
@@ -683,9 +763,33 @@ class Eigenvalues(EigVals):
         steps: ndarray
             the step-function values
         """
-
-        if smoother == "goe":
-            return self.unfold_goe()
+        if smoother is None:
+            if self.kind is MatrixKind.GOE:
+                print(
+                    "Using default Wigner surmise for (analytic) unfolding of GOE "
+                    "eigenvalues. To silence this message, specify `smoother` "
+                    "argument to Eigenvalues.unfold()."
+                )
+                return self.unfold_goe()
+            elif self.kind in [MatrixKind.GDE, MatrixKind.Poisson]:
+                print(
+                    "Using default (analytic, exponential) unfolding for GDE / "
+                    "Poisson eigenvalues. To silence this message, specify `smoother` "
+                    "argument to Eigenvalues.unfold()."
+                )
+                return self.unfold_poisson()
+            else:
+                print(
+                    "No smoother specified for unfolding. Using polynomial of degree "
+                    f"{DEFAULT_POLY_DEGREE}. To silence this message, specify `smoother` "
+                    "argument to Eigenvalues.unfold()."
+                )
+                smoother = SmoothMethod.Polynomial
+        smoother = SmoothMethod.validate(smoother)
+        if smoother is SmoothMethod.GOE:
+            return self.unfold_goe()  # type: ignore[unreachable]
+        if smoother is SmoothMethod.Poisson:
+            return self.unfold_poisson()
 
         eigs = self.eigs
         unfolded, _, closure = Smoother(eigs).fit(
@@ -697,35 +801,85 @@ class Eigenvalues(EigVals):
         )
         if detrend:
             unfolded = emd_detrend(unfolded)
-        return Unfolded(originals=eigs, unfolded=np.sort(unfolded), smoother=closure)
+        return Unfolded(
+            originals=eigs,
+            unfolded=np.sort(unfolded),
+            smoother=closure,  # type: ignore
+        )
 
     def unfold_goe(self) -> Unfolded:
-        """Unfold via Wigner's semicircle law. """
+        """Unfold via Wigner's semicircle law."""
 
         eigs = self.eigenvalues
         N = len(eigs)
         end = np.sqrt(2 * N)
 
         def __R1(x: float) -> np.float64:
-            """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004) """
+            """The level density R_1(x), as per p.152, Eq. 7.2.33 of Mehta (2004)"""
             if np.abs(x) < end:
                 return np.float64((1 / np.pi) * np.sqrt(2 * N - x * x))
-            return 0.0
+            return np.float64(0.0)
 
-        MAX = quad(__R1, -end, end)[0]
+        MAX = np.float64(quad(__R1, -end, end)[0])
 
         def smooth_goe(x: float) -> np.float64:
             if x > end:
                 return MAX
-            return quad(__R1, -end, x)[0]
+            return np.float64(quad(__R1, -end, x)[0])
 
         unfolded = np.sort(np.vectorize(smooth_goe)(eigs))
         return Unfolded(originals=eigs, unfolded=unfolded)
 
+    def unfold_poisson(self) -> Unfolded:
+        """
+        See https://iopscience.iop.org/article/10.1088/1742-6596/492/1/012011/pdf
+        pg.2, middle paragraph, which notes:
+
+            In the traditional approach to the unfolding procedure (see e.g.
+            [12]), a mapping of the sequence of actual energy levels
+            {E(i): i = 1...N}, into dimensionless levels e(i), where
+
+                E(i) -> e(i) =def= N[E(i)] = int_{-inf}^{E(i)} p(E')dE'
+
+            (1) realizes this process. Here, N[E] is a smooth
+            approximation to the accumulated or integrated density function
+            (IDOS)
+
+                N[E(i)] = sum_{i=1}^N [H * (E − E(i))],
+
+            where H is the Heaviside step function. N[E(i)] counts the exact
+            number of levels i up to excitation energy E(i), and increases by
+            one unit as the energy E passes a (non-degenerate) eigenvalue E(i)
+            [6, 7, 13]. The unfolding procedure is straightforward if a
+            theoretical prediction for the average level density p(E) is
+            available, e.g. the Weyl formula in the case of quantum billiards
+            [9], the semi-circular distribution in the case of GOE, and the
+            normal distribution in the Poisson case [3]. However, an analytical
+            form for p(E) is usually only valid in the asymptotic limit for
+            spectra with a very large number of levels N -> inf [8] and often is
+            not known [7]. In those cases, a local unfolding can be applied,
+            which can only be used to study short-range correlations [14].
+
+        Another way to look at it is that the limiting
+        """
+        eigs = self.eigenvalues
+        N = len(eigs)
+
+        def __R1(x: float) -> np.float64:
+            return np.float64(np.exp(-np.abs(x)))  # correct!
+
+        def smooth_poisson(x: float) -> np.float64:
+            return N * np.float64(quad(__R1, -np.inf, np.abs(x))[0])
+
+        # we are in the case https://math.stackexchange.com/a/115132
+        # but where mu and lambda are both 1
+        unfolded = np.sort(np.vectorize(smooth_poisson)(eigs))  # correct!
+        return Unfolded(originals=eigs, unfolded=unfolded)
+
 
 def _eigs_via_transpose(
-    M: ndarray, covariance: bool = True, use_sparse: bool = False, **sp_args: Any
-) -> ndarray:
+    M: fArr, covariance: bool = True, use_sparse: bool = False, **sp_args: Any
+) -> fArr:
     """Use transposes to rapidly compute eigenvalues of covariance and
     correlation matrices.
 
@@ -771,7 +925,10 @@ def _eigs_via_transpose(
 
     Keeping X, n, p, r the same as above, and letting C = corr(X), and
 
-        stand(X) = (X - np.mean(X, axis=1, keepdims=True)) / np.std(X, axis=1, ddof=1, keepdims=True)
+        stand(X) = (
+                   (X - np.mean(X, axis=1, keepdims=True)) /
+                   np.std(X, axis=1, ddof=1, keepdims=True)
+                )
                  = norm(X) / np.std(X, axis=1, ddof=1, keepdims=True)
 
     we have:
@@ -791,9 +948,7 @@ def _eigs_via_transpose(
     """
     N, T = M.shape
     if N <= T:
-        raise ValueError(
-            "Array is not of correct shape to benefit from transposed intermediates."
-        )
+        raise ValueError("Array is not of correct shape to benefit from transposed intermediates.")
     r = 1 / (T - 1)
     Z = M - np.mean(M, axis=1, keepdims=True)
     if not covariance:
@@ -801,13 +956,14 @@ def _eigs_via_transpose(
     M = np.matmul(Z.T, r * Z)
 
     if use_sparse:
-        M = sparse.tril(M)
+        M_sparse = scipy.sparse.tril(M)
         if sp_args.get("return_eigenvectors") is True:
             raise ValueError(
-                "This function is intended only as a helper to extract eigenvalues from time-series."
+                "This function is intended only as a helper "
+                "to extract eigenvalues from time-series."
             )
 
-        eigs = sparse.linalg.eigsh(M, **sp_args)
+        eigs: fArr = np.array(scipy.sparse.linalg.eigsh(M_sparse, **sp_args))
     else:
         eigs = np.linalg.eigvalsh(M)
 

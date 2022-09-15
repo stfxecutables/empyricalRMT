@@ -1,25 +1,22 @@
-import numpy as np
-import pytest
 import time
-
-from numpy import ndarray
-from scipy.integrate import simps, trapz
 from typing import Any
 
-from empyricalRMT.construct import _generate_GOE_tridiagonal, generate_eigs
+import numpy as np
+import pytest
+from numpy import ndarray
+from scipy.integrate import simps, trapz
+
+from empyricalRMT.construct import _generate_GOE_tridiagonal
 from empyricalRMT.correlater import correlate_fast
+from empyricalRMT.eigenvalues import Eigenvalues
 from empyricalRMT.eigenvalues import _eigs_via_transpose as eigv
 from empyricalRMT.observables.rigidity import (
-    _slope,
-    _intercept,
-    _integrate_fast,
     _int_simps_nonunif,
+    _integrate_fast,
+    _intercept,
+    _slope,
 )
-from empyricalRMT.observables.step import (
-    _step_function_correct,
-    _step_function_fast,
-    _step_function_slow,
-)
+from empyricalRMT.observables.step import _step_function_correct, _step_function_fast
 
 
 @pytest.mark.math
@@ -92,7 +89,7 @@ def test_step_fast() -> None:
 @pytest.mark.fast
 @pytest.mark.perf
 def test_step_fast_perf() -> None:
-    step_fasts, step_slows, step_corrects = [], [], []
+    step_fasts, step_corrects = [], []
     for _ in range(5):
         eigs = np.sort(np.random.uniform(-10000, 10000, 10000))
         x = np.linspace(eigs[0], eigs[-1], 5000)
@@ -104,16 +101,10 @@ def test_step_fast_perf() -> None:
 
         start = time.time()
         for _ in range(100):
-            _step_function_slow(eigs, x)
-        step_slow = time.time() - start
-
-        start = time.time()
-        for _ in range(100):
             _step_function_correct(eigs, x)
         step_correct = time.time() - start
 
         step_fasts.append(step_fast)
-        step_slows.append(step_slow)
         step_corrects.append(step_correct)
 
     print("Smaller values are better (seconds)")
@@ -122,12 +113,6 @@ def test_step_fast_perf() -> None:
         np.mean(step_fasts),
         "+-",
         3 * np.std(step_fasts, ddof=1),
-    )
-    print(
-        "_step_function_slow: ",
-        np.mean(step_slows),
-        "+-",
-        3 * np.std(step_slows, ddof=1),
     )
     print(
         "_step_function_correct:    ",
@@ -162,9 +147,7 @@ def test_integrate_trapz() -> None:
         grid = np.sort(np.random.uniform(-1000, 1000, 1000))
         y = m * grid + b
         # m*x**2/2 + bx
-        int_analytic = (m * grid[-1] ** 2 / 2 + b * grid[-1]) - (
-            m * grid[0] ** 2 / 2 + b * grid[0]
-        )
+        int_analytic = (m * grid[-1] ** 2 / 2 + b * grid[-1]) - (m * grid[0] ** 2 / 2 + b * grid[0])
         int_comp = _integrate_fast(grid, y)
         int_exp = trapz(y, x=grid)
         assert np.allclose(int_analytic, int_exp)
@@ -196,9 +179,7 @@ def test_integrate_simps() -> None:
         grid = np.linspace(-500, 500, 1001)  # must be uniform grid for simpsons
         y = m * grid + b
         # m*x**2/2 + bx
-        int_analytic = (m * grid[-1] ** 2 / 2 + b * grid[-1]) - (
-            m * grid[0] ** 2 / 2 + b * grid[0]
-        )
+        int_analytic = (m * grid[-1] ** 2 / 2 + b * grid[-1]) - (m * grid[0] ** 2 / 2 + b * grid[0])
         # int_comp = _integrate_simpsons(grid, y)
         int_comp = _int_simps_nonunif(grid, y)
         int_exp = simps(y, x=grid)
@@ -293,7 +274,7 @@ def test_tridiag() -> None:
         print(f"Time for tridiagonal (N = {size}): {duration}")
 
         start = time.time()
-        generate_eigs(size)
+        Eigenvalues.generate(size)
         duration = time.time() - start
         print(f"Time for normal (N = {size}): {duration}")
 

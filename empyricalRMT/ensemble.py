@@ -1,14 +1,15 @@
-import numpy as np
-
 from abc import ABC, abstractmethod
+from typing import Optional, Tuple, cast
+from warnings import warn
+
+import numpy as np
 from numpy import ndarray
 from scipy.special import gamma
 
-from typing import Tuple, Union
-from warnings import warn
+from empyricalRMT._types import fArr
 
 
-class _Ensemble(ABC):
+class Ensemble(ABC):
     """Base class for various ensembles."""
 
     @staticmethod
@@ -16,8 +17,8 @@ class _Ensemble(ABC):
     def nnsd(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
         pass
 
     @staticmethod
@@ -25,35 +26,42 @@ class _Ensemble(ABC):
     def nnnsd(
         spacings_range: Tuple[float, float] = (0.0, 4.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
         pass
 
     @staticmethod
     @abstractmethod
     def spectral_rigidity(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
-    ) -> ndarray:
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
+        L: Optional[fArr] = None,
+    ) -> fArr:
         pass
 
     @staticmethod
     @abstractmethod
     def level_variance(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
-    ) -> ndarray:
+        min_L: float = 0.5,
+        max_L: float = 20,
+        L_grid_size: int = 50,
+        L: Optional[fArr] = None,
+    ) -> fArr:
         pass
 
 
-class Poisson(_Ensemble):
-    """Class for Poisson "Gaussian Diagonal" matrices. """
+class Poisson(Ensemble):
+    """Class for Poisson "Gaussian Diagonal" matrices."""
 
     @staticmethod
     def nnsd(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -63,7 +71,7 @@ class Poisson(_Ensemble):
         n_points: int
             The number of points in `spacings_range`.
 
-        spacings: ndarray
+        spacings: Optional[fArr]
             The values for which to return the expected nnsd density.
             Overrides the values in `spacings_range` and `n_points`, if provided.
         """
@@ -72,15 +80,16 @@ class Poisson(_Ensemble):
             if spacings is not None
             else np.linspace(spacings_range[0], spacings_range[1], n_points)
         )
-        return np.exp(-s)
+        return cast(fArr, np.exp(-s))
 
     @staticmethod
     def nnsd_cdf(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
-        """Compute and return the theoretical values of the nearest neighbour spacing distribution / cumulative density.
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
+        """Compute and return the theoretical values of the nearest
+        neighbour spacing distribution / cumulative density.
 
         Parameters
         ----------
@@ -90,7 +99,7 @@ class Poisson(_Ensemble):
         n_points: int
             The number of points in `spacings_range`.
 
-        spacings: ndarray
+        spacings: Optional[fArr]
             The values for which to return the expected nnsd density.
             Overrides the values in `spacings_range` and `n_points`, if provided.
         """
@@ -100,14 +109,14 @@ class Poisson(_Ensemble):
             else np.linspace(spacings_range[0], spacings_range[1], n_points)
         )
         s = np.clip(s, 0, None)
-        return 1 - np.exp(-s)
+        return 1 - np.exp(-s)  # type: ignore
 
     @staticmethod
     def nnnsd(
         spacings_range: Tuple[float, float] = (0.0, 4.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
         """Compute and return the expected values of the next-nearest neighbour
         spacing distribution / density.
 
@@ -119,7 +128,7 @@ class Poisson(_Ensemble):
         n_points: int
             The number of points in `spacings_range`.
 
-        spacings: ndarray
+        spacings: Optional[fArr]
             The values for which to return the expected next-nnsd density.
             Overrides the values in `spacings_range` and `n_points`, if provided.
 
@@ -130,7 +139,7 @@ class Poisson(_Ensemble):
         from my simulations, the Brody distribution below appears to be close.
         """
 
-        def brody_dist(s: ndarray, beta: float) -> ndarray:
+        def brody_dist(s: fArr, beta: float) -> fArr:
             """See Eq. 8 of
             Dettmann, C. P., Georgiou, O., & Knight, G. (2017).
             Spectral statistics of random geometric graphs.
@@ -138,7 +147,7 @@ class Poisson(_Ensemble):
             """
             b1 = beta + 1
             alpha = gamma((beta + 2) / b1) ** b1
-            return b1 * alpha * s ** beta * np.exp(-alpha * s ** b1)
+            return b1 * alpha * s**beta * np.exp(-alpha * s**b1)  # type: ignore
 
         s = (
             spacings
@@ -153,8 +162,8 @@ class Poisson(_Ensemble):
 
     @staticmethod
     def spectral_rigidity(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
-    ) -> ndarray:
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: Optional[fArr] = None
+    ) -> fArr:
         """Compute and return the expected values of the spectral rigidity.
 
         Parameters
@@ -168,17 +177,18 @@ class Poisson(_Ensemble):
         L_grid_size: int
             The number of values in [min_L, max_L] to compute the rigidity.
 
-        L: ndarray
+        L: fArr
             The array of L values for which to compute the rigidity. Overrides
             other parameters if provided.
         """
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
-        return L / 15 / 2
+        # return L / 15 / 2
+        return L / 15
 
     @staticmethod
     def level_variance(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
-    ) -> ndarray:
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: Optional[fArr] = None
+    ) -> fArr:
         """Compute and return the expected values of the level variance.
 
         Parameters
@@ -192,23 +202,25 @@ class Poisson(_Ensemble):
         L_grid_size: int
             The number of values in [min_L, max_L] to compute the level variance
 
-        L: ndarray
+        L: fArr
             The array of L values for which to compute the level variance.
             Overrides other parameters if provided.
         """
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
-        return s / 2
+        # return s / 2
+        return s
 
 
-class GOE(_Ensemble):
+class GOE(Ensemble):
     @staticmethod
     def nnsd(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -218,7 +230,7 @@ class GOE(_Ensemble):
         n_points: int
             The number of points in `spacings_range`.
 
-        spacings: ndarray
+        spacings: fArr
             The values for which to return the expected nnsd density.
             Overrides the values in `spacings_range` and `n_points`, if provided.
         """
@@ -228,15 +240,16 @@ class GOE(_Ensemble):
             else np.linspace(spacings_range[0], spacings_range[1], n_points)
         )
         p = np.pi
-        return ((p * s) / 2) * np.exp(-(p / 4) * s * s)
+        return ((p * s) / 2) * np.exp(-(p / 4) * s * s)  # type: ignore
 
     @staticmethod
     def nnsd_cdf(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -246,7 +259,7 @@ class GOE(_Ensemble):
         n_points: int
             The number of points in `spacings_range`.
 
-        spacings: ndarray
+        spacings: fArr
             The values for which to return the expected nnsd density.
             Overrides the values in `spacings_range` and `n_points`, if provided.
         """
@@ -257,14 +270,14 @@ class GOE(_Ensemble):
         )
         s = np.clip(s, 0, None)
         p = np.pi
-        return 1 - np.exp((-p / 4) * s * s)
+        return 1 - np.exp((-p / 4) * s * s)  # type: ignore
 
     @staticmethod
     def nnnsd(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
         """Compute and return the expected values of the next-nearest neighbour
         spacing distribution / density.
 
@@ -276,7 +289,7 @@ class GOE(_Ensemble):
         n_points: int
             The number of points in `spacings_range`.
 
-        spacings: ndarray
+        spacings: fArr
             The values for which to return the expected next-nnsd density.
             Overrides the values in `spacings_range` and `n_points`, if provided.
 
@@ -295,14 +308,14 @@ class GOE(_Ensemble):
         )
         p = np.pi
         # fmt: off
-        goe = (2**18 / (3**6 * p**3)) * (s**4) * np.exp(-((64 / (9 * p)) * (s * s)))
+        goe: fArr = (2**18 / (3**6 * p**3)) * (s**4) * np.exp(-((64 / (9 * p)) * (s * s)))
         # fmt: on
         return goe
 
     @staticmethod
     def spectral_rigidity(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
-    ) -> ndarray:
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: Optional[fArr] = None
+    ) -> fArr:
         """Compute and return the expected values of the spectral rigidity.
 
         Parameters
@@ -316,19 +329,19 @@ class GOE(_Ensemble):
         L_grid_size: int
             The number of values in [min_L, max_L] to compute the rigidity.
 
-        L: ndarray
+        L: fArr
             The array of L values for which to compute the rigidity. Overrides
             other parameters if provided.
         """
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p, y = np.pi, np.euler_gamma
-        return (1 / (p ** 2)) * (np.log(2 * p * s) + y - 5 / 4 - (p ** 2) / 8)
+        return (1 / (p**2)) * (np.log(2 * p * s) + y - 5 / 4 - (p**2) / 8)  # type: ignore
 
     @staticmethod
     def level_variance(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
-    ) -> ndarray:
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: Optional[fArr] = None
+    ) -> fArr:
         """Compute and return the expected values of the level variance.
 
         Parameters
@@ -342,24 +355,25 @@ class GOE(_Ensemble):
         L_grid_size: int
             The number of values in [min_L, max_L] to compute the level variance
 
-        L: ndarray
+        L: fArr
             The array of L values for which to compute the level variance.
             Overrides other parameters if provided.
         """
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p = np.pi
-        return (2 / (p ** 2)) * (np.log(2 * p * s) + np.euler_gamma + 1 - (p ** 2) / 8)
+        return (2 / (p**2)) * (np.log(2 * p * s) + np.euler_gamma + 1 - (p**2) / 8)  # type: ignore # noqa
 
 
-class GUE(_Ensemble):
+class GUE(Ensemble):
     @staticmethod
     def nnsd(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
-    ) -> ndarray:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        spacings: Optional[fArr] = None,
+    ) -> fArr:
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -379,13 +393,13 @@ class GUE(_Ensemble):
             else np.linspace(spacings_range[0], spacings_range[1], 10000)
         )
         p = np.pi
-        return (32 / p ** 2) * (s * s) * np.exp(-(4 * s * s) / p)
+        return (32 / p**2) * (s * s) * np.exp(-(4 * s * s) / p)  # type: ignore
 
     @staticmethod
     def nnnsd(
         spacings_range: Tuple[float, float] = (0.0, 4.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
+        spacings: Optional[fArr] = None,
     ) -> ndarray:
         """Compute and return the expected values of the next-nearest neighbour
         spacing distribution / density.
@@ -412,7 +426,7 @@ class GUE(_Ensemble):
 
     @staticmethod
     def spectral_rigidity(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: Optional[fArr] = None
     ) -> ndarray:
         """Compute and return the expected values of the spectral rigidity.
 
@@ -434,11 +448,11 @@ class GUE(_Ensemble):
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p = np.pi
-        return (1 / (2 * (p ** 2))) * (np.log(2 * p * s) + np.euler_gamma - 5 / 4)
+        return (1 / (2 * (p**2))) * (np.log(2 * p * s) + np.euler_gamma - 5 / 4)  # type: ignore
 
     @staticmethod
     def level_variance(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: Optional[fArr] = None
     ) -> ndarray:
         """Compute and return the expected values of the level variance.
 
@@ -460,7 +474,7 @@ class GUE(_Ensemble):
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p = np.pi
-        return (1 / (p ** 2)) * (np.log(2 * p * s) + np.euler_gamma + 1)
+        return (1 / (p**2)) * (np.log(2 * p * s) + np.euler_gamma + 1)  # type: ignore
 
 
 class GSE:
@@ -468,9 +482,10 @@ class GSE:
     def nnsd(
         spacings_range: Tuple[float, float] = (0.0, 3.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
+        spacings: Optional[fArr] = None,
     ) -> ndarray:
-        """Compute and return the expected values of the nearest neighbour spacing distribution / density.
+        """Compute and return the expected values of the nearest
+        neighbour spacing distribution / density.
 
         Parameters
         ----------
@@ -491,14 +506,14 @@ class GSE:
         )
         p = np.pi
         # fmt: off
-        return (262144 / (729*p**3)) * (s**4) * np.exp(-((64 / (9*p)) * (s*s)))
+        return (262144 / (729*p**3)) * (s**4) * np.exp(-((64 / (9*p)) * (s*s)))  # type: ignore
         # fmt: on
 
     @staticmethod
     def nnnsd(
         spacings_range: Tuple[float, float] = (0.0, 4.0),
         n_points: int = 1000,
-        spacings: ndarray = None,
+        spacings: Optional[fArr] = None,
     ) -> ndarray:
         """Compute and return the expected values of the next-nearest neighbour
         spacing distribution / density.
@@ -525,7 +540,7 @@ class GSE:
 
     @staticmethod
     def spectral_rigidity(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: Optional[fArr] = None
     ) -> ndarray:
         """Compute and return the expected values of the spectral rigidity.
 
@@ -548,11 +563,11 @@ class GSE:
         # s = L / np.mean(spacings)
         s = L
         p, y = np.pi, np.euler_gamma
-        return (1 / (4 * (p ** 2))) * (np.log(4 * p * s) + y - 5 / 4 + (p ** 2) / 8)
+        return (1 / (4 * (p**2))) * (np.log(4 * p * s) + y - 5 / 4 + (p**2) / 8)  # type: ignore
 
     @staticmethod
     def level_variance(
-        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: ndarray = None
+        min_L: float = 0.5, max_L: float = 20, L_grid_size: int = 50, L: Optional[fArr] = None
     ) -> ndarray:
         """Compute and return the expected values of the level variance.
 
@@ -574,8 +589,7 @@ class GSE:
         L = L if L is not None else np.linspace(min_L, max_L, L_grid_size)
         s = L
         p, y = np.pi, np.euler_gamma
-        return (1 / (2 * (p ** 2))) * (np.log(4 * p * s) + y + 1 + (p ** 2) / 8)
+        return (1 / (2 * (p**2))) * (np.log(4 * p * s) + y + 1 + (p**2) / 8)  # type: ignore
 
 
 GDE = Poisson
-Ensemble = Union[GOE, GDE, Poisson, GUE, GSE]
