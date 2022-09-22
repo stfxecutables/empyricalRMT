@@ -301,7 +301,7 @@ def delta_L(
     return np.mean(delta_running), converged, k  # type: ignore
 
 
-@jit(nopython=True, cache=True, fastmath=True)
+@jit(nopython=True, cache=False, fastmath=True)
 def _delta_grid(
     unfolded: ndarray, starts: ndarray, L: float, gridsize: int, use_simpson: bool
 ) -> f64:
@@ -320,7 +320,7 @@ def _delta_grid(
     return np.mean(delta3s)  # type: ignore
 
 
-@jit(nopython=True, cache=True, fastmath=True)
+@jit(nopython=True, cache=False, fastmath=True)
 def _slope(x: ndarray, y: ndarray) -> f64:
     """Perform linear regression to compute the slope."""
     x_mean = np.mean(x)
@@ -334,12 +334,12 @@ def _slope(x: ndarray, y: ndarray) -> f64:
     return cov / var  # type: ignore
 
 
-@jit(nopython=True, cache=True, fastmath=True)
+@jit(nopython=True, cache=False, fastmath=True)
 def _intercept(x: ndarray, y: ndarray, slope: f64) -> f64:
     return np.mean(y) - slope * np.mean(x)  # type: ignore
 
 
-@jit(nopython=True, cache=True, fastmath=True)
+@jit(nopython=True, cache=False, fastmath=True)
 def _integrate_fast(grid: ndarray, values: ndarray) -> f64:
     """scipy.integrate.trapz is excruciatingly slow and unusable for our purposes.
     This tiny rewrite seems to result in a near 20x speedup. However, being trapezoidal
@@ -354,7 +354,7 @@ def _integrate_fast(grid: ndarray, values: ndarray) -> f64:
 
 # NOTE: !!!! Very important *NOT* to use parallel=True here, since we parallelize
 # the outer loops. Adding it inside *dramatically* slows performance.
-@jit(nopython=True, cache=True, fastmath=True)
+@jit(nopython=True, cache=False, fastmath=True)
 def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: f64, w: f64, grid: fArr) -> fArr:
     """Compute the sqaured deviation of the staircase function of the best fitting
     line, over the region in `grid`.
@@ -390,7 +390,7 @@ def _sq_lin_deviation(eigs: ndarray, steps: ndarray, K: f64, w: f64, grid: fArr)
 
 
 # fmt: off
-@jit(nopython=True, cache=True, fastmath=True)
+@jit(nopython=True, cache=False, fastmath=True)
 def _int_simps_nonunif(grid: fArr, vals: fArr) -> f64:
     """
     Simpson rule for irregularly spaced data. Copied shamelessly from

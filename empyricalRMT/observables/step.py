@@ -32,7 +32,7 @@ def step_values(eigs: fArr, x: Union[float, fArr]) -> Union[float, iArr]:
     return cast(iArr, _step_function_fast(eigs, x))
 
 
-@njit(fastmath=True, cache=True)  # type: ignore[misc]
+@njit(fastmath=True, cache=False)  # type: ignore[misc]
 def _step_function_fast(eigs: fArr, x: fArr) -> iArr:
     """optimized version that does not repeatedly call np.sum(eigs <= x), since
     this function needed to be called extensively in rigidity calculation."""
@@ -70,7 +70,7 @@ def _step_function_fast(eigs: fArr, x: fArr) -> iArr:
     return ret
 
 
-@njit(fastmath=True, cache=True, parallel=True)
+@njit(fastmath=True, cache=False, parallel=True)
 def _step_function_correct(eigs: fArr, x: fArr) -> fArr:
     """Intended for testing _step_function_fast correctness, as this function
     is for sure correct, just slow.

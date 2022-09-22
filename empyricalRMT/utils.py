@@ -85,7 +85,7 @@ def make_parent_directories(path: Path) -> None:
         make_directory(path)
 
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True)
 def kahan_add(current_sum: f64, update: f64, carry_over: f64) -> Tuple[f64, f64]:
     """
     Returns
@@ -103,7 +103,7 @@ def kahan_add(current_sum: f64, update: f64, carry_over: f64) -> Tuple[f64, f64]
     return updated_sum, c
 
 
-@jit(nopython=True, cache=True, fastmath=True)
+@jit(nopython=True, fastmath=True)
 def nd_find(arr: ndarray, value: Any) -> Optional[int]:
     for i, val in np.ndenumerate(arr):
         if val == value:
@@ -133,7 +133,7 @@ def flatten_4D(img4D: ndarray) -> np.ndarray:
         return img4D.reshape((np.prod(img4D.shape[0:-1]),) + (img4D.shape[-1],))
 
 
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, fastmath=True)
 def slope(x: ndarray, y: ndarray) -> np.float64:
     x_mean = np.mean(x)
     y_mean = np.mean(y)
@@ -158,12 +158,12 @@ def variance(arr: ndarray) -> np.float64:
     return np.float64(scale * summed)
 
 
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, fastmath=True)
 def intercept(x: ndarray, y: ndarray, slope: np.float64) -> np.float64:
     return np.float64(np.mean(y) - slope * np.mean(x))
 
 
-@jit(nopython=True, fastmath=True, cache=True)
+@jit(nopython=True, fastmath=True)
 def fast_r(x: ndarray, y: ndarray) -> np.float64:
     n = len(x)
     num = x * y - n * np.mean(x) * np.mean(y)
