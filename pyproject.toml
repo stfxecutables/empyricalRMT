@@ -11,7 +11,7 @@ known_local_folder = ["empyricalRMT", "src", "test", "tests"]
 
 [tool.poetry]
 name = "empyricalrmt"
-version = "1.1.0"
+version = "1.1.1"
 description = "Eigenvalue unfolding and spectral observable computation"
 authors = ["Derek M Berger <dmberger.dev@gmail.com>"]
 readme = "README.md"

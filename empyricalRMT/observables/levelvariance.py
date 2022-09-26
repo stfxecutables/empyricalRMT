@@ -64,7 +64,7 @@ def level_number_variance(
             tol=tol,
             max_iters=AUTO_MAX_ITERS,
             min_iters=MIN_ITERS * 10,
-            show_progress=True,
+            show_progress=show_progress,
         )[
             1:
         ]  # type: ignore

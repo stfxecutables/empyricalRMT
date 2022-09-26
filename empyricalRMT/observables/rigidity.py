@@ -156,7 +156,7 @@ def spectral_rigidity(
             min_iters=10 * MIN_ITERS,  # also safety
             tol=tol,
             use_simpson=integration != "trapz",
-            show_progress=True,
+            show_progress=show_progress,
         )[1:]
         max_iters = int(max_iters * 2)  # precaution
         if not success:
