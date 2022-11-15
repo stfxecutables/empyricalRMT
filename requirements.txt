@@ -22,7 +22,7 @@ pandas==1.4.4
 pathos==0.2.9
 pathspec==0.10.1
 patsy==0.5.2
-Pillow==9.2.0
+Pillow==9.3.0
 platformdirs==2.5.2
 pluggy==1.0.0
 pox==0.3.1
