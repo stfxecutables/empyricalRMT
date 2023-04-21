@@ -7,7 +7,7 @@ EMD-signal==1.2.3
 flake8==5.0.4
 fonttools==4.37.1
 iniconfig==1.1.1
-joblib==1.1.0
+joblib==1.1.1
 kiwisolver==1.4.4
 llvmlite==0.39.1
 matplotlib==3.5.3
